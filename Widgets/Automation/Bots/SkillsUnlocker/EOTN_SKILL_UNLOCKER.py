@@ -145,6 +145,187 @@ SEPULCHRE_LEVEL1_FRAGMENT_ROUTE_XY = (
 )
 
 
+# Be Very Very Quiet (quest 865), captured from Longeye's Ledge through
+# Grothmar Wardowns. Portal routes include the required 450-unit continuation.
+EBOSC_VAEL_MODEL_ID = 6081
+EBOSC_ENTRY_BLESSING_MODEL_ID = 2036
+EBOSC_ENTRY_BLESSING_XY = (-21765.0, 11480.0)
+EBOSC_CHARR_INTELLIGENCE_XY = (20543.0, -10141.0)
+EBOSC_LONGEYE_FIRST_EXIT_ROUTE_XY = (
+    (-23017.95, 14731.92), (-23203.44, 14263.27), (-22966.05, 13819.04),
+    (-22613.45, 13459.32), (-22262.66, 13101.46),
+)
+EBOSC_LONGEYE_FIRST_PORTAL_ROUTE_XY = (
+    (-21630.0, 12565.0), (-21286.78, 12273.97),
+)
+EBOSC_FIRST_APPEARANCE_ROUTE_XY = (
+    (-21449.00, 12487.00), (-21567.48, 11999.59), (-21745.34, 11531.71),
+    (-21582.76, 11055.59), (-21413.58, 10584.20), (-21249.77, 10107.58),
+    (-21121.57, 9624.18), (-21038.44, 9128.31), (-21024.00, 8626.37),
+    (-21060.39, 8125.25), (-21122.52, 7625.40), (-21202.64, 7128.38),
+    (-21269.40, 6628.64), (-21351.49, 6133.01),
+)
+EBOSC_LONGEYE_QUEST_EXIT_ROUTE_XY = (
+    (-24890.92, 14481.03), (-24417.26, 14641.62), (-23940.32, 14809.94),
+    (-23539.40, 14505.05), (-23203.15, 14127.69), (-22869.80, 13753.91),
+    (-22527.73, 13383.17), (-22192.62, 13005.56),
+)
+EBOSC_LONGEYE_QUEST_PORTAL_ROUTE_XY = (
+    (-21630.0, 12565.0), (-21275.70, 12287.56),
+)
+EBOSC_ENTRY_BLESSING_STANDOFF_ROUTE_XY = (
+    (-21449.00, 12487.00), (-21601.28, 12006.89),
+)
+EBOSC_BLESSING_TO_VAEL_ROUTE_XY = (
+    (-21169.41, 11282.47), (-20687.98, 11109.20), (-20222.94, 10912.05),
+    (-19771.63, 10682.08), (-19330.60, 10446.46), (-18870.52, 10225.99),
+    (-18400.47, 10026.70), (-17912.30, 9885.12), (-17422.72, 9765.55),
+    (-16920.67, 9744.58), (-16411.16, 9695.54), (-15912.12, 9630.34),
+    (-15409.94, 9600.13), (-14902.24, 9575.06), (-14395.68, 9605.74),
+    (-13895.63, 9667.85), (-13360.37, 9702.46), (-12865.55, 9599.08),
+    (-12382.12, 9739.04), (-11886.62, 9858.22), (-11386.99, 9943.28),
+    (-10885.61, 9899.64), (-10384.45, 9814.61), (-9900.13, 9687.23),
+    (-9392.87, 9618.34), (-8889.17, 9549.95), (-8384.25, 9475.21),
+    (-7885.93, 9390.65), (-7377.44, 9367.50), (-6865.05, 9355.29),
+    (-6361.20, 9289.46), (-5897.92, 9092.98), (-5467.94, 8834.80),
+    (-5044.42, 8560.27), (-4621.22, 8279.35), (-4220.85, 7972.89),
+    (-3831.72, 7654.85), (-3569.09, 7223.25), (-3583.52, 6719.49),
+    (-3668.05, 6224.46), (-3789.29, 5737.14), (-3811.17, 5230.99),
+    (-3668.80, 4743.11), (-3530.40, 4253.16), (-3305.55, 3754.03),
+    (-3096.57, 3298.96), (-2886.53, 2841.60), (-2677.24, 2385.88),
+    (-2465.86, 1925.58), (-2312.16, 1444.55), (-2175.64, 959.53),
+    (-2001.02, 483.05), (-1801.66, 19.51), (-1555.34, -416.83),
+    (-1260.83, -825.15), (-877.28, -1147.80), (-451.01, -1457.27),
+    (-47.04, -1762.83), (361.88, -2055.01), (784.92, -2324.99),
+    (1217.14, -2593.49), (1662.45, -2834.10), (2109.67, -3075.75),
+)
+EBOSC_FOLLOW_TORCH_TO_VAEL_ROUTE_XY = (
+    (2877.78, -3756.16), (3231.45, -4109.88), (3699.38, -3933.54),
+    (4173.58, -3751.91), (4674.46, -3716.25), (5158.84, -3857.56),
+    (5600.65, -4124.73), (5940.59, -4501.62), (6357.75, -4793.07),
+    (6659.70, -5195.61), (7010.66, -5563.33), (7412.69, -5871.20),
+    (7807.93, -6181.51), (8297.80, -6383.14), (8797.85, -6440.01),
+    (9296.72, -6487.02), (9795.57, -6521.06), (10293.24, -6569.37),
+    (10798.27, -6562.85), (11299.42, -6549.70), (11803.76, -6535.79),
+)
+EBOSC_FOLLOW_TORCH_TO_MEETING_WAIT_ROUTE_XY = (
+    (12811.08, -6565.76), (13316.80, -6514.43), (13818.92, -6471.22),
+    (14324.05, -6439.17), (14830.10, -6391.47), (15330.56, -6350.93),
+    (15834.92, -6367.30), (16332.66, -6469.86), (16695.08, -6856.71),
+    (16956.28, -7285.43), (17241.16, -7702.88), (17551.83, -8095.59),
+    (17906.23, -8455.06), (18262.27, -8765.81),
+)
+EBOSC_MEETING_ATTACK_ROUTE_XY = (
+    (18690.49, -9024.01), (19119.33, -9282.58), (19558.03, -9547.10),
+    (19957.11, -9851.68), (20247.77, -10260.29), (20564.77, -10648.40),
+    (20726.30, -10846.11),
+)
+EBOSC_LONGEYE_REWARD_EXIT_ROUTE_XY = (
+    (-23815.74, 15925.57), (-23876.85, 15424.12), (-23691.63, 14954.76),
+    (-23405.51, 14538.81), (-23120.52, 14124.51), (-22783.56, 13753.14),
+    (-22425.17, 13398.37), (-22069.23, 13046.04),
+)
+EBOSC_LONGEYE_REWARD_PORTAL_ROUTE_XY = (
+    (-21630.0, 12565.0), (-21326.57, 12232.69),
+)
+
+# Plan A (quest 866), captured from Longeye's Ledge through Grothmar Wardowns.
+PLAN_A_VAEL_XY = (12445.0, -8120.0)
+PLAN_A_BATTLE_PLANS_XY = (16209.48, 2474.46)
+PLAN_A_RETURN_BLESSING_XY = (-3529.0, -954.0)
+PLAN_A_BLESSING_TO_VAEL_ROUTE_XY = (
+    (-21292.76, 11283.03), (-20837.38, 11067.92), (-20401.22, 10808.55),
+    (-20038.17, 10460.00), (-19659.41, 10096.63), (-19292.86, 9744.45),
+    (-18923.17, 9364.87), (-18576.27, 8991.67), (-18231.69, 8617.95),
+    (-17846.83, 8296.58), (-17478.45, 7947.01), (-17129.96, 7585.49),
+    (-16789.85, 7217.04), (-16447.70, 6851.92), (-16177.76, 6425.32),
+    (-15901.83, 6005.84), (-15610.77, 5593.26), (-15257.99, 5233.07),
+    (-14852.08, 4923.52), (-14453.90, 4620.45), (-14049.10, 4313.58),
+    (-13678.97, 3966.07), (-13314.97, 3608.17), (-12954.30, 3253.56),
+    (-12599.02, 2893.96), (-12284.08, 2503.43), (-12024.81, 2068.83),
+    (-11765.39, 1632.11), (-11512.71, 1196.87), (-11266.14, 761.51),
+    (-10979.24, 344.60), (-10672.63, -95.59), (-10344.46, -483.74),
+    (-10004.90, -851.06), (-9520.58, -686.91), (-9063.74, -465.65),
+    (-8605.28, -243.61), (-8153.62, -24.86), (-7650.03, -1.00),
+    (-7143.07, -2.57), (-6637.16, -51.14), (-6142.80, -143.21),
+    (-5660.25, -285.86), (-5173.83, -438.35), (-4693.26, -589.01),
+    (-4210.27, -740.42), (-3728.32, -891.51), (-3243.45, -1024.17),
+    (-2772.01, -1196.42), (-2295.15, -1348.05), (-1815.34, -1512.55),
+    (-1339.12, -1680.85), (-866.06, -1845.06), (-392.89, -2028.21),
+    (70.10, -2235.08), (512.98, -2467.16), (916.85, -2769.06),
+    (1360.15, -3014.08), (1842.42, -3158.62), (2330.98, -3293.63),
+    (2808.15, -3448.19), (3299.15, -3580.77), (3775.69, -3734.21),
+    (4283.11, -3760.39), (4731.27, -3524.97), (5238.60, -3576.66),
+    (5614.36, -3913.78), (5949.11, -4292.44), (6331.05, -4627.12),
+    (6732.55, -4934.34), (7095.54, -5285.40), (7397.68, -5688.35),
+    (7705.09, -6089.92), (8008.06, -6492.69), (8299.67, -6903.73),
+    (8605.83, -7311.14), (8909.47, -7709.34), (9208.15, -8117.30),
+    (9464.89, -8547.21), (9629.66, -9024.30), (9848.60, -9474.69),
+    (10092.12, -9915.95), (10430.52, -10295.73), (10926.58, -10408.54),
+    (11243.09, -10021.38), (11460.44, -9565.08), (11654.51, -9100.58),
+    (11919.07, -8668.73),
+)
+PLAN_A_VAEL_TO_WAIT_ROUTE_XY = (
+    (12755.29, -8488.72), (13238.42, -8331.85), (13673.23, -8062.08),
+    (14026.57, -7695.23), (14283.05, -7255.94), (14545.38, -6808.82),
+    (14798.79, -6376.91), (15068.33, -5925.33), (15316.67, -5489.30),
+    (15553.30, -5045.94), (15793.15, -4596.54), (16032.02, -4151.52),
+    (16263.72, -3708.40), (16494.14, -3262.22), (16760.48, -2931.69),
+)
+PLAN_A_WAIT_TO_PLANS_ROUTE_XY = (
+    (16885.37, -3422.57), (17033.00, -3907.63), (17537.20, -3914.92),
+    (17828.53, -3505.27), (17995.49, -3027.06), (18164.42, -2551.84),
+    (18325.46, -2072.02), (18458.80, -1580.85), (18593.84, -1055.10),
+    (18687.65, -553.75), (18725.30, -51.51), (18700.36, 452.20),
+    (18583.65, 942.70), (18417.88, 1417.90), (18226.28, 1890.50),
+    (17883.52, 2255.19), (17452.64, 2519.48), (16952.29, 2512.30),
+)
+PLAN_A_CARRY_TO_RETURN_BLESSING_ROUTE_XY = (
+    (16950.54, 2503.45), (17440.53, 2402.31), (17953.95, 2243.25),
+    (18306.34, 1880.82), (18531.45, 1430.84), (18662.95, 940.94),
+    (18684.43, 433.89), (18677.32, -68.46), (18653.72, -573.71),
+    (18606.76, -1080.87), (18545.39, -1580.22), (18464.39, -2083.87),
+    (18341.44, -2569.01), (18178.06, -3044.86), (17970.83, -3503.88),
+    (17693.59, -3928.95), (17252.55, -4184.00), (16756.45, -4293.68),
+    (16262.57, -4184.00), (15775.94, -4065.41), (15443.30, -4450.69),
+    (15265.02, -4927.55), (15053.19, -5383.54), (14872.76, -5851.43),
+    (14675.21, -6311.17), (14458.56, -6770.95), (14231.32, -7218.34),
+    (13998.78, -7663.46), (13699.95, -8072.14), (13329.62, -8414.43),
+    (12900.73, -8753.89), (12484.35, -9041.38), (12147.99, -9422.48),
+    (11723.54, -9694.73), (11190.49, -9725.61), (10681.21, -9666.08),
+    (10208.90, -9492.13), (9829.60, -9157.39), (9500.56, -8773.01),
+    (9168.19, -8398.47), (8841.52, -8018.48), (8524.17, -7627.45),
+    (8212.43, -7227.78), (7901.71, -6830.95), (7582.89, -6444.88),
+    (7255.06, -6055.46), (6928.16, -5667.14), (6601.49, -5279.09),
+    (6248.39, -4859.65), (5930.06, -4473.64), (5619.04, -4077.51),
+    (5186.97, -3813.62), (4677.53, -3748.97), (4176.65, -3777.82),
+    (3672.35, -3821.07), (3171.58, -3843.63), (2671.58, -3845.60),
+    (2179.21, -3757.60), (1685.64, -3636.01), (1219.27, -3433.61),
+    (777.10, -3192.10), (312.83, -2998.88), (-145.09, -2792.10),
+    (-577.44, -2535.61), (-1006.34, -2277.20), (-1450.55, -2014.48),
+    (-1896.11, -1787.53), (-2340.19, -1551.49), (-2775.36, -1293.67),
+    (-3235.89, -1021.53),
+)
+PLAN_A_CARRY_FROM_RETURN_BLESSING_ROUTE_XY = (
+    (-3720.67, -866.66), (-4197.72, -692.04), (-4699.98, -622.38),
+    (-5196.87, -477.24), (-5665.89, -299.75), (-6136.59, -121.61),
+    (-6613.29, 37.98), (-7088.51, 198.47), (-7591.50, 170.96),
+    (-8046.01, -56.64), (-8499.38, -275.13), (-8952.66, -487.11),
+    (-9430.68, -681.09), (-9894.36, -869.25), (-10317.90, -584.21),
+    (-10607.48, -172.96), (-10868.81, 256.73), (-11128.08, 684.72),
+    (-11386.95, 1121.70), (-11631.06, 1564.66), (-11865.27, 2011.35),
+    (-12094.93, 2457.93), (-12366.48, 2886.65), (-12706.15, 3263.30),
+    (-13002.41, 3673.82), (-13324.17, 4074.30), (-13637.91, 4465.51),
+    (-13956.72, 4857.68), (-14292.72, 5238.85), (-14660.94, 5587.56),
+    (-15035.57, 5925.76), (-15404.38, 6263.96), (-15800.69, 6571.66),
+    (-16214.24, 6863.48), (-16561.59, 7230.72), (-16886.89, 7613.76),
+    (-17214.37, 8007.61), (-17554.54, 8384.36), (-17893.94, 8757.91),
+    (-18243.68, 9115.75), (-18607.10, 9473.21), (-18958.65, 9839.34),
+    (-19292.20, 10221.28), (-19618.58, 10612.85), (-19942.19, 11001.11),
+    (-20265.34, 11388.81), (-20591.03, 11779.56), (-20912.11, 12164.77),
+)
+
+
 def draw_window_light(
     self,
     main_child_dimensions: Tuple[int, int] = (520, 360),
@@ -350,6 +531,104 @@ def _placeholder_unlock(skill_label: str):
         bot.States.AddHeader(f"[Unlock] {skill_label} (TODO)")
         bot.States.JumpToStepName("MENU_IDLE")
     return _fn
+
+
+def Unlock_ebon_battle_standard_of_courage(bot: Botting) -> None:
+    bot.States.AddHeader("[Unlock] Ebon Battle Standard of Courage")
+    bot.Properties.Enable("halt_on_death")
+    bot.Properties.Set("movement_timeout", value=15000)
+    bot.Templates.Aggressive()
+
+    # Vael's first appearance must be triggered before the quest instance.
+    bot.Map.Travel(target_map_id=650)
+    bot.Wait.ForMapLoad(target_map_id=650)
+    bot.Properties.Disable("hero_ai")
+    bot.Properties.Disable("pause_on_danger")
+    bot.Move.FollowAutoPath(list(EBOSC_LONGEYE_FIRST_EXIT_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(EBOSC_LONGEYE_FIRST_PORTAL_ROUTE_XY), target_map_id=649
+    )
+    bot.Move.FollowAutoPath(list(EBOSC_FIRST_APPEARANCE_ROUTE_XY))
+
+    # Re-zone, take the Vanguard blessing, and explicitly accept quest 865.
+    bot.Map.Travel(target_map_id=650)
+    bot.Wait.ForMapLoad(target_map_id=650)
+    bot.Move.FollowAutoPath(list(EBOSC_LONGEYE_QUEST_EXIT_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(EBOSC_LONGEYE_QUEST_PORTAL_ROUTE_XY), target_map_id=649
+    )
+    bot.Properties.Enable("hero_ai")
+    bot.Properties.Enable("pause_on_danger")
+    bot.Move.FollowAutoPath(list(EBOSC_ENTRY_BLESSING_STANDOFF_ROUTE_XY))
+    bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)
+    bot.Move.FollowAutoPath(list(EBOSC_BLESSING_TO_VAEL_ROUTE_XY))
+    bot.Move.XYAndDialog(2558.0, -3318.0, 0x836101)
+
+    # Stay out of combat while following Torch and explicitly release him at Vael.
+    bot.Properties.Disable("hero_ai")
+    bot.Properties.Disable("pause_on_danger")
+    bot.Move.FollowAutoPath(list(EBOSC_FOLLOW_TORCH_TO_VAEL_ROUTE_XY))
+    bot.Move.XYAndDialog(11991.96, -6643.81, 0x836104)
+    bot.Move.FollowAutoPath(list(EBOSC_FOLLOW_TORCH_TO_MEETING_WAIT_ROUTE_XY))
+    bot.Wait.ForTime(30000)
+
+    bot.Properties.Enable("hero_ai")
+    bot.Properties.Enable("pause_on_danger")
+    bot.Move.FollowAutoPath(list(EBOSC_MEETING_ATTACK_ROUTE_XY))
+    bot.Wait.UntilOutOfCombat()
+    bot.Move.XY(*EBOSC_CHARR_INTELLIGENCE_XY)
+    bot.Wait.ForTime(1500)
+
+    # Captain Langmar awards the skill outside Longeye's Ledge.
+    bot.Map.Travel(target_map_id=650)
+    bot.Wait.ForMapLoad(target_map_id=650)
+    bot.Move.FollowAutoPath(list(EBOSC_LONGEYE_REWARD_EXIT_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(EBOSC_LONGEYE_REWARD_PORTAL_ROUTE_XY), target_map_id=649
+    )
+    bot.Move.XYAndDialog(-21069.0, 12353.0, 0x836107)
+    bot.UI.CancelSkillRewardWindow()
+    bot.States.JumpToStepName("MENU_IDLE")
+
+
+def Unlock_sneak_attack(bot: Botting) -> None:
+    bot.States.AddHeader("[Unlock] Sneak Attack — Plan A")
+    bot.Templates.Aggressive(
+        halt_on_death=True,
+        movement_timeout=15000,
+        auto_loot=False,
+    )
+
+    # Accept Plan A from Captain Langmar outside Longeye's Ledge.
+    bot.Map.Travel(target_map_id=650)
+    bot.Wait.ForMapLoad(target_map_id=650)
+    bot.Move.FollowAutoPath(list(EBOSC_LONGEYE_QUEST_EXIT_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(EBOSC_LONGEYE_QUEST_PORTAL_ROUTE_XY), target_map_id=649
+    )
+    bot.Move.XYAndDialog(-21069.0, 12353.0, 0x836201)
+
+    # Take the ordinary entry blessing, then start Vael's diversion.
+    bot.Move.FollowAutoPath(list(EBOSC_ENTRY_BLESSING_STANDOFF_ROUTE_XY))
+    bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)
+    bot.Move.FollowAutoPath(list(PLAN_A_BLESSING_TO_VAEL_ROUTE_XY))
+    bot.Move.XYAndDialog(*PLAN_A_VAEL_XY, 0x836204)
+
+    # Wait for the diversion, then take the Battle Plans bundle.
+    bot.Move.FollowAutoPath(list(PLAN_A_VAEL_TO_WAIT_ROUTE_XY))
+    bot.Wait.ForTime(70000)
+    bot.Move.FollowAutoPath(list(PLAN_A_WAIT_TO_PLANS_ROUTE_XY))
+    bot.Wait.UntilOutOfCombat()
+    bot.Interact.WithItemAtXY(*PLAN_A_BATTLE_PLANS_XY)
+
+    # Carry the plans back. HeroAI suppresses player attacks while a bundle is held.
+    bot.Move.FollowAutoPath(list(PLAN_A_CARRY_TO_RETURN_BLESSING_ROUTE_XY))
+    bot.Move.XYAndInteractNPC(*PLAN_A_RETURN_BLESSING_XY)
+    bot.Move.FollowAutoPath(list(PLAN_A_CARRY_FROM_RETURN_BLESSING_ROUTE_XY))
+    bot.Move.XYAndDialog(-21069.0, 12353.0, 0x836207)
+    bot.UI.CancelSkillRewardWindow()
+    bot.States.JumpToStepName("MENU_IDLE")
+
 
 def Unlock_ebon_battle_standard_of_honor(bot: Botting) -> None:
     bot.States.AddHeader("[Unlock] Ebon Battle Standard of Honor")
