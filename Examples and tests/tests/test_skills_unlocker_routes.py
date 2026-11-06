@@ -26,6 +26,36 @@ def function_source(name: str) -> str:
 
 
 class SkillsUnlockerRouteTests(unittest.TestCase):
+    def test_iats_orders_truthseeker_dialogs_blessing_and_reward(self):
+        route = function_source("Unlock_i_am_the_strongest")
+        accept = route.index("0x834601")
+        blessing = route.index("bot.Move.XYAndDialog(*IATS_OLGANA_XY, 0x84)")
+        drakkar = route.index('target_map_name="Drakkar Lake"')
+        reward = route.index("0x834607")
+        self.assertLess(accept, blessing)
+        self.assertLess(blessing, drakkar)
+        self.assertLess(drakkar, reward)
+
+    def test_iats_uses_existing_fsm_interaction_only_semantics(self):
+        route = function_source("Unlock_i_am_the_strongest")
+        self.assertEqual(route.count("bot.Move.XYAndDialog"), 3)
+        self.assertNotIn("Quest", route)
+        self.assertNotIn("ReliableInteractionController", route)
+        self.assertNotIn("Player.Interact", route)
+        self.assertNotIn("BT.TakeBlessing", route)
+
+    def test_iats_preserves_captured_routes_and_extended_portals(self):
+        route = function_source("Unlock_i_am_the_strongest")
+        for route_name in (
+            "IATS_GUNNAR_ROUTE_XY",
+            "IATS_TO_OLGANA_ROUTE_XY",
+            "IATS_OLGANA_TO_DRAKKAR_EXIT_ROUTE_XY",
+            "IATS_DRAKKAR_TO_HOGNI_ROUTE_XY",
+        ):
+            self.assertIn(route_name, route)
+        self.assertIn("(-1802.17, 1166.80)", SOURCE)
+        self.assertIn("(-1737.68, 17090.65)", SOURCE)
+
     def test_weakness_trap_chains_forbidden_fruit_and_orders_quest_steps(self):
         route = function_source("Unlock_weakness_trap")
         chain = route.index("_build_forbidden_fruit_flow(bot, return_to_menu=False)")
