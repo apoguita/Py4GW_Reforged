@@ -920,6 +920,8 @@ def TakeBlessing(
     post_dialog_wait_ms: int = 125,
     avoid_final_approach_obstacles: bool = True,
     captured_blessing: Mapping[str, object] | None = None,
+    *,
+    verify_effect: bool = False,
 ) -> BehaviorTree:
     """Canonical cross-campaign blessing owner.
 
@@ -941,7 +943,17 @@ def TakeBlessing(
     captured later-blessing approach.  Its default deliberately preserves the
     existing movement behavior.  Setting it false affects only this transaction's
     final movement node; it does not mutate shared or subsequent movement.
+
+    ``verify_effect=True`` additionally waits up to five seconds for the local
+    player's requested Luxon/Kurzick blessing after the existing interaction.
+    It does not certify remote accounts. Other blessing profiles and callers
+    retain their existing completion contracts by default.
     """
+    if verify_effect and (
+        captured_blessing is not None
+        or str(faction or '').strip().lower() not in {'luxon', 'kurzick'}
+    ):
+        raise ValueError('verify_effect requires an ordinary Luxon or Kurzick blessing')
     if captured_blessing is not None:
         if multi_account:
             raise ValueError(
@@ -1100,6 +1112,34 @@ def TakeBlessing(
                 )
             return Succeeder(name=f'Skip{faction_name.title()}BlessingBribe')
 
+        effect_checks: list[BehaviorTree] = []
+        if verify_effect:
+            from Py4GWCoreLib.Effect import Effects
+            from Py4GWCoreLib.Player import Player
+            from Sources.aC_Scripts.aC_api.Verify_Blessing import Blessings
+
+            blessing = (
+                Blessings.Blessing_of_the_Luxons
+                if faction_name == 'luxon'
+                else Blessings.Blessing_of_the_Kurzicks
+            )
+
+            def _effect_active() -> BehaviorTree.NodeState:
+                player_id = int(Player.GetAgentID() or 0)
+                if player_id > 0 and any(
+                    Effects.HasEffect(player_id, effect_id)
+                    for effect_id in blessing.ids
+                ):
+                    return BehaviorTree.NodeState.SUCCESS
+                return BehaviorTree.NodeState.RUNNING
+
+            effect_checks.append(BehaviorTree(BehaviorTree.WaitUntilNode(
+                name=f'WaitFor{faction_name.title()}BlessingEffect',
+                condition_fn=_effect_active,
+                throttle_interval_ms=100,
+                timeout_ms=5_000,
+            )))
+
         return Sequence(
             name=f'Take {faction_name.title()} Blessing',
             children=[
@@ -1123,6 +1163,7 @@ def TakeBlessing(
                     multi_account=multi_account,
                 ),
                 Wait(post_dialog_wait_ms, log=log),
+                *effect_checks,
             ],
         )
 
