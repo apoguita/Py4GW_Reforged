@@ -5,11 +5,9 @@ import Py4GW
 import PyImGui
 from Py4GWCoreLib import *
 from Py4GWCoreLib import ImGui,GLOBAL_CACHE
-from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.Routines import Routines
 from Py4GWCoreLib.ImGui import ImGui
-from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
 BOT_NAME = "Skills Unlocker"
 MODULE_NAME = BOT_NAME
@@ -327,6 +325,98 @@ PLAN_A_CARRY_FROM_RETURN_BLESSING_ROUTE_XY = (
     (-20265.34, 11388.81), (-20591.03, 11779.56), (-20912.11, 12164.77),
 )
 
+# Forbidden Fruit (quest 895), using the completed second capture.
+FF_SACNOTH_BLESSING_XY = (-16047.0, 16691.0)
+FF_VAEL_XY = (-16070.0, 14878.0)
+FF_FOOD_SUPPLY_XY = (
+    (-7969.0, 13539.0), (-7626.0, 13509.0), (-4784.0, 9023.0),
+    (-4743.0, 9175.0), (-4672.0, 9295.0),
+)
+FF_LONGEYE_EXIT_ROUTE_XY = (
+    (-23796.49, 15932.41), (-23923.56, 15448.71), (-23756.87, 14974.54),
+    (-23523.22, 14530.41), (-23185.48, 14159.42), (-22845.80, 13786.31),
+    (-22509.03, 13416.39), (-22170.90, 13044.98),
+)
+FF_LONGEYE_PORTAL_ROUTE_XY = (
+    (-21630.0, 12565.0), (-21293.41, 12266.32),
+)
+FF_GROTHMAR_TO_SACNOTH_ROUTE_XY = (
+    (-20788.85, 11032.66), (-20345.55, 10767.46), (-19977.88, 10425.43),
+    (-19622.37, 10068.80), (-19255.45, 9716.52), (-18834.49, 9432.01),
+    (-18430.95, 9124.64), (-18107.90, 8735.80), (-17794.26, 8338.99),
+    (-17476.54, 7950.61), (-17158.15, 7565.04), (-16807.50, 7196.77),
+    (-16431.90, 6858.18), (-16029.24, 6549.25), (-15649.00, 6222.54),
+    (-15318.37, 5846.60), (-15076.60, 5405.95), (-14833.34, 4963.18),
+    (-14546.30, 4545.00), (-14147.00, 4240.43), (-13744.08, 3938.87),
+    (-13345.72, 3634.35), (-12988.43, 3280.84), (-12627.19, 2927.71),
+    (-12279.24, 2559.61), (-11993.58, 2149.01), (-11718.90, 1728.86),
+    (-11526.46, 1263.96), (-11364.17, 785.29), (-11124.70, 340.86),
+    (-10843.29, -85.02), (-10510.20, -464.47), (-10118.92, -781.07),
+    (-9613.89, -732.10), (-9156.08, -510.38), (-8687.25, -283.31),
+    (-8233.00, -63.31), (-7742.25, -192.52), (-7367.14, -537.10),
+    (-7015.04, -893.11), (-6520.84, -1004.05), (-6035.75, -862.33),
+    (-5538.15, -765.77), (-5041.19, -669.73), (-4534.35, -644.62),
+    (-4032.93, -687.78), (-3540.87, -789.23), (-3075.85, -976.79),
+    (-2623.51, -1200.58), (-2171.12, -1429.21), (-1722.01, -1656.32),
+    (-1248.31, -1872.59), (-772.17, -2054.62), (-294.10, -2223.05),
+    (158.70, -2438.41), (516.65, -2794.54), (800.06, -3212.07),
+    (1096.54, -3616.84), (1442.37, -3983.01), (1712.01, -4408.16),
+    (2113.36, -4711.56), (2581.56, -4516.44), (3051.77, -4320.48),
+    (3517.32, -4126.47), (3974.90, -3922.38), (4461.15, -3786.95),
+    (4962.31, -3770.16), (5373.82, -4064.17), (5758.77, -4392.29),
+    (6149.62, -4714.47), (6501.54, -5070.51), (6923.11, -5340.67),
+    (7369.00, -5577.90), (7854.22, -5721.97), (8336.19, -5866.87),
+    (8815.06, -6010.84), (9298.96, -6139.74), (9763.06, -6331.60),
+    (10240.48, -6481.30), (10737.88, -6534.61), (11241.10, -6541.50),
+    (11743.92, -6551.25), (12246.77, -6557.03), (12750.61, -6569.68),
+    (13256.22, -6602.02), (13739.95, -6749.44), (14065.45, -7134.48),
+    (14266.27, -7597.36), (14482.69, -8048.77), (14776.77, -8456.45),
+    (15126.71, -8815.02), (15483.84, -9172.17), (15836.54, -9539.71),
+    (16181.82, -9911.68), (16531.42, -10297.63), (16899.15, -10638.26),
+    (17297.53, -10950.31), (17682.43, -11271.77), (18067.05, -11593.00),
+    (18452.22, -11914.69), (18837.12, -12236.15), (19223.40, -12558.76),
+    (19609.96, -12881.61), (20010.63, -13187.72), (20506.48, -13104.73),
+    (21004.21, -13168.42), (21485.61, -13312.19), (21979.73, -13389.78),
+    (22484.54, -13406.25),
+)
+FF_GROTHMAR_SACNOTH_PORTAL_ROUTE_XY = (
+    (23054.0, -13225.0), (23482.80, -13088.52),
+)
+FF_SACNOTH_ENTRY_TO_BLESSING_ROUTE_XY = (
+    (-17781.00, 16242.00), (-17277.69, 16373.24), (-16791.09, 16498.88),
+)
+FF_BLESSING_TO_VAEL_ROUTE_XY = (
+    (-16032.14, 16198.91), (-16046.57, 15695.47),
+)
+FF_VAEL_TO_WAIT_ROUTE_XY = (
+    (-15855.00, 14733.00), (-15417.04, 14483.69), (-14992.29, 14216.83),
+    (-14585.24, 13923.92), (-14257.11, 13539.85), (-13899.82, 13183.87),
+    (-14014.21, 13253.18),
+)
+FF_WAIT_TO_FIRST_SUPPLY_ROUTE_XY = (
+    (-13612.25, 12951.94), (-13184.48, 12690.98), (-12733.89, 12470.22),
+    (-12291.70, 12236.22), (-11850.81, 11987.58), (-11410.87, 11739.48),
+    (-10949.71, 11543.84), (-10532.52, 11829.59), (-10169.61, 12177.86),
+    (-9771.34, 12481.87), (-9344.71, 12751.56), (-8920.51, 13019.70),
+    (-8492.97, 13289.96),
+)
+FF_SECOND_TO_THIRD_SUPPLY_ROUTE_XY = (
+    (-7814.31, 13011.67), (-7755.59, 12509.34), (-7779.58, 12009.53),
+    (-7827.10, 11504.92), (-7963.62, 11017.82), (-7788.38, 10547.18),
+    (-7436.15, 10186.53), (-6968.36, 9996.52), (-6500.44, 9787.98),
+    (-6040.09, 9582.81), (-5583.03, 9379.11),
+)
+FF_RETURN_TO_VAEL_ROUTE_XY = (
+    (-5623.44, 9271.29), (-6050.80, 9532.02), (-6484.85, 9787.47),
+    (-6921.08, 10044.19), (-7357.92, 10301.27), (-7741.37, 10629.03),
+    (-8036.49, 11038.86), (-8340.92, 11443.95), (-8778.72, 11695.64),
+    (-9269.49, 11819.19), (-9769.52, 11884.58), (-10270.04, 11876.73),
+    (-10774.38, 11857.65), (-11279.86, 11852.71), (-11764.26, 11993.43),
+    (-12213.57, 12213.71), (-12662.88, 12433.98), (-13109.75, 12659.37),
+    (-13529.29, 12939.93), (-13928.33, 13250.89), (-14427.77, 13318.61),
+    (-14885.74, 13528.51), (-15217.94, 13907.06), (-15551.80, 14287.50),
+)
+
 
 def draw_window_light(
     self,
@@ -535,24 +625,6 @@ def _placeholder_unlock(skill_label: str):
     return _fn
 
 
-def _run_behavior_tree(tree: BehaviorTree) -> Generator[Any, Any, bool]:
-    """Tick an existing BottingTree owner from the legacy FSM state queue."""
-    try:
-        while bot.config.fsm_running:
-            result = tree.tick()
-            if result == BehaviorTree.NodeState.SUCCESS:
-                return True
-            if result == BehaviorTree.NodeState.FAILURE:
-                bot.config.state_description = "Blocked: canonical behavior tree failed"
-                while bot.config.fsm_running:
-                    yield from Routines.Yield.wait(250)
-                return False
-            yield from Routines.Yield.wait(50)
-    finally:
-        tree.reset()
-    return False
-
-
 def Unlock_ebon_battle_standard_of_courage(bot: Botting) -> None:
     bot.States.AddHeader("[Unlock] Ebon Battle Standard of Courage")
     bot.Properties.Enable("halt_on_death")
@@ -580,17 +652,7 @@ def Unlock_ebon_battle_standard_of_courage(bot: Botting) -> None:
     bot.Properties.Enable("hero_ai")
     bot.Properties.Enable("pause_on_danger")
     bot.Move.FollowAutoPath(list(EBOSC_ENTRY_BLESSING_STANDOFF_ROUTE_XY))
-    bot.States.AddCustomState(
-        lambda: _run_behavior_tree(
-            BT.TakeBlessing(
-                pos=Vec2f(*EBOSC_ENTRY_BLESSING_XY),
-                buttons=0,
-                multi_account=False,
-                log=False,
-            )
-        ),
-        "Take Vanguard blessing outside Longeye",
-    )
+    bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)
     bot.Move.FollowAutoPath(list(EBOSC_BLESSING_TO_VAEL_ROUTE_XY))
     bot.Move.XYAndDialog(2558.0, -3318.0, 0x836101)
 
@@ -640,17 +702,7 @@ def Unlock_sneak_attack(bot: Botting) -> None:
 
     # Take the ordinary entry blessing, then start Vael's diversion.
     bot.Move.FollowAutoPath(list(EBOSC_ENTRY_BLESSING_STANDOFF_ROUTE_XY))
-    bot.States.AddCustomState(
-        lambda: _run_behavior_tree(
-            BT.TakeBlessing(
-                pos=Vec2f(*EBOSC_ENTRY_BLESSING_XY),
-                buttons=0,
-                multi_account=False,
-                log=False,
-            )
-        ),
-        "Take Vanguard blessing outside Longeye",
-    )
+    bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)
     bot.Move.FollowAutoPath(list(PLAN_A_BLESSING_TO_VAEL_ROUTE_XY))
     bot.Move.XYAndDialog(*PLAN_A_VAEL_XY, 0x836204)
 
@@ -663,19 +715,62 @@ def Unlock_sneak_attack(bot: Botting) -> None:
 
     # Carry the plans back. HeroAI suppresses player attacks while a bundle is held.
     bot.Move.FollowAutoPath(list(PLAN_A_CARRY_TO_RETURN_BLESSING_ROUTE_XY))
-    bot.States.AddCustomState(
-        lambda: _run_behavior_tree(
-            BT.TakeBlessing(
-                pos=Vec2f(*PLAN_A_RETURN_BLESSING_XY),
-                buttons=[],
-                multi_account=False,
-                log=False,
-            )
-        ),
-        "Acknowledge the return-route Vanguard NPC",
-    )
+    bot.Move.XYAndInteractNPC(*PLAN_A_RETURN_BLESSING_XY)
     bot.Move.FollowAutoPath(list(PLAN_A_CARRY_FROM_RETURN_BLESSING_ROUTE_XY))
     bot.Move.XYAndDialog(-21069.0, 12353.0, 0x836207)
+    bot.UI.CancelSkillRewardWindow()
+    bot.States.JumpToStepName("MENU_IDLE")
+
+
+def Unlock_tryptophan_signet(bot: Botting) -> None:
+    bot.States.AddHeader("[Unlock] Tryptophan Signet — Forbidden Fruit")
+    bot.Templates.Aggressive(
+        halt_on_death=True,
+        movement_timeout=15000,
+        auto_loot=False,
+    )
+
+    # Accept Forbidden Fruit from Captain Langmar outside Longeye's Ledge.
+    bot.Map.Travel(target_map_id=650)
+    bot.Wait.ForMapLoad(target_map_id=650)
+    bot.Move.FollowAutoPath(list(FF_LONGEYE_EXIT_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(FF_LONGEYE_PORTAL_ROUTE_XY), target_map_id=649
+    )
+    bot.Move.XYAndDialog(-21069.0, 12353.0, 0x837F01)
+
+    # Take the ordinary entry blessing and cross Grothmar Wardowns.
+    bot.Move.FollowAutoPath(list(EBOSC_ENTRY_BLESSING_STANDOFF_ROUTE_XY))
+    bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)
+    bot.Move.FollowAutoPath(list(FF_GROTHMAR_TO_SACNOTH_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(FF_GROTHMAR_SACNOTH_PORTAL_ROUTE_XY), target_map_id=651
+    )
+
+    # Take the Sacnoth blessing, then receive Vael's poisoning instructions.
+    bot.Move.FollowAutoPath(list(FF_SACNOTH_ENTRY_TO_BLESSING_ROUTE_XY))
+    bot.Move.XYAndDialog(*FF_SACNOTH_BLESSING_XY, 0x84)
+    bot.Move.FollowAutoPath(list(FF_BLESSING_TO_VAEL_ROUTE_XY))
+    bot.Move.XYAndDialog(*FF_VAEL_XY, 0x837F04)
+
+    # Stay hidden during the briefing window, then poison all five supplies.
+    bot.Properties.Disable("hero_ai")
+    bot.Properties.Disable("pause_on_danger")
+    bot.Move.FollowAutoPath(list(FF_VAEL_TO_WAIT_ROUTE_XY))
+    bot.Wait.ForTime(12000)
+    bot.Move.FollowAutoPath(list(FF_WAIT_TO_FIRST_SUPPLY_ROUTE_XY))
+    bot.Interact.WithGadgetAtXY(*FF_FOOD_SUPPLY_XY[0])
+    bot.Interact.WithGadgetAtXY(*FF_FOOD_SUPPLY_XY[1])
+    bot.Move.FollowAutoPath(list(FF_SECOND_TO_THIRD_SUPPLY_ROUTE_XY))
+    bot.Interact.WithGadgetAtXY(*FF_FOOD_SUPPLY_XY[2])
+    bot.Interact.WithGadgetAtXY(*FF_FOOD_SUPPLY_XY[3])
+    bot.Interact.WithGadgetAtXY(*FF_FOOD_SUPPLY_XY[4])
+
+    # Vael awards both quest rewards after the poisoning run.
+    bot.Move.FollowAutoPath(list(FF_RETURN_TO_VAEL_ROUTE_XY))
+    bot.Move.XYAndDialog(*FF_VAEL_XY, 0x837F07)
+    bot.Properties.Enable("hero_ai")
+    bot.Properties.Enable("pause_on_danger")
     bot.UI.CancelSkillRewardWindow()
     bot.States.JumpToStepName("MENU_IDLE")
 
