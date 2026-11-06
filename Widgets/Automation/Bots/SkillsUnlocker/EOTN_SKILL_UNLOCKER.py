@@ -5,11 +5,9 @@ import Py4GW
 import PyImGui
 from Py4GWCoreLib import *
 from Py4GWCoreLib import ImGui,GLOBAL_CACHE
-from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.Routines import Routines
 from Py4GWCoreLib.ImGui import ImGui
-from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
 BOT_NAME = "Skills Unlocker"
 MODULE_NAME = BOT_NAME
@@ -439,24 +437,6 @@ def _placeholder_unlock(skill_label: str):
     return _fn
 
 
-def _run_behavior_tree(tree: BehaviorTree) -> Generator[Any, Any, bool]:
-    """Tick an existing BottingTree owner from the legacy FSM state queue."""
-    try:
-        while bot.config.fsm_running:
-            result = tree.tick()
-            if result == BehaviorTree.NodeState.SUCCESS:
-                return True
-            if result == BehaviorTree.NodeState.FAILURE:
-                bot.config.state_description = "Blocked: canonical behavior tree failed"
-                while bot.config.fsm_running:
-                    yield from Routines.Yield.wait(250)
-                return False
-            yield from Routines.Yield.wait(50)
-    finally:
-        tree.reset()
-    return False
-
-
 def Unlock_ebon_battle_standard_of_courage(bot: Botting) -> None:
     bot.States.AddHeader("[Unlock] Ebon Battle Standard of Courage")
     bot.Properties.Enable("halt_on_death")
@@ -484,17 +464,7 @@ def Unlock_ebon_battle_standard_of_courage(bot: Botting) -> None:
     bot.Properties.Enable("hero_ai")
     bot.Properties.Enable("pause_on_danger")
     bot.Move.FollowAutoPath(list(EBOSC_ENTRY_BLESSING_STANDOFF_ROUTE_XY))
-    bot.States.AddCustomState(
-        lambda: _run_behavior_tree(
-            BT.TakeBlessing(
-                pos=Vec2f(*EBOSC_ENTRY_BLESSING_XY),
-                buttons=0,
-                multi_account=False,
-                log=False,
-            )
-        ),
-        "Take Vanguard blessing outside Longeye",
-    )
+    bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)
     bot.Move.FollowAutoPath(list(EBOSC_BLESSING_TO_VAEL_ROUTE_XY))
     bot.Move.XYAndDialog(2558.0, -3318.0, 0x836101)
 
