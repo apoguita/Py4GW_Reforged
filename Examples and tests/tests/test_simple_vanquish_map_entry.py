@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+import ast
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+import types
 import unittest
 from unittest import mock
 
@@ -9,6 +12,7 @@ from unittest import mock
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = REPO_ROOT / "Sources" / "aC_Scripts" / "PyQuishAI_map_entry.py"
 WIDGET_PATH = REPO_ROOT / "Widgets" / "Automation" / "Bots" / "Vanquish" / "Simple_Vanquish.py"
+PYQUISH_PATH = REPO_ROOT / "Widgets" / "Automation" / "Bots" / "Vanquish" / "PyQuishAI_BT.py"
 
 
 def _load_module():
@@ -17,6 +21,39 @@ def _load_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _load_pyquish_keyword_builder():
+    tree = ast.parse(PYQUISH_PATH.read_text(encoding="utf-8"), filename=str(PYQUISH_PATH))
+    wanted = {"_blessing_parameters", "_coordinate", "_integer", "_build_keyword_action"}
+    selected = [
+        node for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in wanted
+    ]
+    module = ast.Module(
+        body=[ast.ImportFrom(module="__future__", names=[ast.alias(name="annotations")], level=0), *selected],
+        type_ignores=[],
+    )
+    ast.fix_missing_locations(module)
+
+    class FakeBT:
+        calls = []
+
+        @classmethod
+        def TakeBlessing(cls, **kwargs):
+            cls.calls.append(dict(kwargs))
+            return ("take-blessing", kwargs)
+
+    namespace = {
+        "Mapping": Mapping,
+        "Sequence": Sequence,
+        "BT": FakeBT,
+        "BehaviorTree": object,
+        "VanquishDefinition": object,
+        "Coordinate": tuple[float, float],
+    }
+    exec(compile(module, str(PYQUISH_PATH), "exec"), namespace)
+    return namespace["_build_keyword_action"], FakeBT
 
 
 ZEN_ENTRY = {
@@ -141,6 +178,43 @@ def _finish(generator):
 
 
 class SimpleVanquishMapEntryTests(unittest.TestCase):
+    def test_captured_blessing_mapping_reaches_canonical_owner_unchanged(self):
+        build, fake_bt = _load_pyquish_keyword_builder()
+        fake_bt.calls.clear()
+        definition = types.SimpleNamespace(region="NF_Istan")
+        captured = {
+            "name": "Cliffs of Dohjok Insect Hunt",
+            "interaction_mode": "first",
+            "route_standoff_xy": (-26016.72, -9302.96),
+            "player_approach_xy": (-26016.72, -9302.96),
+            "target_xy": (-26053.0, -9242.0),
+            "encoded_name": r"\x8101\x47F0\xEE05\x0D2F",
+            "model_id": 4829,
+            "target_name": "Sunspear Scout",
+            "effect_ids": (1793, 1829, 1830, 1967, 1968),
+            "buttons": 0,
+        }
+
+        children = build(definition, "bless", captured, 2500.0, False, False)
+
+        self.assertEqual(len(children), 1)
+        self.assertEqual(len(fake_bt.calls), 1)
+        self.assertEqual(fake_bt.calls[0]["pos"], captured["route_standoff_xy"])
+        self.assertEqual(fake_bt.calls[0]["buttons"], 0)
+        self.assertEqual(fake_bt.calls[0]["blessing_dialog_id"], 0x85)
+        self.assertEqual(fake_bt.calls[0]["captured_blessing"], captured)
+
+    def test_coordinate_blessing_keeps_legacy_call_shape(self):
+        build, fake_bt = _load_pyquish_keyword_builder()
+        fake_bt.calls.clear()
+        definition = types.SimpleNamespace(region="NF_Istan")
+
+        build(definition, "bless", (-25984.0, -9240.0), 2500.0, False, False)
+
+        self.assertEqual(fake_bt.calls[0]["pos"], (-25984.0, -9240.0))
+        self.assertNotIn("captured_blessing", fake_bt.calls[0])
+        self.assertNotIn("buttons", fake_bt.calls[0])
+
     def test_builder_delegates_exact_identity_and_zero_based_pages_to_canonical_owner(self):
         module = _load_module()
         wrappers = _FakeWrappers()

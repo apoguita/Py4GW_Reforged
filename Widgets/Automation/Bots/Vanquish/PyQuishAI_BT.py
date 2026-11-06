@@ -797,13 +797,29 @@ def _build_keyword_action(
 
     if key == 'bless':
         faction, dialog_id = _blessing_parameters(definition.region)
-        child = BT.TakeBlessing(
-            pos=_coordinate(value, 'bless'),
-            faction=faction,
-            blessing_dialog_id=dialog_id,
-            multi_account=False,
-            log=True,
-        )
+        if isinstance(value, Mapping):
+            captured_blessing = dict(value)
+            route_standoff = captured_blessing.get(
+                'route_standoff_xy',
+                captured_blessing.get('player_approach_xy'),
+            )
+            child = BT.TakeBlessing(
+                pos=_coordinate(route_standoff, 'bless.route_standoff_xy'),
+                faction=faction,
+                buttons=_integer(captured_blessing.get('buttons', 0), 'bless.buttons'),
+                blessing_dialog_id=dialog_id,
+                multi_account=False,
+                log=True,
+                captured_blessing=captured_blessing,
+            )
+        else:
+            child = BT.TakeBlessing(
+                pos=_coordinate(value, 'bless'),
+                faction=faction,
+                blessing_dialog_id=dialog_id,
+                multi_account=False,
+                log=True,
+            )
     elif key == 'gadget':
         child = BT.MoveAndInteractWithGadget(
             pos=_coordinate(value, 'gadget'),
