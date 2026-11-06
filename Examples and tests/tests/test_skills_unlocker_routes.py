@@ -26,6 +26,36 @@ def function_source(name: str) -> str:
 
 
 class SkillsUnlockerRouteTests(unittest.TestCase):
+    def test_courage_rezones_before_accepting_quest_and_uses_explicit_dialogs(self):
+        route = function_source("Unlock_ebon_battle_standard_of_courage")
+        first_appearance = route.index("EBOSC_FIRST_APPEARANCE_ROUTE_XY")
+        second_travel = route.index("bot.Map.Travel(target_map_id=650)", first_appearance)
+        quest_accept = route.index("0x836101")
+        midquest_dialog = route.index("0x836104")
+        reward_dialog = route.index("0x836107")
+        self.assertLess(first_appearance, second_travel)
+        self.assertLess(second_travel, quest_accept)
+        self.assertLess(quest_accept, midquest_dialog)
+        self.assertLess(midquest_dialog, reward_dialog)
+
+    def test_courage_preserves_stealth_wait_pickup_and_extended_portals(self):
+        route = function_source("Unlock_ebon_battle_standard_of_courage")
+        self.assertIn('bot.Properties.Disable("hero_ai")', route)
+        self.assertIn("bot.Wait.ForTime(30000)", route)
+        self.assertIn("bot.Move.XY(*EBOSC_CHARR_INTELLIGENCE_XY)", route)
+        self.assertNotIn("PickupMissionStateGroundItemByModelID", SOURCE)
+        self.assertIn("(-21286.78, 12273.97)", SOURCE)
+        self.assertIn("(-21275.70, 12287.56)", SOURCE)
+        self.assertIn("(-21326.57, 12232.69)", SOURCE)
+
+    def test_courage_uses_existing_fsm_blessing_interaction(self):
+        route = function_source("Unlock_ebon_battle_standard_of_courage")
+        self.assertIn("bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)", route)
+        self.assertNotIn("BT.TakeBlessing", route)
+        self.assertNotIn("_run_behavior_tree", SOURCE)
+        self.assertNotIn("click_dialog_button", SOURCE)
+        self.assertNotIn("Player.Interact", route)
+
     def test_ymlad_starts_from_sifhalla_and_returns_by_map_travel(self):
         route = function_source("Unlock_you_move_like_a_dwarf")
         first_travel = route.index('bot.Map.Travel(target_map_name="Sifhalla")')
