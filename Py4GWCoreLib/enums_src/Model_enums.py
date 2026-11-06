@@ -1355,6 +1355,8 @@ class ModelID(IntEnum):
     Imperial_Guard_Requisition_Order = 29108
     Imperial_Guard_Summon = 30210
     Incubus_Wing = 27034
+    Infinite_Identification_Kit = 38620
+    Infinite_Superior_Salvage_Kit = 38621
     Inscribed_Secret = 19196
     Inscribed_Shard = 1587
     Inscriptions_All = 15542

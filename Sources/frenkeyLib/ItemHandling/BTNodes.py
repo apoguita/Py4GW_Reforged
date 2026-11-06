@@ -722,7 +722,20 @@ class BTNodes:
                     return
                 PySystem.Console.Log("BTNodes.Items.SalvageItem", message, msg_type)
             
-            def _resolve_preferred_kit(valid_model_ids: tuple[ModelID, ...]) -> int:
+            def _kit_matches_tier(item_id: int, model_id: int, tier_model_ids: tuple[ModelID, ...], native_facts: tuple[str, ...]) -> bool:
+                # Known model IDs keep the previous behavior; the native capability flag lets newer
+                # kits (e.g. the Infinite Superior Salvage Kit) work without a whitelist entry.
+                if model_id in tier_model_ids:
+                    return True
+                for fact in native_facts:
+                    try:
+                        if getattr(Item.Usage, fact)(item_id):
+                            return True
+                    except (AttributeError, TypeError, ValueError):
+                        continue
+                return False
+
+            def _resolve_preferred_kit(valid_model_ids: tuple[ModelID, ...], native_facts: tuple[str, ...] = ()) -> int:
                 if preferred_kit_id is None or preferred_kit_id <= 0:
                     return 0
 
@@ -730,20 +743,20 @@ class BTNodes:
                 if preferred is None or not preferred.is_valid or not preferred.is_salvage_kit or preferred.uses <= 0:
                     return 0
 
-                try:
-                    preferred_model_id = ModelID(preferred.model_id)
-                except ValueError:
-                    return 0
+                return preferred.id if _kit_matches_tier(preferred.id, preferred.model_id, valid_model_ids, native_facts) else 0
 
-                return preferred.id if preferred_model_id in valid_model_ids else 0
+            expert_model_ids = (ModelID.Expert_Salvage_Kit, ModelID.Superior_Salvage_Kit)
+            expert_facts = ("IsExpertSalvageKit",)
+            upgrade_model_ids = (ModelID.Perfect_Salvage_Kit, ModelID.Expert_Salvage_Kit, ModelID.Superior_Salvage_Kit)
+            upgrade_facts = ("IsPerfectSalvageKit", "IsExpertSalvageKit")
 
             def _get_expert_salvage_kit() -> int:
-                preferred = _resolve_preferred_kit((ModelID.Expert_Salvage_Kit, ModelID.Superior_Salvage_Kit))
+                preferred = _resolve_preferred_kit(expert_model_ids, expert_facts)
                 if preferred > 0:
                     return preferred
 
                 inventory_snapshot = ItemSnapshot.get_inventory_snapshot(Bag.Backpack, Bag.Bag_2)
-                expert_kits = [i for bag in inventory_snapshot.values() for i in bag.values() if i is not None and i.is_valid and i.is_salvage_kit and i.model_id in (ModelID.Expert_Salvage_Kit, ModelID.Superior_Salvage_Kit)]
+                expert_kits = [i for bag in inventory_snapshot.values() for i in bag.values() if i is not None and i.is_valid and i.is_salvage_kit and _kit_matches_tier(i.id, i.model_id, expert_model_ids, expert_facts)]
                 
                 if not expert_kits:
                     return 0
@@ -772,18 +785,15 @@ class BTNodes:
                 return min(lesser_kits, key=lambda k: k.uses).id
 
             def _get_upgrade_salvage_kit() -> int:
-                preferred = _resolve_preferred_kit((ModelID.Perfect_Salvage_Kit, ModelID.Expert_Salvage_Kit, ModelID.Superior_Salvage_Kit))
+                preferred = _resolve_preferred_kit(upgrade_model_ids, upgrade_facts)
                 if preferred > 0:
                     return preferred
 
                 inventory_snapshot = ItemSnapshot.get_inventory_snapshot(Bag.Backpack, Bag.Bag_2)
                 upgrade_kits = [
                     i for bag in inventory_snapshot.values() for i in bag.values()
-                    if i is not None and i.is_valid and i.is_salvage_kit and i.model_id in (
-                        ModelID.Perfect_Salvage_Kit,
-                        ModelID.Expert_Salvage_Kit,
-                        ModelID.Superior_Salvage_Kit,
-                    )
+                    if i is not None and i.is_valid and i.is_salvage_kit
+                    and _kit_matches_tier(i.id, i.model_id, upgrade_model_ids, upgrade_facts)
                 ]
 
                 if not upgrade_kits:
