@@ -1,5 +1,8 @@
 from pathlib import Path
+from enum import Enum, auto
 import re
+from types import SimpleNamespace
+from typing import Any, Generator
 import unittest
 
 
@@ -26,6 +29,86 @@ def function_source(name: str) -> str:
 
 
 class SkillsUnlockerRouteTests(unittest.TestCase):
+    def test_behavior_tree_adapter_advances_only_on_success(self):
+        class FakeNodeState(Enum):
+            RUNNING = auto()
+            SUCCESS = auto()
+            FAILURE = auto()
+
+        class FakeBehaviorTree:
+            NodeState = FakeNodeState
+
+        class FakeTree:
+            def __init__(self, result):
+                self.result = result
+                self.reset_count = 0
+
+            def tick(self):
+                return self.result
+
+            def reset(self):
+                self.reset_count += 1
+
+        class FakeYield:
+            @staticmethod
+            def wait(milliseconds):
+                yield ("wait", milliseconds)
+
+        config = SimpleNamespace(fsm_running=True, state_description="")
+        namespace = {
+            "Any": Any,
+            "BehaviorTree": FakeBehaviorTree,
+            "Generator": Generator,
+            "Routines": SimpleNamespace(Yield=FakeYield),
+            "bot": SimpleNamespace(config=config),
+        }
+        exec(function_source("_run_behavior_tree"), namespace)
+        run_tree = namespace["_run_behavior_tree"]
+
+        success_tree = FakeTree(FakeNodeState.SUCCESS)
+        with self.assertRaises(StopIteration) as success:
+            next(run_tree(success_tree))
+        self.assertIs(success.exception.value, True)
+        self.assertEqual(success_tree.reset_count, 1)
+
+        failure_tree = FakeTree(FakeNodeState.FAILURE)
+        failure_state = run_tree(failure_tree)
+        self.assertEqual(next(failure_state), ("wait", 250))
+        self.assertIn("Blocked", config.state_description)
+        config.fsm_running = False
+        with self.assertRaises(StopIteration):
+            next(failure_state)
+        self.assertEqual(failure_tree.reset_count, 1)
+
+    def test_courage_rezones_before_accepting_quest_and_uses_explicit_dialogs(self):
+        route = function_source("Unlock_ebon_battle_standard_of_courage")
+        first_appearance = route.index("EBOSC_FIRST_APPEARANCE_ROUTE_XY")
+        second_travel = route.index("bot.Map.Travel(target_map_id=650)", first_appearance)
+        quest_accept = route.index("0x836101")
+        midquest_dialog = route.index("0x836104")
+        reward_dialog = route.index("0x836107")
+        self.assertLess(first_appearance, second_travel)
+        self.assertLess(second_travel, quest_accept)
+        self.assertLess(quest_accept, midquest_dialog)
+        self.assertLess(midquest_dialog, reward_dialog)
+
+    def test_courage_preserves_stealth_wait_pickup_and_extended_portals(self):
+        route = function_source("Unlock_ebon_battle_standard_of_courage")
+        self.assertIn('bot.Properties.Disable("hero_ai")', route)
+        self.assertIn("bot.Wait.ForTime(30000)", route)
+        self.assertIn("bot.Move.XY(*EBOSC_CHARR_INTELLIGENCE_XY)", route)
+        self.assertNotIn("PickupMissionStateGroundItemByModelID", SOURCE)
+        self.assertIn("(-21286.78, 12273.97)", SOURCE)
+        self.assertIn("(-21275.70, 12287.56)", SOURCE)
+        self.assertIn("(-21326.57, 12232.69)", SOURCE)
+
+    def test_courage_delegates_blessing_to_upstream_owner(self):
+        route = function_source("Unlock_ebon_battle_standard_of_courage")
+        self.assertIn("BT.TakeBlessing", route)
+        self.assertIn("buttons=0", route)
+        self.assertNotIn("click_dialog_button", SOURCE)
+        self.assertNotIn("Player.Interact", route)
+
     def test_ymlad_starts_from_sifhalla_and_returns_by_map_travel(self):
         route = function_source("Unlock_you_move_like_a_dwarf")
         first_travel = route.index('bot.Map.Travel(target_map_name="Sifhalla")')

@@ -5,9 +5,11 @@ import Py4GW
 import PyImGui
 from Py4GWCoreLib import *
 from Py4GWCoreLib import ImGui,GLOBAL_CACHE
+from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.Routines import Routines
 from Py4GWCoreLib.ImGui import ImGui
+from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
 BOT_NAME = "Skills Unlocker"
 MODULE_NAME = BOT_NAME
@@ -142,6 +144,91 @@ SEPULCHRE_LEVEL1_FRAGMENT_ROUTE_XY = (
     (-11989.17, -2152.87), (-12191.88, -1691.31), (-12364.75, -1219.56),
     (-12474.15, -727.36), (-12580.03, -230.63), (-12690.33, 261.16),
     (-12800.59, 753.82), (-12827.22, 872.84),
+)
+
+
+# Be Very Very Quiet (quest 865), captured from Longeye's Ledge through
+# Grothmar Wardowns. Portal routes include the required 450-unit continuation.
+EBOSC_VAEL_MODEL_ID = 6081
+EBOSC_ENTRY_BLESSING_MODEL_ID = 2036
+EBOSC_ENTRY_BLESSING_XY = (-21765.0, 11480.0)
+EBOSC_CHARR_INTELLIGENCE_XY = (20543.0, -10141.0)
+EBOSC_LONGEYE_FIRST_EXIT_ROUTE_XY = (
+    (-23017.95, 14731.92), (-23203.44, 14263.27), (-22966.05, 13819.04),
+    (-22613.45, 13459.32), (-22262.66, 13101.46),
+)
+EBOSC_LONGEYE_FIRST_PORTAL_ROUTE_XY = (
+    (-21630.0, 12565.0), (-21286.78, 12273.97),
+)
+EBOSC_FIRST_APPEARANCE_ROUTE_XY = (
+    (-21449.00, 12487.00), (-21567.48, 11999.59), (-21745.34, 11531.71),
+    (-21582.76, 11055.59), (-21413.58, 10584.20), (-21249.77, 10107.58),
+    (-21121.57, 9624.18), (-21038.44, 9128.31), (-21024.00, 8626.37),
+    (-21060.39, 8125.25), (-21122.52, 7625.40), (-21202.64, 7128.38),
+    (-21269.40, 6628.64), (-21351.49, 6133.01),
+)
+EBOSC_LONGEYE_QUEST_EXIT_ROUTE_XY = (
+    (-24890.92, 14481.03), (-24417.26, 14641.62), (-23940.32, 14809.94),
+    (-23539.40, 14505.05), (-23203.15, 14127.69), (-22869.80, 13753.91),
+    (-22527.73, 13383.17), (-22192.62, 13005.56),
+)
+EBOSC_LONGEYE_QUEST_PORTAL_ROUTE_XY = (
+    (-21630.0, 12565.0), (-21275.70, 12287.56),
+)
+EBOSC_ENTRY_BLESSING_STANDOFF_ROUTE_XY = (
+    (-21449.00, 12487.00), (-21601.28, 12006.89),
+)
+EBOSC_BLESSING_TO_VAEL_ROUTE_XY = (
+    (-21169.41, 11282.47), (-20687.98, 11109.20), (-20222.94, 10912.05),
+    (-19771.63, 10682.08), (-19330.60, 10446.46), (-18870.52, 10225.99),
+    (-18400.47, 10026.70), (-17912.30, 9885.12), (-17422.72, 9765.55),
+    (-16920.67, 9744.58), (-16411.16, 9695.54), (-15912.12, 9630.34),
+    (-15409.94, 9600.13), (-14902.24, 9575.06), (-14395.68, 9605.74),
+    (-13895.63, 9667.85), (-13360.37, 9702.46), (-12865.55, 9599.08),
+    (-12382.12, 9739.04), (-11886.62, 9858.22), (-11386.99, 9943.28),
+    (-10885.61, 9899.64), (-10384.45, 9814.61), (-9900.13, 9687.23),
+    (-9392.87, 9618.34), (-8889.17, 9549.95), (-8384.25, 9475.21),
+    (-7885.93, 9390.65), (-7377.44, 9367.50), (-6865.05, 9355.29),
+    (-6361.20, 9289.46), (-5897.92, 9092.98), (-5467.94, 8834.80),
+    (-5044.42, 8560.27), (-4621.22, 8279.35), (-4220.85, 7972.89),
+    (-3831.72, 7654.85), (-3569.09, 7223.25), (-3583.52, 6719.49),
+    (-3668.05, 6224.46), (-3789.29, 5737.14), (-3811.17, 5230.99),
+    (-3668.80, 4743.11), (-3530.40, 4253.16), (-3305.55, 3754.03),
+    (-3096.57, 3298.96), (-2886.53, 2841.60), (-2677.24, 2385.88),
+    (-2465.86, 1925.58), (-2312.16, 1444.55), (-2175.64, 959.53),
+    (-2001.02, 483.05), (-1801.66, 19.51), (-1555.34, -416.83),
+    (-1260.83, -825.15), (-877.28, -1147.80), (-451.01, -1457.27),
+    (-47.04, -1762.83), (361.88, -2055.01), (784.92, -2324.99),
+    (1217.14, -2593.49), (1662.45, -2834.10), (2109.67, -3075.75),
+)
+EBOSC_FOLLOW_TORCH_TO_VAEL_ROUTE_XY = (
+    (2877.78, -3756.16), (3231.45, -4109.88), (3699.38, -3933.54),
+    (4173.58, -3751.91), (4674.46, -3716.25), (5158.84, -3857.56),
+    (5600.65, -4124.73), (5940.59, -4501.62), (6357.75, -4793.07),
+    (6659.70, -5195.61), (7010.66, -5563.33), (7412.69, -5871.20),
+    (7807.93, -6181.51), (8297.80, -6383.14), (8797.85, -6440.01),
+    (9296.72, -6487.02), (9795.57, -6521.06), (10293.24, -6569.37),
+    (10798.27, -6562.85), (11299.42, -6549.70), (11803.76, -6535.79),
+)
+EBOSC_FOLLOW_TORCH_TO_MEETING_WAIT_ROUTE_XY = (
+    (12811.08, -6565.76), (13316.80, -6514.43), (13818.92, -6471.22),
+    (14324.05, -6439.17), (14830.10, -6391.47), (15330.56, -6350.93),
+    (15834.92, -6367.30), (16332.66, -6469.86), (16695.08, -6856.71),
+    (16956.28, -7285.43), (17241.16, -7702.88), (17551.83, -8095.59),
+    (17906.23, -8455.06), (18262.27, -8765.81),
+)
+EBOSC_MEETING_ATTACK_ROUTE_XY = (
+    (18690.49, -9024.01), (19119.33, -9282.58), (19558.03, -9547.10),
+    (19957.11, -9851.68), (20247.77, -10260.29), (20564.77, -10648.40),
+    (20726.30, -10846.11),
+)
+EBOSC_LONGEYE_REWARD_EXIT_ROUTE_XY = (
+    (-23815.74, 15925.57), (-23876.85, 15424.12), (-23691.63, 14954.76),
+    (-23405.51, 14538.81), (-23120.52, 14124.51), (-22783.56, 13753.14),
+    (-22425.17, 13398.37), (-22069.23, 13046.04),
+)
+EBOSC_LONGEYE_REWARD_PORTAL_ROUTE_XY = (
+    (-21630.0, 12565.0), (-21326.57, 12232.69),
 )
 
 
@@ -350,6 +437,92 @@ def _placeholder_unlock(skill_label: str):
         bot.States.AddHeader(f"[Unlock] {skill_label} (TODO)")
         bot.States.JumpToStepName("MENU_IDLE")
     return _fn
+
+
+def _run_behavior_tree(tree: BehaviorTree) -> Generator[Any, Any, bool]:
+    """Tick an existing BottingTree owner from the legacy FSM state queue."""
+    try:
+        while bot.config.fsm_running:
+            result = tree.tick()
+            if result == BehaviorTree.NodeState.SUCCESS:
+                return True
+            if result == BehaviorTree.NodeState.FAILURE:
+                bot.config.state_description = "Blocked: canonical behavior tree failed"
+                while bot.config.fsm_running:
+                    yield from Routines.Yield.wait(250)
+                return False
+            yield from Routines.Yield.wait(50)
+    finally:
+        tree.reset()
+    return False
+
+
+def Unlock_ebon_battle_standard_of_courage(bot: Botting) -> None:
+    bot.States.AddHeader("[Unlock] Ebon Battle Standard of Courage")
+    bot.Properties.Enable("halt_on_death")
+    bot.Properties.Set("movement_timeout", value=15000)
+    bot.Templates.Aggressive()
+
+    # Vael's first appearance must be triggered before the quest instance.
+    bot.Map.Travel(target_map_id=650)
+    bot.Wait.ForMapLoad(target_map_id=650)
+    bot.Properties.Disable("hero_ai")
+    bot.Properties.Disable("pause_on_danger")
+    bot.Move.FollowAutoPath(list(EBOSC_LONGEYE_FIRST_EXIT_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(EBOSC_LONGEYE_FIRST_PORTAL_ROUTE_XY), target_map_id=649
+    )
+    bot.Move.FollowAutoPath(list(EBOSC_FIRST_APPEARANCE_ROUTE_XY))
+
+    # Re-zone, take the Vanguard blessing, and explicitly accept quest 865.
+    bot.Map.Travel(target_map_id=650)
+    bot.Wait.ForMapLoad(target_map_id=650)
+    bot.Move.FollowAutoPath(list(EBOSC_LONGEYE_QUEST_EXIT_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(EBOSC_LONGEYE_QUEST_PORTAL_ROUTE_XY), target_map_id=649
+    )
+    bot.Properties.Enable("hero_ai")
+    bot.Properties.Enable("pause_on_danger")
+    bot.Move.FollowAutoPath(list(EBOSC_ENTRY_BLESSING_STANDOFF_ROUTE_XY))
+    bot.States.AddCustomState(
+        lambda: _run_behavior_tree(
+            BT.TakeBlessing(
+                pos=Vec2f(*EBOSC_ENTRY_BLESSING_XY),
+                buttons=0,
+                multi_account=False,
+                log=False,
+            )
+        ),
+        "Take Vanguard blessing outside Longeye",
+    )
+    bot.Move.FollowAutoPath(list(EBOSC_BLESSING_TO_VAEL_ROUTE_XY))
+    bot.Move.XYAndDialog(2558.0, -3318.0, 0x836101)
+
+    # Stay out of combat while following Torch and explicitly release him at Vael.
+    bot.Properties.Disable("hero_ai")
+    bot.Properties.Disable("pause_on_danger")
+    bot.Move.FollowAutoPath(list(EBOSC_FOLLOW_TORCH_TO_VAEL_ROUTE_XY))
+    bot.Move.XYAndDialog(11991.96, -6643.81, 0x836104)
+    bot.Move.FollowAutoPath(list(EBOSC_FOLLOW_TORCH_TO_MEETING_WAIT_ROUTE_XY))
+    bot.Wait.ForTime(30000)
+
+    bot.Properties.Enable("hero_ai")
+    bot.Properties.Enable("pause_on_danger")
+    bot.Move.FollowAutoPath(list(EBOSC_MEETING_ATTACK_ROUTE_XY))
+    bot.Wait.UntilOutOfCombat()
+    bot.Move.XY(*EBOSC_CHARR_INTELLIGENCE_XY)
+    bot.Wait.ForTime(1500)
+
+    # Captain Langmar awards the skill outside Longeye's Ledge.
+    bot.Map.Travel(target_map_id=650)
+    bot.Wait.ForMapLoad(target_map_id=650)
+    bot.Move.FollowAutoPath(list(EBOSC_LONGEYE_REWARD_EXIT_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(EBOSC_LONGEYE_REWARD_PORTAL_ROUTE_XY), target_map_id=649
+    )
+    bot.Move.XYAndDialog(-21069.0, 12353.0, 0x836107)
+    bot.UI.CancelSkillRewardWindow()
+    bot.States.JumpToStepName("MENU_IDLE")
 
 def Unlock_ebon_battle_standard_of_honor(bot: Botting) -> None:
     bot.States.AddHeader("[Unlock] Ebon Battle Standard of Honor")
