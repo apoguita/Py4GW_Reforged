@@ -84,14 +84,29 @@ ZenDaijun = [
 
 ZenDaijun_transit_path = [
     {
-        "npc":  (20350.00, 9087.00),
-        "dialog": 0x7F,
-    },
-    {   
-        "dialog": 0x800009,
+        "map_entry": {
+            "name": "Guard Lae Fao",
+            "source_map_id": 250,
+            "expected_map_id": 246,
+            "encoded_name": "\\x5CF5\\x978F\\xF211\\x057A",
+            "model_id": 3282,
+            "player_approach_xy": (20296.69, 9140.37),
+            "target_xy": (20350.0, 9087.0),
+            # DialogSpec visible-button positions are one-based. Each captured
+            # page advances through its first visible choice.
+            "visible_buttons": (1, 1, 1),
+            "capture_ids": (
+                "NPC-20260819-134046-181",
+                "NPC-20260819-134107-207",
+                "USER-20261106-ZEN-GUARD-LAE-FAO-ENTITY",
+                "codex-clipboard-f10627ea-9c12-4852-a7e1-22a4a072d516.png",
+                "codex-clipboard-658bdd61-e40a-45ea-ab40-ffaa628204c7.png",
+                "codex-clipboard-7d2d6909-3063-4c75-8203-a47cf0b666c2.png",
+            ),
+        },
     },
     {
-        "dialog": 0x80000B,
+        "map": 246,
     },
 ]
     
