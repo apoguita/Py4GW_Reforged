@@ -317,7 +317,7 @@ def _take_kurzick_blessing(bot: Botting):
     from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
     from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
-    tree = BT.TakeBlessing(pos=COORDS_FOR_PRIEST, faction="kurzick", multi_account=True, log=True)
+    tree = BT.TakeBlessing(pos=COORDS_FOR_PRIEST, faction="kurzick", multi_account=True, log=True, verify_effect=True)
     saved_pause = bool(bot.Properties.Get("hero_ai_paused", "active"))
     bot.Properties.ApplyNow("hero_ai_paused", "active", True)
     try:

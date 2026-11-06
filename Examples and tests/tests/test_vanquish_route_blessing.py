@@ -92,7 +92,7 @@ class RouteBlessingTests(unittest.TestCase):
             with self.subTest(bot=filename):
                 ns, bot, tree, calls = fixture(filename)
                 self.assertTrue(finish(ns["_take_kurzick_blessing"](bot)))
-                self.assertEqual(calls, [{"pos":ns["COORDS_FOR_PRIEST"], "faction":"kurzick", "multi_account":True, "log":True}])
+                self.assertEqual(calls, [{"pos":ns["COORDS_FOR_PRIEST"], "faction":"kurzick", "multi_account":True, "log":True, "verify_effect":True}])
                 self.assertFalse(bot.Properties.paused); self.assertEqual(tree.resets, 1)
 
     def test_failure_stops_route_and_restores_blessing_upkeep(self):
