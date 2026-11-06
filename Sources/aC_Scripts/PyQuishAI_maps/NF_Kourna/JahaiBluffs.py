@@ -1,6 +1,18 @@
 JahaiBluffs = [
     {
-        "bless": (19865.0, -13361.0),
+        "bless": {
+            "name": "Jahai Bluffs blessing 1",
+            "interaction_mode": "first",
+            "route_standoff_xy": (19860.86, -13364.33),
+            "player_approach_xy": (19860.86, -13364.33),
+            "target_xy": (19876.0, -13294.0),
+            "model_id": 5435,
+            "target_name": "Wandering Priest",
+            "encoded_name": "\\x8101\\x521E\\xCB69\\x5812",
+            "effect_ids": (1793, 1829, 1830, 1967, 1968),
+            "initial_choice_settle_s": 0.25,
+            "capture_id": "USER-20261031-JAHAI-BLESSING-1",
+        },
         "path": [
             (14885.0, -13335.0),
             (15066.0, -15097.0),
@@ -15,7 +27,19 @@ JahaiBluffs = [
         ]
     },
     {
-        "bless": (17035.0, 2879.0),
+        "bless": {
+            "name": "Jahai Bluffs blessing 2",
+            "interaction_mode": "first",
+            "route_standoff_xy": (17034.4, 2880.29),
+            "player_approach_xy": (17034.4, 2880.29),
+            "target_xy": (17116.0, 2854.0),
+            "model_id": 5434,
+            "target_name": "Wandering Priest",
+            "encoded_name": "\\x8101\\x521B\\xBB76\\x9793\\x0373",
+            "effect_ids": (1839, 1843, 1979, 1980),
+            "initial_choice_settle_s": 0.25,
+            "capture_id": "USER-20261031-JAHAI-BLESSING-2",
+        },
         "path": [
             (17585.0, 4955.0),
             (14320.0, 3437.0),
@@ -30,6 +54,23 @@ JahaiBluffs = [
             (7424.0, 5226.0),
             (6901.0, 8484.0),
             (8912.0, 9460.0),
+        ]
+    },
+    {
+        "bless": {
+            "name": "Jahai Bluffs blessing 3",
+            "interaction_mode": "first",
+            "route_standoff_xy": (8597.16, 11732.61),
+            "player_approach_xy": (8597.16, 11732.61),
+            "target_xy": (8526.0, 11704.0),
+            "model_id": 5434,
+            "target_name": "Wandering Priest",
+            "encoded_name": "\\x8101\\x5255\\xEC21\\xA47B\\x010B",
+            "effect_ids": (1839, 1843, 1979, 1980),
+            "initial_choice_settle_s": 0.25,
+            "capture_id": "USER-20261031-JAHAI-BLESSING-3",
+        },
+        "path": [
             (11720.0, 7385.0),
             (13265.0, 7120.0),
             (13107.0, 9352.0),
@@ -42,7 +83,6 @@ JahaiBluffs = [
         ]
     },
     {
-        "bless": (8593.0, 11728.0),
         "path": [
             (10431.0, 14649.0),
             (10462.0, 15781.0),
@@ -90,7 +130,19 @@ JahaiBluffs = [
         ]
     },
     {
-        "bless": (-15087.0, -2003.0),
+        "bless": {
+            "name": "Jahai Bluffs blessing 4",
+            "interaction_mode": "first",
+            "route_standoff_xy": (-15111.92, -2036.26),
+            "player_approach_xy": (-15111.92, -2036.26),
+            "target_xy": (-15130.0, -2110.0),
+            "model_id": 5434,
+            "target_name": "Wandering Priest",
+            "encoded_name": "\\x8101\\x5254\\x81F0\\x39D0",
+            "effect_ids": (1822, 1823, 1824, 1825, 1850, 1959, 1960, 2043, 2044),
+            "initial_choice_settle_s": 0.25,
+            "capture_id": "USER-20261031-JAHAI-BLESSING-4",
+        },
         "path": [
             (-13368.0, -4555.0),
             (-16094.0, -5416.0),
