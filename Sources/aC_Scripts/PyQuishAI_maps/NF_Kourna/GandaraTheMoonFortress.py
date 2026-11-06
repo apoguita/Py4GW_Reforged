@@ -1,6 +1,17 @@
 GandaraTheMoonFortress = [
     {
-        "bless": (6818.0, 15641.0),
+        "bless": {
+            "name": "Gandara - Skale Hunt",
+            "interaction_mode": "first",
+            "route_standoff_xy": (6738.39, 15639.77),
+            "player_approach_xy": (6738.39, 15639.77),
+            "target_xy": (6777.0, 15707.0),
+            "encoded_name": "\\x8101\\x5226\\x90A1\\x9D78\\x5DA3",
+            "model_id": 5434,
+            "target_name": "Wandering Priest",
+            "effect_ids": (1790, 1835, 1836, 1975, 1976),
+            "capture_id": "USER-20261015-GANDARA-BLESSING-1",
+        },
         "path": [
             (5425.0, 16446.0),
             (3246.0, 13158.0),
@@ -12,7 +23,18 @@ GandaraTheMoonFortress = [
         ]
     },
     {
-        "bless": (-7412.0, 14230.0),
+        "bless": {
+            "name": "Gandara - Heket Hunt",
+            "interaction_mode": "first",
+            "route_standoff_xy": (-7469.64, 14159.9),
+            "player_approach_xy": (-7469.64, 14159.9),
+            "target_xy": (-7489.0, 14217.0),
+            "encoded_name": "\\x8101\\x5254\\x81F0\\x39D0",
+            "model_id": 5434,
+            "target_name": "Wandering Priest",
+            "effect_ids": (1837, 1838, 1977, 1978),
+            "capture_id": "USER-20261015-GANDARA-BLESSING-2",
+        },
         "path": [
             (-10125.0, 14233.0),
             (-10210.0, 9811.0),
