@@ -920,6 +920,9 @@ def TakeBlessing(
     post_dialog_wait_ms: int = 125,
     avoid_final_approach_obstacles: bool = True,
     captured_blessing: Mapping[str, object] | None = None,
+    encoded_identity: str | None = None,
+    model_id: int | None = None,
+    identity_search_radius: float = Range.Area.value,
     *,
     verify_effect: bool = False,
 ) -> BehaviorTree:
@@ -947,7 +950,22 @@ def TakeBlessing(
     player's requested Luxon/Kurzick blessing after the existing interaction.
     It does not certify remote accounts. Other blessing profiles and callers
     retain their existing completion contracts by default.
+    Ordinary calls may optionally bind an exact ``encoded_identity`` or, when
+    no encoded identity is supplied, a ``model_id`` inside the coordinate
+    envelope. Unresolved identity fails closed. Omitting both preserves the
+    legacy nearest-NPC path. Captured mappings continue to own their identity.
     """
+    if encoded_identity is not None and (
+        not isinstance(encoded_identity, str) or not encoded_identity.strip()
+    ):
+        raise ValueError('encoded_identity must be a non-empty string when supplied')
+    if model_id is not None and (isinstance(model_id, bool) or int(model_id) <= 0):
+        raise ValueError('model_id must be a positive integer when supplied')
+    if float(identity_search_radius) <= 0.0:
+        raise ValueError('identity_search_radius must be positive')
+    if captured_blessing is not None and (encoded_identity is not None or model_id is not None):
+        raise ValueError('captured_blessing owns its captured identity; do not also pass encoded_identity or model_id')
+
     if verify_effect and (
         captured_blessing is not None
         or str(faction or '').strip().lower() not in {'luxon', 'kurzick'}
@@ -1144,7 +1162,10 @@ def TakeBlessing(
                         action_fn=_set_bribe_flag,
                     )
                 ),
-                MoveAndInteract(pos=pos, log=log),
+                MoveAndInteract(
+                    pos=pos, log=log, encoded_identity=encoded_identity,
+                    model_id=model_id, identity_search_radius=identity_search_radius,
+                ),
                 LogMessage(message=f"Obtaining {faction_name.title()} blessing"),
                 Wait(pre_dialog_wait_ms, log=log),
                 Subtree(
@@ -1165,7 +1186,10 @@ def TakeBlessing(
         return Sequence(
             name='Take Blessing',
             children=[
-                MoveAndInteract(pos=pos, log=log),
+                MoveAndInteract(
+                    pos=pos, log=log, encoded_identity=encoded_identity,
+                    model_id=model_id, identity_search_radius=identity_search_radius,
+                ),
                 LogMessage(message='Obtaining blessing'),
                 Wait(pre_dialog_wait_ms, log=log),
                 _pause_heroai_for_action(
@@ -1307,6 +1331,9 @@ def TakeBlessing(
                 pos=pos,
                 log=log,
                 avoid_obstacles=avoid_final_approach_obstacles,
+                encoded_identity=encoded_identity,
+                model_id=model_id,
+                identity_search_radius=identity_search_radius,
             ),
             LogMessage(message='Obtaining blessing'),
             Wait(pre_dialog_wait_ms, log=log),
@@ -1654,6 +1681,88 @@ def MoveAndTarget(
         pause_on_combat=pause_on_combat,
     )
 
+
+
+def _target_identity_and_interact(
+    pos: PointOrPath,
+    target_distance: float,
+    encoded_identity: str | None,
+    model_id: int | None,
+    identity_search_radius: float,
+    log: bool,
+) -> BehaviorTree:
+    """Resolve a blessing NPC by agreed identity precedence, then interact."""
+    if encoded_identity is None and model_id is None:
+        return TargetNearestAndInteract(
+            pos=pos,
+            target_distance=target_distance,
+            log=log,
+        )
+
+    expected = _final_point(pos)
+    resolved_key = 'take_blessing_resolved_agent_id'
+
+    def _resolve(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        from Py4GWCoreLib.Agent import Agent
+        from Py4GWCoreLib.AgentArray import AgentArray
+        from Py4GWCoreLib.Py4GWcorelib import Utils
+
+        matches: list[tuple[float, int]] = []
+        for raw_agent_id in AgentArray.GetNPCMinipetArray() or []:
+            try:
+                agent_id = int(raw_agent_id)
+                if agent_id <= 0 or not Agent.IsValid(agent_id) or not Agent.IsNPC(agent_id):
+                    continue
+                distance = float(Utils.Distance((expected.x, expected.y), Agent.GetXY(agent_id)))
+                if distance > float(identity_search_radius):
+                    continue
+                if encoded_identity is not None:
+                    if Agent.GetEncNameStrByID(agent_id, literal=True) != encoded_identity:
+                        continue
+                elif int(Agent.GetModelID(agent_id) or 0) != int(model_id or 0):
+                    continue
+                matches.append((distance, agent_id))
+            except Exception:
+                continue
+
+        matches.sort(key=lambda item: (item[0], item[1]))
+        if not matches:
+            node.blackboard[resolved_key] = 0
+            node.blackboard['take_blessing_identity_outcome'] = 'target_unresolved'
+            return BehaviorTree.NodeState.FAILURE
+
+        distance, agent_id = matches[0]
+        node.blackboard[resolved_key] = agent_id
+        node.blackboard['take_blessing_identity_outcome'] = (
+            'encoded_identity_match'
+            if encoded_identity is not None
+            else 'model_id_match'
+        )
+        node.blackboard['take_blessing_identity_distance'] = distance
+        return BehaviorTree.NodeState.SUCCESS
+
+    return _pause_heroai_for_action(
+        RoutinesBT.Composite.Sequence(
+            BehaviorTree(
+                BehaviorTree.ActionNode(
+                    name='ResolveTakeBlessingIdentity',
+                    action_fn=_resolve,
+                )
+            ),
+            Subtree(
+                name='TargetResolvedTakeBlessingNPC',
+                subtree_fn=lambda node: RoutinesBT.Player.ChangeTarget(
+                    int(node.blackboard.get(resolved_key, 0) or 0),
+                    log=log,
+                ),
+            ),
+            RoutinesBT.Player.InteractTarget(log=log),
+            name='TargetBlessingIdentityAndInteract',
+        ),
+        suspend_shared_options=True,
+    )
+
+
 def MoveAndInteract(
     pos: PointOrPath,
     target_distance: float = Range.Area.value,
@@ -1663,6 +1772,9 @@ def MoveAndInteract(
     log: bool = False,
     *,
     avoid_obstacles: bool = True,
+    encoded_identity: str | None = None,
+    model_id: int | None = None,
+    identity_search_radius: float = Range.Area.value,
 ) -> BehaviorTree:
     return RoutinesBT.Composite.Sequence(
         Move(
@@ -1676,7 +1788,14 @@ def MoveAndInteract(
         ),
         _wait_until_player_stops_moving(log=log),
         Wait(_POST_MOVEMENT_SETTLE_MS, log=log),
-        TargetNearestAndInteract(pos=pos, target_distance=target_distance, log=log),
+        _target_identity_and_interact(
+            pos=pos,
+            target_distance=target_distance,
+            encoded_identity=encoded_identity,
+            model_id=model_id,
+            identity_search_radius=identity_search_radius,
+            log=log,
+        ),
         name="MoveAndInteract",
     )
 

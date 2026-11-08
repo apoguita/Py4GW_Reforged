@@ -67,6 +67,7 @@ class FactionEffectTests(unittest.TestCase):
             return original_import(name, *args, **kwargs)
 
         ns.update({
+            'Range': NS(Area=NS(value=322.0)),
             '__builtins__': dict(vars(builtins), __import__=importer),
             'StoreFactionData': lambda **_: leaf('faction'),
             'MoveAndInteract': lambda **_: leaf('approach'),
@@ -78,6 +79,7 @@ class FactionEffectTests(unittest.TestCase):
         })
         definitions(ROOT / 'Sources/ApoSource/ApoBottingLib/wrappers.py', {'Node', 'Sequence', 'TakeBlessing'}, ns)
         self.owner = ns['TakeBlessing']
+        self.namespace = ns
 
     def advance(self, tree):
         def waiting(node):

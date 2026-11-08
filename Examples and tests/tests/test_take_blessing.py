@@ -5,6 +5,7 @@ import importlib.util
 from pathlib import Path
 import sys
 import types
+from typing import Any
 import unittest
 
 
@@ -38,6 +39,9 @@ class TakeBlessingStructureTests(unittest.TestCase):
             "post_dialog_wait_ms",
             "avoid_final_approach_obstacles",
             "captured_blessing",
+            "encoded_identity",
+            "model_id",
+            "identity_search_radius",
         ]
         self.assertEqual([arg.arg for arg in canonical.args.args], expected)
 
@@ -66,7 +70,7 @@ class TakeBlessingStructureTests(unittest.TestCase):
 
     def test_captured_blessing_does_not_silently_ignore_multibox(self) -> None:
         node = _function(WRAPPERS, "TakeBlessing")
-        namespace = {}
+        namespace: dict[str, Any] = {"Range": types.SimpleNamespace(Area=types.SimpleNamespace(value=322.0))}
         exec(compile(ast.Module(body=[node], type_ignores=[]), str(WRAPPERS), "exec",
                      flags=__import__("__future__").annotations.compiler_flag), namespace)
         with self.assertRaisesRegex(ValueError, "local execution only"):
@@ -77,7 +81,9 @@ class TakeBlessingStructureTests(unittest.TestCase):
         public = _function(WRAPPERS, "MoveAndInteract")
         public_body = ast.get_source_segment(source, public) or ""
         self.assertIn("avoid_obstacles=avoid_obstacles", public_body)
-        self.assertEqual([arg.arg for arg in public.args.kwonlyargs], ["avoid_obstacles"])
+        self.assertEqual([arg.arg for arg in public.args.kwonlyargs], [
+            "avoid_obstacles", "encoded_identity", "model_id", "identity_search_radius",
+        ])
         default = public.args.kw_defaults[0]
         assert isinstance(default, ast.Constant)
         self.assertTrue(default.value)
