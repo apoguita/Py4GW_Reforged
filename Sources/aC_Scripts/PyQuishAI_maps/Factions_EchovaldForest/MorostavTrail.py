@@ -69,6 +69,22 @@ MorostavTrail = [
     (4075.0, 601.0),
 ]
 
+# Captured Kurzick Priest on map 205. Keep the identity and geometry local to
+# this route because the shared interaction catalog is not part of upstream.
+MorostavTrail = [
+    {"faction_blessing": {
+        "name": "Take the Kurzick blessing",
+        "faction": "kurzick",
+        "target_xy": (22109.0, 12076.0),
+        "encoded_name": "\\x3E98\\xAA38\\x045D",
+        "model_id": 3477,
+        "target_name": "Kurzick Priest",
+        "captured_player_xy": (22160.9, 12162.96),
+        "capture_id": "USER-20261107-MOROSTAV-KURZICK-PRIEST",
+    }},
+    {"path": MorostavTrail},
+]
+
 MorostavTrail_outpost_path = [
     (-9715, -3376), (-11645, -5155), (-12065, -7488), (-13751.78, -7651.70), (-14045.97, -7854.88), 
 ]
