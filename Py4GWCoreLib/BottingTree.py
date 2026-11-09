@@ -64,6 +64,8 @@ class BottingTree(
         isolation_enabled: bool | None = None,
         account_config: BottingTreeAccountConfig | dict[str, object] | str | None = None,
         configure_fn: Callable[['BottingTree'], object] | None = None,
+        manage_account_isolation: bool = True,
+        headless_heroai_enabled: bool = True,
     ) -> 'BottingTree':
         tree = cls(
             bot_name=bot_name,
@@ -75,6 +77,8 @@ class BottingTree(
             deactivate_widget_list=deactivate_widget_list,
             isolation_enabled=isolation_enabled,
             account_config=account_config,
+            manage_account_isolation=manage_account_isolation,
+            headless_heroai_enabled=headless_heroai_enabled,
         )
 
         if callable(configure_fn):
@@ -104,7 +108,11 @@ class BottingTree(
         deactivate_widget_list: Sequence[str] | None = None,
         isolation_enabled: bool | None = None,
         account_config: BottingTreeAccountConfig | dict[str, object] | str | None = None,
+        *,
+        manage_account_isolation: bool = True,
+        headless_heroai_enabled: bool = True,
     ):
+        self.manage_account_isolation = bool(manage_account_isolation)
         self.bot_name = bot_name
         self._previous_isolation_state: bool | None = None
         self._previous_isolation_group_id: int | None = None
@@ -128,7 +136,7 @@ class BottingTree(
         )
         self.isolation_enabled = self.account_config.resolve_isolation_enabled()
         self.restore_isolation_on_stop = True
-        self.headless_heroai_enabled = True
+        self.headless_heroai_enabled = bool(headless_heroai_enabled)
         self._headless_disabled_heroai_widget = False
         self._last_multibox_heroai_widget_state = None
         self.looting_enabled = bool(auto_loot)
