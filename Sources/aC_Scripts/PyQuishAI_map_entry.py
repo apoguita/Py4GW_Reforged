@@ -54,7 +54,6 @@ def build_fixed_map_entry_tree(entry_data: Mapping[str, Any], wrappers=None):
                 modelID_or_encStr=entry["encoded_name"],
                 button_number=list(entry["button_positions"]),
                 log=True,
-                multi_account=False,
             ),
             wrappers.WaitForMapLoad(
                 map_id=entry["expected_map_id"],
@@ -68,19 +67,27 @@ def _load_runtime_dependencies():
     from Py4GWCoreLib import Map, Routines
     from Py4GWCoreLib.BottingTree import BottingTree
     from Sources.ApoSource.ApoBottingLib import wrappers
+    from Sources.ApoSource.ApoBottingLib.helpers import CanonicalDialogueStateScope
 
-    return BottingTree, Map, Routines, wrappers
+    return BottingTree, Map, Routines, wrappers, CanonicalDialogueStateScope
 
 
 def run_fixed_map_entry(bot, entry_data: Mapping[str, Any]):
     """Run one fixed-dialog entry and restore the host bot's prior HeroAI pause."""
     planner = None
+    scope = None
     saved_pause = False
     pause_restore_required = False
     try:
         try:
             entry = _normalize_map_entry(entry_data)
-            BottingTree, Map, Routines, wrappers = _load_runtime_dependencies()
+            (
+                BottingTree,
+                Map,
+                Routines,
+                wrappers,
+                CanonicalDialogueStateScope,
+            ) = _load_runtime_dependencies()
             current_map_id = int(Map.GetMapID() or 0)
 
             if current_map_id == entry["expected_map_id"]:
@@ -91,25 +98,28 @@ def run_fixed_map_entry(bot, entry_data: Mapping[str, Any]):
                     f"found {current_map_id}"
                 )
 
+            scope = CanonicalDialogueStateScope()
+            canonical_sequence = build_fixed_map_entry_tree(entry, wrappers=wrappers)
             planner = BottingTree.Create(
                 bot_name=f"Simple Vanquish map entry: {entry['name']}",
+                main_routine=canonical_sequence,
                 pause_on_combat=False,
                 multi_account=False,
                 auto_loot=False,
                 isolation_enabled=False,
+                manage_account_isolation=False,
+                headless_heroai_enabled=False,
             )
             saved_pause = bool(bot.Properties.Get("hero_ai_paused", "active"))
             pause_restore_required = True
             bot.Properties.ApplyNow("hero_ai_paused", "active", True)
-            getattr(planner, "SetHeadlessHeroAIEnabled")(False)
-            planner.SetPlannerTree(build_fixed_map_entry_tree(entry, wrappers=wrappers))
             planner.Start()
 
             deadline = time.monotonic() + (entry["timeout_ms"] / 1_000.0) + 15.0
             while planner.IsStarted():
                 if time.monotonic() >= deadline:
                     raise RuntimeError(f"{entry['name']}: canonical map-entry owner timed out")
-                planner.tick()
+                scope.run(planner.tick)
                 yield from Routines.Yield.wait(50)
 
             status = str(planner.GetBlackboardValue("PLANNER_STATUS", ""))
@@ -121,11 +131,15 @@ def run_fixed_map_entry(bot, entry_data: Mapping[str, Any]):
             return True
         finally:
             try:
-                if planner is not None:
-                    planner.Stop()
+                if scope is not None:
+                    scope.close()
             finally:
-                if pause_restore_required:
-                    bot.Properties.ApplyNow("hero_ai_paused", "active", saved_pause)
+                try:
+                    if planner is not None:
+                        planner.Stop()
+                finally:
+                    if pause_restore_required:
+                        bot.Properties.ApplyNow("hero_ai_paused", "active", saved_pause)
     except Exception:
         bot.Stop()
         raise

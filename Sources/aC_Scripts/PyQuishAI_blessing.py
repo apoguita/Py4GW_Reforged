@@ -54,36 +54,44 @@ def _load_runtime_dependencies():
     from Py4GWCoreLib import Routines
     from Py4GWCoreLib.BottingTree import BottingTree
     from Sources.ApoSource.ApoBottingLib import wrappers
+    from Sources.ApoSource.ApoBottingLib.helpers import CanonicalDialogueStateScope
 
-    return BottingTree, Routines, wrappers
+    return BottingTree, Routines, wrappers, CanonicalDialogueStateScope
 
 
 def run_route_blessing(bot, blessing_data: Mapping[str, Any]):
     """Run canonical TakeBlessing while the host route waits at one state."""
     planner = None
+    scope = None
     saved_pause = False
     pause_restore_required = False
     try:
         try:
-            BottingTree, Routines, wrappers = _load_runtime_dependencies()
+            BottingTree, Routines, wrappers, CanonicalDialogueStateScope = (
+                _load_runtime_dependencies()
+            )
+            scope = CanonicalDialogueStateScope()
+            canonical_blessing = build_route_blessing_tree(
+                blessing_data,
+                wrappers=wrappers,
+            )
             planner = BottingTree.Create(
                 bot_name="Simple Vanquish captured blessing",
+                main_routine=canonical_blessing,
                 pause_on_combat=False,
                 multi_account=False,
                 auto_loot=False,
                 isolation_enabled=False,
+                manage_account_isolation=False,
+                headless_heroai_enabled=False,
             )
             saved_pause = bool(bot.Properties.Get("hero_ai_paused", "active"))
             pause_restore_required = True
             bot.Properties.ApplyNow("hero_ai_paused", "active", True)
-            getattr(planner, "SetHeadlessHeroAIEnabled")(False)
-            planner.SetPlannerTree(
-                build_route_blessing_tree(blessing_data, wrappers=wrappers)
-            )
             planner.Start()
 
             while planner.IsStarted():
-                planner.tick()
+                scope.run(planner.tick)
                 yield from Routines.Yield.wait(50)
 
             status = str(planner.GetBlackboardValue("PLANNER_STATUS", ""))
@@ -95,11 +103,15 @@ def run_route_blessing(bot, blessing_data: Mapping[str, Any]):
             return True
         finally:
             try:
-                if planner is not None:
-                    planner.Stop()
+                if scope is not None:
+                    scope.close()
             finally:
-                if pause_restore_required:
-                    bot.Properties.ApplyNow("hero_ai_paused", "active", saved_pause)
+                try:
+                    if planner is not None:
+                        planner.Stop()
+                finally:
+                    if pause_restore_required:
+                        bot.Properties.ApplyNow("hero_ai_paused", "active", saved_pause)
     except Exception:
         bot.Stop()
         raise

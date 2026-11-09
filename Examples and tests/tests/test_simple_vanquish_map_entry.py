@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import runpy
 import types
+from typing import Any, cast
 import unittest
 from unittest import mock
 
@@ -17,6 +18,7 @@ BLESSING_MODULE_PATH = REPO_ROOT / "Sources" / "aC_Scripts" / "PyQuishAI_blessin
 WIDGET_PATH = REPO_ROOT / "Widgets" / "Automation" / "Bots" / "Vanquish" / "Simple_Vanquish.py"
 PYQUISH_PATH = REPO_ROOT / "Widgets" / "Automation" / "Bots" / "Vanquish" / "PyQuishAI_BT.py"
 ROUTES_DIR = REPO_ROOT / "Sources" / "aC_Scripts" / "PyQuishAI_maps"
+ISOLATION_PATH = REPO_ROOT / "Py4GWCoreLib" / "botting_tree_src" / "isolation.py"
 ROUTE_BLESSING_KEYS = frozenset({
     "bless", "vanguard_blessing", "norn_blessing", "asuran_blessing",
     "faction_blessing",
@@ -39,6 +41,35 @@ def _load_blessing_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _load_isolation_guard_class() -> type[Any]:
+    tree = ast.parse(ISOLATION_PATH.read_text(encoding="utf-8"), filename=str(ISOLATION_PATH))
+    owner = next(
+        node for node in tree.body
+        if isinstance(node, ast.ClassDef) and node.name == "BottingTreeIsolationMixin"
+    )
+    names = {
+        "_capture_isolation_state_for_restore",
+        "ApplyAccountIsolation",
+        "RestoreAccountIsolation",
+    }
+    methods: list[ast.stmt] = [
+        node for node in owner.body
+        if isinstance(node, ast.FunctionDef) and node.name in names
+    ]
+    isolated = ast.ClassDef(
+        name="GuardedIsolation",
+        bases=[],
+        keywords=[],
+        body=methods,
+        decorator_list=[],
+    )
+    module = ast.Module(body=[isolated], type_ignores=[])
+    ast.fix_missing_locations(module)
+    namespace: dict[str, object] = {}
+    exec(compile(module, str(ISOLATION_PATH), "exec"), namespace)
+    return cast(type[Any], namespace["GuardedIsolation"])
 
 
 def _load_pyquish_keyword_builder():
@@ -178,13 +209,14 @@ class _FakeWidgetBot:
 
 
 class _FakePlanner:
-    def __init__(self, status="PLANNER: Completed", tick_error=None):
+    def __init__(self, status="PLANNER: Completed", tick_error=None, keep_running=False):
         self.status = status
         self.tick_error = tick_error
         self.started = False
         self.headless = None
         self.tree = None
         self.stop_calls = 0
+        self.keep_running = keep_running
 
     def SetHeadlessHeroAIEnabled(self, value):
         self.headless = value
@@ -201,7 +233,8 @@ class _FakePlanner:
     def tick(self):
         if self.tick_error is not None:
             raise self.tick_error
-        self.started = False
+        if not self.keep_running:
+            self.started = False
 
     def GetBlackboardValue(self, key, default=""):
         assert key == "PLANNER_STATUS"
@@ -214,14 +247,34 @@ class _FakePlanner:
 
 class _FakeBottingTree:
     planner: _FakePlanner | None = None
+    create_kwargs: dict | None = None
 
     @classmethod
     def Create(cls, **kwargs):
+        cls.create_kwargs = kwargs
         assert kwargs["pause_on_combat"] is False
         assert kwargs["auto_loot"] is False
         assert kwargs["isolation_enabled"] is False
+        assert kwargs["manage_account_isolation"] is False
+        assert kwargs["headless_heroai_enabled"] is False
         assert cls.planner is not None
         return cls.planner
+
+
+class _FakeDialogueScope:
+    latest: _FakeDialogueScope | None = None
+
+    def __init__(self):
+        self.run_calls = 0
+        self.closed = False
+        type(self).latest = self
+
+    def run(self, callback):
+        self.run_calls += 1
+        return callback()
+
+    def close(self):
+        self.closed = True
 
 
 class _FakeMap:
@@ -238,6 +291,13 @@ class _FakeRoutines:
         def wait(_milliseconds):
             if False:
                 yield None
+
+
+class _YieldingRoutines:
+    class Yield:
+        @staticmethod
+        def wait(_milliseconds):
+            yield None
 
 
 def _finish(generator):
@@ -406,14 +466,46 @@ class SimpleVanquishMapEntryTests(unittest.TestCase):
         with mock.patch.object(
             module,
             "_load_runtime_dependencies",
-            return_value=(_FakeBottingTree, _FakeRoutines, wrappers),
+            return_value=(_FakeBottingTree, _FakeRoutines, wrappers, _FakeDialogueScope),
         ):
             self.assertIs(_finish(module.run_route_blessing(bot, captured)), True)
 
         self.assertIs(bot.stopped, False)
         self.assertEqual(bot.Properties.writes, [True, False])
-        self.assertIs(planner.headless, False)
         self.assertEqual(planner.stop_calls, 1)
+        scope = _FakeDialogueScope.latest
+        assert scope is not None
+        self.assertEqual(scope.run_calls, 1)
+        self.assertIs(scope.closed, True)
+
+    def test_captured_blessing_runner_closes_dialogue_scope_on_cancel(self):
+        module = _load_blessing_module()
+        wrappers = _FakeWrappers()
+        planner = _FakePlanner(keep_running=True)
+        _FakeBottingTree.planner = planner
+        bot = _FakeBot(paused=False)
+        captured = {"route_standoff_xy": (1.0, 2.0), "encoded_name": "captured"}
+        runner = module.run_route_blessing(bot, captured)
+
+        with mock.patch.object(
+            module,
+            "_load_runtime_dependencies",
+            return_value=(
+                _FakeBottingTree,
+                _YieldingRoutines,
+                wrappers,
+                _FakeDialogueScope,
+            ),
+        ):
+            next(runner)
+            runner.close()
+
+        scope = _FakeDialogueScope.latest
+        assert scope is not None
+        self.assertEqual(scope.run_calls, 1)
+        self.assertIs(scope.closed, True)
+        self.assertEqual(planner.stop_calls, 1)
+        self.assertEqual(bot.Properties.writes, [True, False])
 
     def test_captured_blessing_runner_stops_route_when_owner_fails(self):
         module = _load_blessing_module()
@@ -427,7 +519,7 @@ class SimpleVanquishMapEntryTests(unittest.TestCase):
             mock.patch.object(
                 module,
                 "_load_runtime_dependencies",
-                return_value=(_FakeBottingTree, _FakeRoutines, wrappers),
+                return_value=(_FakeBottingTree, _FakeRoutines, wrappers, _FakeDialogueScope),
             ),
             self.assertRaisesRegex(RuntimeError, "canonical captured-blessing owner failed"),
         ):
@@ -522,7 +614,6 @@ class SimpleVanquishMapEntryTests(unittest.TestCase):
                     "modelID_or_encStr": "\\x5CF5\\x978F\\xF211\\x057A",
                     "button_number": [0, 0, 0],
                     "log": True,
-                    "multi_account": False,
                 },
             ),
         )
@@ -536,6 +627,15 @@ class SimpleVanquishMapEntryTests(unittest.TestCase):
             ["dialog-owner", "map-owner"],
         )
 
+    def test_non_owning_host_never_reads_or_writes_account_isolation(self):
+        guard_class = _load_isolation_guard_class()
+        owner = guard_class()
+        owner.manage_account_isolation = False
+
+        self.assertIsNone(owner._capture_isolation_state_for_restore())
+        self.assertIs(owner.ApplyAccountIsolation(), False)
+        self.assertIs(owner.RestoreAccountIsolation(), False)
+
     def test_runner_restores_host_pause_after_success(self):
         module = _load_module()
         wrappers = _FakeWrappers()
@@ -546,14 +646,51 @@ class SimpleVanquishMapEntryTests(unittest.TestCase):
         with mock.patch.object(
             module,
             "_load_runtime_dependencies",
-            return_value=(_FakeBottingTree, _FakeMap, _FakeRoutines, wrappers),
+            return_value=(_FakeBottingTree, _FakeMap, _FakeRoutines, wrappers, _FakeDialogueScope),
         ):
             self.assertIs(_finish(module.run_fixed_map_entry(bot, ZEN_ENTRY)), True)
 
         self.assertIs(bot.stopped, False)
         self.assertEqual(bot.Properties.writes, [True, False])
-        self.assertIs(planner.headless, False)
         self.assertEqual(planner.stop_calls, 1)
+        scope = _FakeDialogueScope.latest
+        assert scope is not None
+        self.assertEqual(scope.run_calls, 1)
+        self.assertIs(scope.closed, True)
+        create_kwargs = _FakeBottingTree.create_kwargs
+        assert create_kwargs is not None
+        self.assertEqual(create_kwargs["main_routine"][0], "tree")
+        self.assertIsNone(planner.tree)
+
+    def test_runner_closes_dialogue_scope_on_cancel(self):
+        module = _load_module()
+        wrappers = _FakeWrappers()
+        planner = _FakePlanner(keep_running=True)
+        _FakeBottingTree.planner = planner
+        bot = _FakeBot(paused=False)
+        runner = module.run_fixed_map_entry(bot, ZEN_ENTRY)
+
+        with mock.patch.object(
+            module,
+            "_load_runtime_dependencies",
+            return_value=(
+                _FakeBottingTree,
+                _FakeMap,
+                _YieldingRoutines,
+                wrappers,
+                _FakeDialogueScope,
+            ),
+        ):
+            next(runner)
+            runner.close()
+
+        scope = _FakeDialogueScope.latest
+        assert scope is not None
+        self.assertEqual(scope.run_calls, 1)
+        self.assertIs(scope.closed, True)
+        self.assertEqual(planner.stop_calls, 1)
+        self.assertEqual(bot.Properties.writes, [True, False])
+        self.assertIs(bot.stopped, False)
 
     def test_runner_fails_closed_on_wrong_source_map(self):
         module = _load_module()
@@ -564,7 +701,7 @@ class SimpleVanquishMapEntryTests(unittest.TestCase):
             mock.patch.object(
                 module,
                 "_load_runtime_dependencies",
-                return_value=(_FakeBottingTree, _FakeMap, _FakeRoutines, _FakeWrappers()),
+                return_value=(_FakeBottingTree, _FakeMap, _FakeRoutines, _FakeWrappers(), _FakeDialogueScope),
             ),
             self.assertRaisesRegex(RuntimeError, "expected source map 250, found 999"),
         ):
@@ -585,7 +722,7 @@ class SimpleVanquishMapEntryTests(unittest.TestCase):
             mock.patch.object(
                 module,
                 "_load_runtime_dependencies",
-                return_value=(_FakeBottingTree, _FakeMap, _FakeRoutines, wrappers),
+                return_value=(_FakeBottingTree, _FakeMap, _FakeRoutines, wrappers, _FakeDialogueScope),
             ),
             self.assertRaisesRegex(RuntimeError, "canonical map-entry owner failed"),
         ):
@@ -607,7 +744,7 @@ class SimpleVanquishMapEntryTests(unittest.TestCase):
             mock.patch.object(
                 module,
                 "_load_runtime_dependencies",
-                return_value=(_FakeBottingTree, _FakeMap, _FakeRoutines, wrappers),
+                return_value=(_FakeBottingTree, _FakeMap, _FakeRoutines, wrappers, _FakeDialogueScope),
             ),
             self.assertRaisesRegex(ValueError, "owner tick exploded"),
         ):

@@ -95,6 +95,8 @@ class BottingTreeIsolationMixin:
         return changed
 
     def _capture_isolation_state_for_restore(self) -> None:
+        if not getattr(self, "manage_account_isolation", True):
+            return
         account_email = Player.GetAccountEmail()
         if not account_email:
             self._previous_isolation_state = None
@@ -104,6 +106,8 @@ class BottingTreeIsolationMixin:
         self._previous_isolation_group_id = int(GLOBAL_CACHE.ShMem.GetAccountGroupByEmail(account_email) or 0)
 
     def ApplyAccountIsolation(self) -> bool:
+        if not getattr(self, "manage_account_isolation", True):
+            return False
         account_email = Player.GetAccountEmail()
         if not account_email:
             return False
@@ -134,6 +138,8 @@ class BottingTreeIsolationMixin:
         return bool(changed)
 
     def RestoreAccountIsolation(self) -> bool:
+        if not getattr(self, "manage_account_isolation", True):
+            return False
         if not self.restore_isolation_on_stop:
             return False
 
