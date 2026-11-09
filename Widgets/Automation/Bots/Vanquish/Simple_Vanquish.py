@@ -183,6 +183,8 @@ def _handle_keyword(bot, key, value):
         bot.Move.FollowModel(model_id, follow_range, _timeout)
     elif key == "path":
         bot.Move.FollowAutoPath(value)
+    elif key == "literal_path":
+        bot.Move.FollowPath(value)
 
 
 def _register_aggro_path(bot, path, header_name=None, detection_radius=2500.0, clear_radius=2500.0, on_enemy_detected=None):
@@ -228,13 +230,13 @@ def _get_first_path_coord(path):
     if isinstance(first, dict):
         for entry in path:
             for key, value in entry.items():
-                if key == "path" and value:
+                if key in {"path", "literal_path"} and value:
                     return (value[0][0], value[0][1])
         return (0.0, 0.0)
     elif isinstance(first, list):
         for segment in path:
             for key, value in segment:
-                if key == "path" and value:
+                if key in {"path", "literal_path"} and value:
                     return (value[0][0], value[0][1])
         return (0.0, 0.0)
     else:
