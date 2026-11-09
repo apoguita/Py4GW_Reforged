@@ -156,6 +156,7 @@ _hard_mode = True
 _setup_party = True
 _load_player_build = True
 _use_cupcake = True
+_logging_enabled = True
 _inventory_maintenance_enabled = True
 _inventory_min_free_slots = 5
 _inventory_min_id_kits = 1
@@ -186,12 +187,19 @@ SPIKE_MIN_ENERGY = 15.0
 SURVIVAL_CAST_MIN_ENERGY = 25.0
 
 def _log(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
+    # Errors always print so a paused or broken bot still explains itself.
+    if not _logging_enabled and message_type != PySystem.Console.MessageType.Error:
+        return
     PySystem.Console.Log(MODULE_NAME, message, message_type)
+
+
+def _log_message_node(message: str) -> BehaviorTree:
+    return BT.LogMessage(message, MODULE_NAME, print_to_console=_logging_enabled)
 
 
 def _load_settings() -> None:
     global _settings_loaded, _hard_mode, _setup_party, _load_player_build, _use_cupcake
-    global _inventory_maintenance_enabled
+    global _logging_enabled, _inventory_maintenance_enabled
     global _inventory_min_free_slots, _inventory_min_id_kits, _inventory_min_salvage_kits
 
     if _settings_loaded:
@@ -202,6 +210,7 @@ def _load_settings() -> None:
     _setup_party = _settings.get_bool('Config', 'SetupParty', True)
     _load_player_build = _settings.get_bool('Config', 'LoadPlayerBuild', True)
     _use_cupcake = _settings.get_bool('Config', 'UseBirthdayCupcake', True)
+    _logging_enabled = _settings.get_bool('Config', 'LoggingEnabled', True)
     _inventory_maintenance_enabled = _settings.get_bool('Config', 'InventoryMaintenanceEnabled', True)
     _inventory_min_free_slots = max(0, _settings.get_int('Config', 'InventoryMinFreeSlots', 5))
     _inventory_min_id_kits = max(0, _settings.get_int('Config', 'InventoryMinIdKits', 1))
@@ -215,6 +224,7 @@ def _save_settings() -> None:
     _settings.set('Config', 'SetupParty', _setup_party)
     _settings.set('Config', 'LoadPlayerBuild', _load_player_build)
     _settings.set('Config', 'UseBirthdayCupcake', _use_cupcake)
+    _settings.set('Config', 'LoggingEnabled', _logging_enabled)
     _settings.set('Config', 'InventoryMaintenanceEnabled', _inventory_maintenance_enabled)
     _settings.set('Config', 'InventoryMinFreeSlots', _inventory_min_free_slots)
     _settings.set('Config', 'InventoryMinIdKits', _inventory_min_id_kits)
@@ -225,13 +235,18 @@ def _draw_config() -> None:
     import PyImGui
 
     global _hard_mode, _setup_party, _load_player_build, _use_cupcake
-    global _inventory_maintenance_enabled
+    global _logging_enabled, _inventory_maintenance_enabled
     global _inventory_min_free_slots, _inventory_min_id_kits, _inventory_min_salvage_kits
 
     _load_settings()
     PyImGui.text('Ministerial Commendations Config')
     PyImGui.separator()
     changed = False
+
+    value = PyImGui.checkbox('Console logging (errors always shown)', _logging_enabled)
+    if value != _logging_enabled:
+        _logging_enabled = value
+        changed = True
 
     value = PyImGui.checkbox('Hard Mode (HM)', _hard_mode)
     if value != _hard_mode:
@@ -573,7 +588,8 @@ def _refresh_local_inventory_status_node(name: str) -> BehaviorTree:
 
 
 def _inventory_maintenance_issues() -> list[str]:
-    return list(_inventory_status_snapshot.get('issues', []))
+    issues = _inventory_status_snapshot.get('issues', [])
+    return [str(issue) for issue in issues] if isinstance(issues, list) else []
 
 
 def _inventory_is_healthy_node(name: str, *, log_success: bool = True) -> BehaviorTree:
@@ -640,7 +656,7 @@ def _send_widget_state(widget_name: str, *, enabled: bool, refs_key: str) -> Beh
             refs_blackboard_key=refs_key,
             timeout_ms=20_000,
             poll_interval_ms=100,
-            log=True,
+            log=_logging_enabled,
         )
 
     return BT.Subtree(
@@ -791,7 +807,7 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
             refs_blackboard_key=f'{attempt_key}_merchant_rules_refs',
             timeout_ms=INVENTORY_MERCHANT_TIMEOUT_MS,
             poll_interval_ms=250,
-            log=True,
+            log=_logging_enabled,
         )
 
         return BT.Selector(
@@ -825,12 +841,9 @@ def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
     return BT.Sequence(
         name=f'Inventory Maintenance Attempt {attempt_number}',
         children=[
-            BT.LogMessage(
-                message=(
-                    f'Inventory maintenance attempt {attempt_number}/'
-                    f'{INVENTORY_MAINTENANCE_RETRY_COUNT} in Kaineng Center.'
-                ),
-                module_name=MODULE_NAME,
+            _log_message_node(
+                f'Inventory maintenance attempt {attempt_number}/'
+                f'{INVENTORY_MAINTENANCE_RETRY_COUNT} in Kaineng Center.'
             ),
             _set_local_auto_inventory_handler(False),
             _send_widget_state(
@@ -941,7 +954,7 @@ def InventoryCheckAndMaintenance() -> BehaviorTree:
                         name='Run Local Inventory Maintenance',
                         children=[
                             _inventory_maintenance_trigger_node(),
-                            BT.IsCurrentMap(map_id=KAINENG_CENTER, log=True),
+                            BT.IsCurrentMap(map_id=KAINENG_CENTER, log=_logging_enabled),
                             BT.LeaveParty(),
                             BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
                             BT.Selector(
@@ -1142,6 +1155,7 @@ def MissionRestartAnchorService() -> BehaviorTree:
     state = {
         'returning_to_outpost': False,
         'last_return_ms': 0.0,
+        'last_resign_ms': 0.0,
         'mission_ready_since_ms': 0.0,
         'restart_step': MISSION_RESTART_STEP,
     }
@@ -1244,6 +1258,7 @@ def MissionRestartAnchorService() -> BehaviorTree:
 
             state['returning_to_outpost'] = False
             state['last_return_ms'] = 0.0
+            state['last_resign_ms'] = 0.0
             state['mission_ready_since_ms'] = 0.0
             state['restart_step'] = MISSION_RESTART_STEP
 
@@ -1255,6 +1270,15 @@ def MissionRestartAnchorService() -> BehaviorTree:
 
         if Map.IsMapReady() and current_map_id == A_CHANCE_ENCOUNTER:
             now_ms = time.monotonic() * 1000.0
+            # Return to Outpost is ignored until the whole party is defeated.
+            # A dead player with living heroes never reaches that state, so
+            # resign to force the defeat that unlocks the return.
+            if (
+                now_ms - state['last_resign_ms'] >= 3_000.0
+                and not GLOBAL_CACHE.Party.IsPartyDefeated()
+            ):
+                Player.SendChatCommand('resign')
+                state['last_resign_ms'] = now_ms
             if now_ms - state['last_return_ms'] >= 1_000.0:
                 GLOBAL_CACHE.Party.ReturnToOutpost()
                 state['last_return_ms'] = now_ms
@@ -1485,9 +1509,8 @@ def _wait_for_heroes_out_of_loot_range(timeout_ms: int = 20_000) -> BehaviorTree
         return BT.Sequence(
             name='Loot Separation Timeout Fallback',
             children=[
-                BT.LogMessage(
-                    f'Loot separation timed out; allies still inside Compass: {visible}.',
-                    MODULE_NAME,
+                _log_message_node(
+                    f'Loot separation timed out; allies still inside Compass: {visible}.'
                 ),
                 BT.Succeeder('Loot Separation Timeout Accepted'),
             ],
@@ -1571,7 +1594,7 @@ def _continue_after_wait_timeout(name: str, message: str) -> BehaviorTree:
         return BT.Sequence(
             name=f'{name} Timeout Fallback',
             children=[
-                BT.LogMessage(message, MODULE_NAME),
+                _log_message_node(message),
                 BT.Succeeder(f'{name} Timeout Accepted'),
             ],
         )
@@ -1803,13 +1826,13 @@ def _setup_party_node() -> BehaviorTree:
             return BT.Succeeder('Exact Party And Builds Already Loaded')
 
         children: list[BehaviorTree | BehaviorTree.Node] = [
-            BT.CreateParty(hero_ids=list(EXPECTED_HERO_IDS), log=True),
+            BT.CreateParty(hero_ids=list(EXPECTED_HERO_IDS), log=_logging_enabled),
         ]
 
         for hero_position, hero_name, template, behavior in HERO_BUILDS:
             children.extend(
                 [
-                    BT.LoadHeroSkillbar(hero_position, template, log=True),
+                    BT.LoadHeroSkillbar(hero_position, template, log=_logging_enabled),
                     _configure_hero_node(
                         hero_position,
                         hero_name,
@@ -1895,15 +1918,14 @@ def _load_player_build_node() -> BehaviorTree:
             return BT.Sequence(
                 name='Unsupported Player Profession',
                 children=[
-                    BT.LogMessage(
-                        f'No Encounter_ReBuilt player template for primary profession {primary or "unknown"}.',
-                        MODULE_NAME,
+                    _log_message_node(
+                        f'No Encounter_ReBuilt player template for primary profession {primary or "unknown"}.'
                     ),
                     BT.Succeeder('Keep Current Player Build'),
                 ],
             )
 
-        return BT.LoadSkillbar(template, log=True)
+        return BT.LoadSkillbar(template, log=_logging_enabled)
 
     return BT.Subtree('Load Encounter ReBuilt Player Build', _build)
 
@@ -1920,7 +1942,10 @@ def InitializeBot() -> BehaviorTree:
                 resurrection_scroll=False,
                 pause_on_danger=False,
             ),
-            BT.LogMessage('Ministerial Commendations BT initialized.', MODULE_NAME),
+            # Also requested at the loot step; doing it here makes the live filter
+            # (and its diagnostics) reflect the bot's intent from the start.
+            _want_commendations_node(),
+            _log_message_node('Ministerial Commendations BT initialized.'),
         ],
     )
 
@@ -1933,7 +1958,7 @@ def PrepareInKaineng() -> BehaviorTree:
             StartupInventoryCheck(),
             _setup_party_node(),
             _load_player_build_node(),
-            BT.SetHardMode(_hard_mode, log=True),
+            BT.SetHardMode(_hard_mode, log=_logging_enabled),
         ],
     )
 
@@ -1960,14 +1985,14 @@ def _move_to_mission_npc_smooth() -> BehaviorTree:
                 ignore_destination_obstacles=True,
                 ignore_destination_npcs=True,
                 ignore_destination_gadgets=True,
-                log=True,
+                log=_logging_enabled,
             ),
             BT.Wait(125),
             BT.TargetNearestAndSendDialog(
                 pos=(2240.0, -1264.0),
                 dialog_id=MISSION_DIALOG,
                 target_distance=Range.Nearby.value,
-                log=True,
+                log=_logging_enabled,
                 multi_account=False,
             ),
         ],
@@ -1975,6 +2000,12 @@ def _move_to_mission_npc_smooth() -> BehaviorTree:
 
 
 def EnterAChanceEncounter() -> BehaviorTree:
+    def _eat_cupcake_if_enabled(_node: BehaviorTree.Node) -> BehaviorTree:
+        # The mission is far shorter than the cupcake buff, so one use on entry is enough.
+        if _use_cupcake:
+            return BTItems.UseConsumable(BIRTHDAY_CUPCAKE)
+        return BT.Succeeder('Birthday Cupcake Disabled')
+
     def _approach_if_needed(_node: BehaviorTree.Node) -> BehaviorTree:
         x, y = Player.GetXY()
         if -1400.0 < x < -550.0 and -2000.0 < y < -1100.0:
@@ -1989,7 +2020,7 @@ def EnterAChanceEncounter() -> BehaviorTree:
                 ignore_destination_obstacles=True,
                 ignore_destination_npcs=True,
                 ignore_destination_gadgets=True,
-                log=True,
+                log=_logging_enabled,
             )
         return BT.Succeeder('Direct Mission NPC Approach')
 
@@ -2002,13 +2033,14 @@ def EnterAChanceEncounter() -> BehaviorTree:
             BT.Subtree('Optional Kaineng Approach', _approach_if_needed),
             _move_to_mission_npc_smooth(),
             BT.WaitForMapLoad(A_CHANCE_ENCOUNTER, timeout_ms=45_000),
+            BT.Subtree('Optional Birthday Cupcake', _eat_cupcake_if_enabled),
         ],
     )
 
 
 def PlaceParty() -> BehaviorTree:
     children: list[BehaviorTree | BehaviorTree.Node] = [
-        BT.IsCurrentMap(A_CHANCE_ENCOUNTER, log=True),
+        BT.IsCurrentMap(A_CHANCE_ENCOUNTER, log=_logging_enabled),
     ]
     children.extend(
         BT.FlagHero(position, x, y)
@@ -2020,7 +2052,7 @@ def PlaceParty() -> BehaviorTree:
                 PLAYER_HERO_SETUP_POSITION,
                 pause_on_combat=False,
                 tolerance=50.0,
-                log=True,
+                log=_logging_enabled,
                 avoid_obstacles=False,
             ),
             _set_hero_behavior_node(
@@ -2139,7 +2171,7 @@ def PrepareFirstFight() -> BehaviorTree:
                 PLAYER_TRAP_POSITION,
                 pause_on_combat=False,
                 tolerance=50.0,
-                log=True,
+                log=_logging_enabled,
                 avoid_obstacles=False,
             ),
             _hero_skill_node(
@@ -2266,6 +2298,16 @@ def InitialFight() -> BehaviorTree:
                     GLOBAL_CACHE.Party.Heroes.SetSkillAIEnabled(gwen_id, 1, False)
                 state['martyr_disabled'] = True
 
+        # Checked before the disengage branch, which returns RUNNING and would
+        # otherwise make this timeout unreachable when 2 foes never die.
+        if elapsed >= 120.0:
+            _log(
+                'First fight reached the 120s timeout; restarting mission.',
+                PySystem.Console.MessageType.Warning,
+            )
+            _reset()
+            return BehaviorTree.NodeState.FAILURE
+
         if pack_established and remaining <= 2:
             if not state['disengaged']:
                 state['disengaged'] = True
@@ -2302,14 +2344,6 @@ def InitialFight() -> BehaviorTree:
             _cast_player_skill(4, target_id)
 
             state['last_action_ms'] = now_ms
-
-        if elapsed >= 120.0:
-            _log(
-                'First fight reached the 120s timeout; restarting mission.',
-                PySystem.Console.MessageType.Warning,
-            )
-            _reset()
-            return BehaviorTree.NodeState.FAILURE
 
         return BehaviorTree.NodeState.RUNNING
 
@@ -2379,7 +2413,7 @@ def FinishInitialFight() -> BehaviorTree:
                 radius=8_000.0,
                 allowed_alive_enemies=1,
                 stable_clear_ms=500,
-                log=True,
+                log=_logging_enabled,
             ),
             CastVekkFallBack(),
             _player_speedboost(),
@@ -2396,7 +2430,7 @@ def FinishInitialFight() -> BehaviorTree:
                 FIGHT_EXIT,
                 pause_on_combat=False,
                 tolerance=125.0,
-                log=True,
+                log=_logging_enabled,
                 avoid_obstacles=False,
             ),
         ],
@@ -2407,7 +2441,7 @@ def RunToStairs() -> BehaviorTree:
     return BT.Sequence(
         name='Run To Stairs - Exact Hero Roles',
         children=[
-            BT.IsCurrentMap(A_CHANCE_ENCOUNTER, log=True),
+            BT.IsCurrentMap(A_CHANCE_ENCOUNTER, log=_logging_enabled),
 
             BT.FlagAllHeroes(-7047.0, -2651.0),
 
@@ -2434,7 +2468,7 @@ def RunToStairs() -> BehaviorTree:
                 FIGHT_EXIT,
                 pause_on_combat=False,
                 tolerance=150.0,
-                log=True,
+                log=_logging_enabled,
                 avoid_obstacles=False,
             ),
             WaitForMikuAtJourneyExit(),
@@ -2450,7 +2484,7 @@ def RunToStairs() -> BehaviorTree:
                 JOURNEY_MID_1,
                 pause_on_combat=False,
                 tolerance=125.0,
-                log=True,
+                log=_logging_enabled,
                 avoid_obstacles=False,
             ),
 
@@ -2461,7 +2495,7 @@ def RunToStairs() -> BehaviorTree:
                     point,
                     pause_on_combat=False,
                     tolerance=75.0,
-                    log=True,
+                    log=_logging_enabled,
                     avoid_obstacles=False,
                 )
                 for point in STAIR_PATH
@@ -2471,7 +2505,7 @@ def RunToStairs() -> BehaviorTree:
                 JOURNEY_MID_2,
                 pause_on_combat=False,
                 tolerance=125.0,
-                log=True,
+                log=_logging_enabled,
                 avoid_obstacles=False,
             ),
 
@@ -2496,14 +2530,14 @@ def RunToStairs() -> BehaviorTree:
                 JOURNEY_MID_3,
                 pause_on_combat=False,
                 tolerance=125.0,
-                log=True,
+                log=_logging_enabled,
                 avoid_obstacles=False,
             ),
             BT.Move(
                 JOURNEY_MID_4,
                 pause_on_combat=False,
                 tolerance=125.0,
-                log=True,
+                log=_logging_enabled,
                 avoid_obstacles=False,
             ),
 
@@ -2527,14 +2561,14 @@ def RunToStairs() -> BehaviorTree:
                 STAIRS_APPROACH,
                 pause_on_combat=False,
                 tolerance=100.0,
-                log=True,
+                log=_logging_enabled,
                 avoid_obstacles=False,
             ),
             BT.Move(
                 FARM_POSITION,
                 pause_on_combat=False,
                 tolerance=35.0,
-                log=True,
+                log=_logging_enabled,
                 avoid_obstacles=False,
             ),
 
@@ -2934,10 +2968,33 @@ def WaitForRequestedLoot() -> BehaviorTree:
     )
 
 
+def _want_commendations_node() -> BehaviorTree:
+    """Make the live LootFilter want commendations regardless of the user's saved filter."""
+
+    def _add(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        # Live-only and idempotent; never written to the user's saved loot config.
+        loot_filters = LootFilters()
+        loot_filters.add_model(MINISTERIAL_COMMENDATION)
+        _log(
+            'LootFilter now wants Ministerial Commendations '
+            f'(script-added models={len(loot_filters.live.added_model_ids)}).'
+        )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='LootFilter: Want Ministerial Commendations',
+            action_fn=_add,
+            aftercast_ms=0,
+        )
+    )
+
+
 def LootAndReturn() -> BehaviorTree:
     return BT.Sequence(
         name='Loot Commendations And Return',
         children=[
+            _want_commendations_node(),
             # Headless HeroAI remains the sole loot owner.
             BottingTree.EnableHeroAITree(reset_runtime=True),
             BottingTree.DisableCombatTree(),
@@ -2955,7 +3012,7 @@ def LootAndReturn() -> BehaviorTree:
 
             BT.Travel(
                 target_map_id=KAINENG_CENTER,
-                log=True,
+                log=_logging_enabled,
             ),
             BT.WaitForMapLoad(KAINENG_CENTER, timeout_ms=45_000),
             _record_run_statistics_node(),
