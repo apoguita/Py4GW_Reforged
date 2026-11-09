@@ -1,4 +1,17 @@
 PlainsofJarin = [
+    {'path': [(18527.68, -312.14), (18514.02, 188.21), (18489.96, 688.15), (18472.92, 1005.07)]},
+    {'bless': {'name': 'Talk to the Sunspear Scout outside Kamadan',
+               'interaction_mode': 'first',
+               'route_standoff_xy': (18462.61, 1011.69),
+               'player_approach_xy': (18462.61, 1011.69),
+               'target_xy': (18469.0, 1078.0),
+               'model_id': 4829,
+               'target_name': 'Sunspear Scout',
+               'encoded_name': '\\x8101\\x47C8\\xD51B\\x9247\\x68EB',
+               'effect_ids': (1795, 1833, 1834, 1973, 1974),
+               'initial_choice_settle_s': 0.25,
+               'capture_id': 'USER-20261108-POJ-Talk to the Sunspear Scout outside Kamadan'}},
+    {'path': [(18472.92, 1005.07), (18489.96, 688.15), (18514.02, 188.21), (18527.68, -312.14)]},
     {
         "path": [
             (15474.0, 855.0),
@@ -18,7 +31,17 @@ PlainsofJarin = [
         ]
     },
     {
-        "bless": (-1261.0, 3162.0),
+        "bless": {'name': 'Talk to the central Sunspear Scout',
+         'interaction_mode': 'first',
+         'route_standoff_xy': (-1271.27, 3152.15),
+         'player_approach_xy': (-1271.27, 3152.15),
+         'target_xy': (-1297.0, 3229.0),
+         'model_id': 4829,
+         'target_name': 'Sunspear Scout',
+         'encoded_name': '\\x8101\\x47C0\\xBB90\\xD311\\x68A4',
+         'effect_ids': (1793, 1829, 1830, 1967, 1968),
+         'initial_choice_settle_s': 0.25,
+         'capture_id': 'USER-20261108-POJ-Talk to the central Sunspear Scout'},
         "path": [
             (-1167.0, -2506.0),
             (56.0, -3581.0),
@@ -53,10 +76,36 @@ PlainsofJarin = [
             (-10480.0, 1934.0),
             (-15741.0, -202.0),
             (-16660.0, -2566.0),
+            (-16772.84, -2515.27),
+            (-16828.05, -3014.68),
+            (-16966.01, -3495.62),
+            (-17101.18, -3977.25),
+            (-17235.85, -4464.13),
+            (-17370.82, -4952.11),
+            (-17504.48, -5435.37),
+            (-17541.26, -5568.35),
+            (-17504.48, -5435.37),
+            (-17370.82, -4952.11),
+            (-17235.85, -4464.13),
+            (-17101.18, -3977.25),
+            (-16966.01, -3495.62),
+            (-16828.05, -3014.68),
+            (-16772.84, -2515.27),
+            (-16660.0, -2566.0),
         ]
     },
     {
-        "bless": (-17677.0, 3306.0),
+        "bless": {'name': 'Talk to the western Sunspear Scout',
+         'interaction_mode': 'first',
+         'route_standoff_xy': (-17673.72, 3300.51),
+         'player_approach_xy': (-17673.72, 3300.51),
+         'target_xy': (-17695.0, 3374.0),
+         'model_id': 4827,
+         'target_name': 'Sunspear Scout',
+         'encoded_name': '\\x8101\\x47D8\\xB358\\xFFE1\\x4077',
+         'effect_ids': (1790, 1835, 1836, 1975, 1976),
+         'initial_choice_settle_s': 0.25,
+         'capture_id': 'USER-20261108-POJ-Talk to the western Sunspear Scout'},
         "path": [
             (-19832.0, 4057.0),
             (-19542.0, 6489.0),
@@ -127,3 +176,16 @@ PlainsofJarin_ids = {
     "outpost_id": 449,
     "map_id": 430
 }
+
+# ROUTE-20261108-092346-127; temporary agent IDs are deliberately excluded.
+PlainsofJarin_departure_setup = {'path': [(-2529.16, -2201.58),
+          (-2498.3, -2705.5),
+          (-2395.23, -3197.03),
+          (-2280.19, -3688.01),
+          (-2514.83, -4134.22),
+          (-2727.67, -4442.58)],
+ 'dockmaster': '\\x8101\\x3CC9\\x8EE1\\xA9E3\\x67C3',
+ 'henchmen': ('\\x8101\\x3927\\x9DE9\\xA0BD\\x72C3',
+              '\\x8101\\x393D\\xAE65\\xA9D2\\x7239',
+              '\\x8101\\x3953\\x922E\\xEBC7\\x1383',
+              '\\x8101\\x49A1\\xC8EB\\xA607\\x3239')}
