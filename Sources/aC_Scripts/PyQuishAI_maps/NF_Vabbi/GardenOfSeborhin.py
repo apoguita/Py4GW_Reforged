@@ -160,11 +160,22 @@ GardenOfSeborhin_transit_path = [
         ],
     },
     {
-        "npc":  (-4552.00, 15863.00),
-        "dialog": 0x80,
-    },
-    {
-        "dialog": 0x84,        
+        "map_entry": {
+            "name": "Seborhin Protector Zuor",
+            "source_map_id": 399,
+            "expected_map_id": 394,
+            "model_id": 5686,
+            "encoded_name": "\\x8101\\x3CAE\\xC07E\\xECB7\\x6038",
+            "player_approach_xy": (-4540.27, 15797.7),
+            "target_xy": (-4552.0, 15863.0),
+            "button_positions": (0, 0),
+            "timeout_ms": 30000,
+            "capture_ids": (
+                "USER-20261020-ZUOR-ENTITY-AND-PLAYER-XY",
+                "codex-clipboard-c68cae52-2c6f-4574-badb-cd00b34e1369.png",
+                "codex-clipboard-332f7cd3-bf46-42fc-aee6-3a0c84c7f249.png",
+            ),
+        },
     },
 ]
 
