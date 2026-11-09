@@ -169,7 +169,7 @@ GardenOfSeborhin_transit_path = [
             "player_approach_xy": (-4540.27, 15797.7),
             "target_xy": (-4552.0, 15863.0),
             "button_positions": (0, 0),
-            "timeout_ms": 30000,
+            "timeout_ms": 120000,
             "capture_ids": (
                 "USER-20261020-ZUOR-ENTITY-AND-PLAYER-XY",
                 "codex-clipboard-c68cae52-2c6f-4574-badb-cd00b34e1369.png",
