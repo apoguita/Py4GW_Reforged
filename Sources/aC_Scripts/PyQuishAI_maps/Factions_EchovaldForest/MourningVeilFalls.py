@@ -53,6 +53,22 @@ MourningVeilFalls = [
     (16624.41, 1737.03)
 ]
 
+# Captured Kurzick Priest on map 209. Keep the identity and geometry local to
+# this route because the shared interaction catalog is not part of upstream.
+MourningVeilFalls = [
+    {"faction_blessing": {
+        "name": "Take the Kurzick blessing",
+        "faction": "kurzick",
+        "target_xy": (-16475.0, -6496.0),
+        "encoded_name": "\\x3E98\\xAA38\\x045D",
+        "model_id": 3477,
+        "target_name": "Kurzick Priest",
+        "captured_player_xy": (-16516.58, -6547.67),
+        "capture_id": "USER-20261111-MOURNING-VEIL-KURZICK-PRIEST",
+    }},
+    {"path": MourningVeilFalls},
+]
+
 MourningVeilFalls_outpost_path = [(-182,223), (-39,2572), (-4144,4036), (-4637,4991)]
 
 MourningVeilFalls_ids = {
