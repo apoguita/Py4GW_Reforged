@@ -1,4 +1,4 @@
-SlaversExileSelveTarm = [
+SlaversExileSelvetarm = [
     {
         "map": 621,
         "bless": (4431.21, -18951.14),
@@ -49,11 +49,11 @@ SlaversExileSelveTarm = [
     },
 ]
 
-SlaversExileSelveTarm_outpost_path = [
+SlaversExileSelvetarm_outpost_path = [
     (-23123,7098),  (-23006,6822),
 ]
 
-SlaversExileSelveTarm_transit_path = [
+SlaversExileSelvetarm_transit_path = [
     {
         "map": 566,
         "bless": (-20294.00, 6576.00),
@@ -76,7 +76,7 @@ SlaversExileSelveTarm_transit_path = [
     },
 ]
 
-SlaversExileSelveTarm_transit_path2 = [
+SlaversExileSelvetarm_transit_path2 = [
     {
         "map" : 577,
         "path": [
@@ -90,6 +90,6 @@ SlaversExileSelveTarm_transit_path2 = [
     },
 ]
 
-SlaversExileSelveTarm_ids = {
+SlaversExileSelvetarm_ids = {
     "outpost_id": 639,
 }
