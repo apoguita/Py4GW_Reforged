@@ -393,6 +393,8 @@ CATALOG: tuple[CatalogEntry, ...] = (
     CatalogEntry('White Mantle Emblem', 460, 'Trophies', ''),
     CatalogEntry('Worn Belt', 427, 'Trophies', ''),
     CatalogEntry('Confessors Orders', 35123, 'Reward Trophies', 'Prophecies'),
+    CatalogEntry('Birds Eye Compass', 38614, 'Reward Trophies', 'Prophecies'),
+    CatalogEntry('Stalkers Ration', 38613, 'Reward Trophies', 'Prophecies'),
     CatalogEntry('Torment Gemstone', 21131, 'Reward Trophies', 'Nightfall'),
     CatalogEntry('Margonite Gemstone', 21128, 'Reward Trophies', 'Nightfall'),
     CatalogEntry('Stygian Gemstone', 21129, 'Reward Trophies', 'Nightfall'),
