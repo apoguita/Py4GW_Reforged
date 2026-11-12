@@ -1,32 +1,41 @@
 from __future__ import annotations
 
 import importlib
+import math
 import os
+import random
 import time
 from collections.abc import Callable
 from collections.abc import Mapping
 from collections.abc import Sequence
+from typing import NamedTuple
 from typing import TypeAlias
 
 import PyImGui
 import PySystem
 
 from Py4GWCoreLib import GLOBAL_CACHE
+from Py4GWCoreLib.Agent import Agent
+from Py4GWCoreLib.AgentArray import AgentArray
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.Map import Map
+from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.enums import Range
+from Py4GWCoreLib.enums import SharedCommandType
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
+from Py4GWCoreLib.enums_src.Region_enums import District
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
     CONSET_UPKEEPS,
     CONSUMABLE_UPKEEPS,
 )
+from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
 
 MODULE_NAME = 'PyQuishAI BT'
-MODULE_ICON = 'Textures\\Module_Icons\\PyQuishAI.png'
+MODULE_ICON = 'Assets/Textures/Module_Icons/PyQuishAI.png'
 MODULE_CATEGORY = 'Automation'
 MODULE_TAGS = ['Bot', 'Vanquish', 'BehaviorTree']
 
@@ -41,6 +50,48 @@ TEXTURE = os.path.join(
     'VQ_Helmet.png',
 )
 
+# Vanquish staging: Embark Beach is where the vanquish signposts live. In an
+# outpost the followers do not walk after the leader, so the dialog fan-out is
+# what moves them. Travel itself stays local: a formed party travels with its
+# leader.
+EMBARK_BEACH_MAP_ID = 857
+GREAT_TEMPLE_MAP_ID = 248
+# Anchor for the vanquish signpost in Embark Beach. It ranks the named signposts
+# and doubles as the fallback point when the name cannot be resolved.
+VANQUISH_SIGNPOST: tuple[float, float] = (-428.0, -3439.0)
+# Embark Beach holds several signposts, so the target is resolved by name and
+# then narrowed to the one nearest the player instead of using a fixed spot.
+ZQUEST_SIGNPOST_NAME = 'vanquish'
+# The quest reward NPC in the Great Temple of Balthazar is "Zehnchu [Zaishen
+# Challenge]". Its agent id changes between maps and sessions and it stands among
+# other NPCs, so it is resolved by that unique name; the coordinate is kept only
+# as the fallback point for the point-based node.
+ZQUEST_REWARD_NPC: tuple[float, float] = (-5019.0, -5496.0)
+ZQUEST_REWARD_NPC_NAME = 'zehnchu'
+# Staging district. Pick one at random per travel so the party is spread over
+# the low-traffic channels instead of piling into a single one. Only the district
+# channel is used; the instance number stays at 0.
+STAGING_DISTRICTS: tuple[int, ...] = (
+    District.EuropeItalian.value,
+    District.EuropeSpanish.value,
+    District.EuropePolish.value,
+    District.EuropeRussian.value,
+)
+# 0-based button pressed on the signpost dialog; the vanquish selector may need
+# another entry once the real list is known.
+ZQUEST_DIALOG_BUTTON = 0
+# Acknowledgement budget for the shared-message commands; a healthy client
+# answers in well under a second.
+ZQUEST_MESSAGE_TIMEOUT_MS = 10_000
+# Time allowed for the signpost to show up in the agent array before falling
+# back to the leader-first approach.
+ZQUEST_AGENT_WAIT_MS = 5_000
+# Every account walks to the signpost on its own; this only bounds a wedged one.
+ZQUEST_DIALOG_TIMEOUT_MS = 100_000
+# Settle after the dialog before the next step travels: a map change cancels an
+# open dialog, and the handler marks its message finished as soon as it presses.
+ZQUEST_DIALOG_SETTLE_MS = 500
+
 # Consumable upkeep. The core list already separates the conset trio from the
 # plain pcons, so the same split the Reputation Farmer uses is reused here
 # rather than hard-coding model IDs a second time.
@@ -49,6 +100,13 @@ PCON_UPKEEPS: tuple[int, ...] = tuple(
 )
 
 CONSET_MODEL_IDS: tuple[int, ...] = tuple(int(model_id) for model_id in CONSET_UPKEEPS)
+
+# Built once: `_display_name` runs for every consumable row on every frame, and
+# a linear scan over the ~2.4k ModelID members per call is real UI cost.
+_MODEL_DISPLAY_NAMES: dict[int, str] = {
+    int(member.value): member.name.replace('_', ' ').replace(' Of ', ' of ')
+    for member in ModelID
+}
 
 
 def _display_name(model_id: int) -> str:
@@ -59,10 +117,7 @@ def _display_name(model_id: int) -> str:
     it cannot answer a reverse lookup without rebuilding an index the core
     already declines to expose.
     """
-    for member in ModelID:
-        if int(member.value) == int(model_id):
-            return member.name.replace('_', ' ').replace(' Of ', ' of ')
-    return f'Model {model_id}'
+    return _MODEL_DISPLAY_NAMES.get(int(model_id), f'Model {model_id}')
 
 
 # Selection state, populated by `_load_settings`. Defaults mirror the previous
@@ -83,9 +138,24 @@ PARTY_MORALE_MODEL_IDS: frozenset[int] = frozenset(
 # on at the tree level, so an item the player simply does not own is skipped
 # instead of failing the run.
 CONSUMABLE_RESTOCK_QUANTITY = 10
+SCROLL_OF_RESURRECTION_RESTOCK_QUANTITY = 25
 RESTOCK_SETTLE_MS = 750
+REMOTE_RESTOCK_TIMEOUT_MS = 15000
+# Party forming at the start of a run: disband, summon the group to the leader's
+# map and invite. Summon and invite share this budget per account batch.
+REMOTE_PARTY_TIMEOUT_MS = 15_000
+# Character gold kept on every account during the Prepare step. The shared
+# command reused here equalizes in both directions: it deposits the excess and
+# pulls from storage when the character is short.
+KEEP_GOLD_AMOUNT = 10_000
+REMOTE_KEEP_GOLD_TIMEOUT_MS = 15_000
+# Outpost exit and intermediate travels share the same budget.
+TRANSIT_TIMEOUT_MS = 45_000
 CONSUMABLE_RESTOCK_ITEMS: tuple[tuple[int, int], ...] = tuple(
-    (int(model_id), CONSUMABLE_RESTOCK_QUANTITY) for model_id in CONSUMABLE_UPKEEPS
+    (int(model_id), CONSUMABLE_RESTOCK_QUANTITY)
+    for model_id in CONSUMABLE_UPKEEPS
+) + (
+    (int(ModelID.Scroll_Of_Resurrection.value), SCROLL_OF_RESURRECTION_RESTOCK_QUANTITY),
 )
 
 _SETTINGS_SECTION = 'Settings'
@@ -95,182 +165,58 @@ _KEY_RESTOCK_PCONS = 'RestockPcons'
 _KEY_ACTIVATE_PCONS = 'ActivatePcons'
 _KEY_SELECTED_CONSET = 'SelectedConsets'
 _KEY_SELECTED_PCONS = 'SelectedPcons'
+_KEY_RESTOCK_SCROLL_OF_RESURRECTION = 'RestockScrollOfResurrection'
+_KEY_RESTOCK_MULTI_ACCOUNT = 'RestockMultiAccount'
+_KEY_KEEP_GOLD_ON_ACCOUNTS = 'KeepGoldOnAccounts'
+
+MAP_ROOT = os.path.join(
+    PySystem.Console.get_projects_path(),
+    'Sources',
+    'aC_Scripts',
+    'PyQuishAI_maps',
+)
+
+
+def _scan_map_catalog() -> dict[str, tuple[str, ...]]:
+    """Build the region -> map catalog from the map pack on disk.
+
+    Runs once per widget load, so adding or removing a map file only needs a
+    widget reload. Regions are the subfolders, maps are their `.py` files;
+    `__init__.py`, private files and `__pycache__` are skipped. An empty region
+    folder is dropped so the map combo never resolves to nothing.
+    """
+    catalog: dict[str, tuple[str, ...]] = {}
+    try:
+        with os.scandir(MAP_ROOT) as region_entries:
+            regions = sorted(region_entries, key=lambda entry: entry.name)
+    except OSError:
+        return catalog
+
+    for region_entry in regions:
+        if not region_entry.is_dir() or region_entry.name == '__pycache__':
+            continue
+        try:
+            with os.scandir(region_entry.path) as file_entries:
+                files = sorted(file_entries, key=lambda entry: entry.name)
+        except OSError:
+            continue
+        maps = tuple(
+            os.path.splitext(entry.name)[0]
+            for entry in files
+            if entry.is_file()
+            and entry.name.endswith('.py')
+            and not entry.name.startswith('_')
+        )
+        if maps:
+            catalog[region_entry.name] = maps
+    return catalog
+
+
+# The map modules stay the source of truth for paths and identifiers; this index
+# is only the discovery layer the UI walks.
+MAP_CATALOG: dict[str, tuple[str, ...]] = _scan_map_catalog()
 
 Coordinate: TypeAlias = tuple[float, float]
-
-
-# Static discovery avoids scanning the source tree every frame. The map modules remain
-# the source of truth for paths and map identifiers.
-MAP_CATALOG: dict[str, tuple[str, ...]] = {
-    'EOTN_Charr_Homelands': (
-        'Dalada_Uplands',
-    ),
-    'EOTN_Far_Silverpeaks': (
-        'Drakkar_Lake',
-        'Ice_Cliff_Chasms',
-        'Norrhart_Domains',
-        'Varajar_Fells',
-    ),
-    'EOTN_Tarnished_Coast': (
-        'AlcaziaTangle',
-        'ArborBay',
-        'MagusStones',
-        'RivenEarth',
-        'VerdantCascades',
-    ),
-    'Factions_EchovaldForest': (
-        'Arborstone',
-        'DrazachThicket',
-        'Ferndale',
-        'MelandrusHope',
-        'MorostavTrail',
-        'MourningVeilFalls',
-        'TheEternalGrove',
-    ),
-    'Factions_KainengCity': (
-        'BukdekByway',
-        'NahpuiQuarter',
-        'PongmeiValley',
-        'RaisuPalace',
-        'ShadowsPassage',
-        'ShenzunTunnels',
-        'SunjiangDistrict',
-        'TahnnakiTemple',
-        'WajjunBazaar',
-        'XaquangSkyway',
-    ),
-    'Factions_ShingJeaIsland': (
-        'HaijuLagoon',
-        'JayaBluffs',
-        'KinyaProvince',
-        'MinisterChosEstate',
-        'PanjiangPeninsula',
-        'SaoshangTrail',
-        'SunquaVale',
-        'ZenDaijun',
-    ),
-    'Factions_TheJadeSea': (
-        'Archipelagos',
-        'BoreasSeabed',
-        'GyalaHatchery',
-        'MaishangHills',
-        'MountQinkai',
-        'RheasCrater',
-        'SilentSurf',
-        'UnwakingWaters',
-    ),
-    'NF_Desolation': (
-        'CrystalOverlook',
-        'JokosDomain',
-        'PoisonedOutcrops',
-        'TheAlkaliPan',
-        'TheRupturedHeart',
-        'TheShatteredRavines',
-        'TheSulfurousWastes',
-    ),
-    'NF_Istan': (
-        'CliffsOfDohjok',
-        'FahranurTheFirstCity',
-        'IssnurIsles',
-        'LahtendaBog',
-        'MehtaniKeys',
-        'PlainsofJarin',
-        'ZehlonReach',
-    ),
-    'NF_Kourna': (
-        'ArkjokWard',
-        'BahdokCaverns',
-        'BarbarousShore',
-        'DejarinEstate',
-        'GandaraTheMoonFortress',
-        'JahaiBluffs',
-        'MargaCoast',
-        'SunwardMarches',
-        'TheFloodplainOfMahnkelon',
-        'TuraisProcession',
-    ),
-    'NF_Vabbi': (
-        'ForumHighlands',
-        'GardenOfSeborhin',
-        'HoldingsOfChokhin',
-        'ResplendentMakuun',
-        'TheHiddenCityOfAhdashim',
-        'TheMirrorOfLyss',
-        'VehjinMines',
-        'VehtendiValley',
-        'WildernessOfBahdza',
-        'YatendiCanyons',
-    ),
-    'Proph_Ascalon': (
-        'AscalonFoothills',
-        'DiessaLowlands',
-        'DragonsGullet',
-        'EasternFrontier',
-        'FlameTempleCorridor',
-        'OldAscalon',
-        'PockmarkFlats',
-        'RegentValley',
-        'TheBreach',
-    ),
-    'Proph_CrystalDesert': (
-        'DivinersAscent',
-        'ProphetsPath',
-        'SaltFlats',
-        'SkywardReach',
-        'TheAridSea',
-        'TheScar',
-        'VultureDrifts',
-    ),
-    'Proph_Kryta': (
-        'CursedLands',
-        'KessexPeak',
-        'NeboTerrace',
-        'NorthKrytaProvince',
-        'ScoundrelsRise',
-        'StingrayStrand',
-        'TalmarkWilderness',
-        'TearsOfTheFallen',
-        'TheBlackCurtain',
-        'TwinSerpentLakes',
-        'WatchtowerCoast',
-    ),
-    'Proph_Maguuma': (
-        'DryTop',
-        'EttinsBack',
-        'MajestysRest',
-        'MamnoonLagoon',
-        'ReedBog',
-        'SageLands',
-        'Silverwood',
-        'TangleRoot',
-        'TheFalls',
-    ),
-    'Proph_NorthernShiverpeaks': (
-        'AnvilRock',
-        'DeldrimorBowl',
-        'GriffonsMouth',
-        'IronHorseMine',
-        'TravelersVale',
-    ),
-    'Proph_RingOfFireIsland': (
-        'PerditionRock',
-    ),
-    'Proph_SouthernShiverpeaks': (
-        'DeldrimorBowl',
-        'DreadnoughtsDrift',
-        'FrozenForest',
-        'GrenthsFootprint',
-        'IceDome',
-        'IceFloe',
-        'LornarsPass',
-        'MineralSprings',
-        'SnakeDance',
-        'SpearheadPeak',
-        'TalusChute',
-        'TascasDemise',
-        'WitmansFolly',
-    ),
-}
 
 
 class VanquishDefinition:
@@ -372,9 +318,10 @@ loaded_region_index = 0
 loaded_map_index = 0
 loop_runs = False
 auto_loot = True
-forward_clear_radius = 2500
-reverse_clear_radius_1 = 3500
-reverse_clear_radius_2 = 5000
+take_zquest = True
+forward_clear_radius = 3000
+reverse_clear_radius_1 = 10000
+reverse_clear_radius_2 = 10000
 
 # Consumable upkeep state (persisted per account, same keys as the other BTs).
 _settings = Settings(f'{INI_PATH}/{INI_FILENAME}', 'account')
@@ -383,11 +330,15 @@ _restock_conset = True
 _activate_conset = True
 _restock_pcons = True
 _activate_pcons = True
+_restock_scroll_of_resurrection = True
+_restock_multi_account = True
+_keep_gold_on_accounts = True
 
 initialized = False
 ini_key = ''
 botting_tree: BottingTree | None = None
 pending_rebuild = False
+_stop_after_sweeps = False
 last_load_error = ''
 stats = SessionStats()
 
@@ -421,6 +372,9 @@ def _load_settings() -> None:
     global _settings_loaded
     global _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons
+    global _restock_scroll_of_resurrection
+    global _restock_multi_account
+    global _keep_gold_on_accounts
     global _selected_conset, _selected_pcons
 
     if _settings_loaded:
@@ -429,6 +383,9 @@ def _load_settings() -> None:
     _activate_conset = _settings.get_bool(_SETTINGS_SECTION, _KEY_ACTIVATE_CONSET, True)
     _restock_pcons = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_PCONS, True)
     _activate_pcons = _settings.get_bool(_SETTINGS_SECTION, _KEY_ACTIVATE_PCONS, True)
+    _restock_scroll_of_resurrection = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_SCROLL_OF_RESURRECTION, True)
+    _restock_multi_account = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_MULTI_ACCOUNT, True)
+    _keep_gold_on_accounts = _settings.get_bool(_SETTINGS_SECTION, _KEY_KEEP_GOLD_ON_ACCOUNTS, True)
 
     stored_conset = _settings.get_str(_SETTINGS_SECTION, _KEY_SELECTED_CONSET, '')
     if stored_conset.strip():
@@ -446,6 +403,9 @@ def _save_settings() -> None:
     _settings.set(_SETTINGS_SECTION, _KEY_ACTIVATE_CONSET, _activate_conset)
     _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_PCONS, _restock_pcons)
     _settings.set(_SETTINGS_SECTION, _KEY_ACTIVATE_PCONS, _activate_pcons)
+    _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_SCROLL_OF_RESURRECTION, _restock_scroll_of_resurrection)
+    _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_MULTI_ACCOUNT, _restock_multi_account)
+    _settings.set(_SETTINGS_SECTION, _KEY_KEEP_GOLD_ON_ACCOUNTS, _keep_gold_on_accounts)
     _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_CONSET, _serialize_model_id_list(_selected_conset))
     _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_PCONS, _serialize_model_id_list(_selected_pcons))
 
@@ -472,6 +432,8 @@ def _consumable_restock_items() -> tuple[tuple[int, int], ...]:
         wanted.update(model_id for model_id in CONSET_MODEL_IDS if model_id in _selected_conset)
     if _restock_pcons:
         wanted.update(model_id for model_id in PCON_UPKEEPS if model_id in _selected_pcons)
+    if _restock_scroll_of_resurrection:
+        wanted.add(int(ModelID.Scroll_Of_Resurrection.value))
     return tuple(
         (model_id, quantity)
         for model_id, quantity in CONSUMABLE_RESTOCK_ITEMS
@@ -567,16 +529,156 @@ def _restock_retry_guard() -> BehaviorTree:
     )
 
 
+def _remote_account_emails() -> list[str]:
+    """Emails of the other clients in the shared-memory group, self excluded.
+
+    Each receiver resolves the command through its own Messaging widget. The
+    sender is skipped because its bags are already handled by the local nodes.
+    """
+    try:
+        sender_email = str(Player.GetAccountEmail() or '')
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData() or []
+    except Exception:
+        return []
+
+    recipients: list[str] = []
+    for account in accounts:
+        email = str(getattr(account, 'AccountEmail', '') or '').strip()
+        if not email or email == sender_email or email in recipients:
+            continue
+        recipients.append(email)
+    return recipients
+
+
+def _remote_restock_commands() -> tuple[tuple[SharedCommandType, int], ...]:
+    """Shared restock commands for the enabled groups, one quantity each.
+
+    The shared command surface is aggregate: `RestockConset` and
+    `RestockAllPcons` restock a fixed model list with a single quantity, so the
+    per-item checklist cannot travel over the bus. Quantities, however, mirror
+    the local target: `RestockAllPcons` runs at the pcon quantity and the scroll,
+    which that handler also moves, is topped up to its own target afterwards.
+    """
+    items = _consumable_restock_items()
+    if not items:
+        return ()
+
+    conset_ids = {int(model_id) for model_id in CONSET_MODEL_IDS}
+    pcon_ids = {int(model_id) for model_id in PCON_UPKEEPS}
+    scroll_id = int(ModelID.Scroll_Of_Resurrection.value)
+
+    def _highest_quantity(model_ids: set[int]) -> int:
+        quantities = [int(quantity) for model_id, quantity in items if int(model_id) in model_ids]
+        return max(quantities) if quantities else 0
+
+    commands: list[tuple[SharedCommandType, int]] = []
+
+    conset_quantity = _highest_quantity(conset_ids)
+    if conset_quantity > 0:
+        commands.append((SharedCommandType.RestockConset, conset_quantity))
+
+    pcon_quantity = _highest_quantity(pcon_ids)
+    if pcon_quantity > 0:
+        commands.append((SharedCommandType.RestockAllPcons, pcon_quantity))
+
+    scroll_quantity = _highest_quantity({scroll_id})
+    if scroll_quantity > 0:
+        # RestockAllPcons already pulled the scroll up to the pcon quantity; this
+        # pass raises it to its own, higher target.
+        commands.append((SharedCommandType.RestockResurrectionScroll, scroll_quantity))
+
+    return tuple(commands)
+
+
+def _remote_restock_node() -> BehaviorTree:
+    """Restock the other accounts in the group through the shared command bus.
+
+    Requires the `Messaging` widget on every receiver: without it the message is
+    never consumed and the dispatch wait runs into its timeout. Recipients and
+    commands are resolved when the step ticks, so toggles and party changes apply
+    to the next run without a plan rebuild.
+    """
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not _restock_multi_account:
+            return BT.Succeeder('Remote Restock Disabled')
+        recipients = _remote_account_emails()
+        if not recipients:
+            return BT.Succeeder('Remote Restock No Recipients')
+        commands = _remote_restock_commands()
+        if not commands:
+            return BT.Succeeder('Remote Restock Disabled')
+        return BT.Sequence(
+            name='Restock Other Accounts',
+            children=[
+                RoutinesBT.Shared.SendAndWait(
+                    command=command,
+                    params=(float(quantity), 0.0, 0.0, 0.0),
+                    recipients=recipients,
+                    refs_blackboard_key=f'__remote_restock_refs_{int(command)}',
+                    timeout_ms=REMOTE_RESTOCK_TIMEOUT_MS,
+                    poll_interval_ms=100,
+                    log=True,
+                    aftercast_ms=100,
+                )
+                for command, quantity in commands
+            ],
+        )
+
+    return BT.Subtree(name='Restock Other Accounts', subtree_fn=_build)
+
+
+def _keep_gold_node() -> BehaviorTree:
+    """Leave `KEEP_GOLD_AMOUNT` on every account during the preparation.
+
+    Reuses the existing `WithdrawGold` shared command, which equalizes in both
+    directions: it deposits the excess over the target and withdraws from storage
+    when the character is short. Recipients resolve it through their own
+    `Messaging` widget, so that widget has to be running on every client.
+    """
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not _keep_gold_on_accounts:
+            return BT.Succeeder('Keep Gold Disabled')
+
+        children: list[BehaviorTree] = [
+            BT.EqualizeGold(target_gold=KEEP_GOLD_AMOUNT),
+        ]
+
+        recipients = _remote_account_emails()
+        if recipients:
+            children.append(
+                RoutinesBT.Shared.SendAndWait(
+                    command=SharedCommandType.WithdrawGold,
+                    params=(float(KEEP_GOLD_AMOUNT), 1.0, 0.0, 0.0),
+                    recipients=recipients,
+                    refs_blackboard_key='__keep_gold_refs',
+                    timeout_ms=REMOTE_KEEP_GOLD_TIMEOUT_MS,
+                    poll_interval_ms=100,
+                    log=True,
+                    aftercast_ms=100,
+                )
+            )
+
+        return BT.Sequence(name='Keep Gold On Accounts', children=children)
+
+    return BT.Subtree(name='Keep Gold On Accounts', subtree_fn=_build)
+
+
 def _selected_region() -> str:
+    if not REGIONS:
+        return ''
     return REGIONS[max(0, min(region_index, len(REGIONS) - 1))]
 
 
 def _selected_maps() -> tuple[str, ...]:
-    return MAP_CATALOG[_selected_region()]
+    return MAP_CATALOG.get(_selected_region(), ())
 
 
 def _selected_map() -> str:
     maps = _selected_maps()
+    if not maps:
+        return ''
     return maps[max(0, min(map_index, len(maps) - 1))]
 
 
@@ -605,7 +707,14 @@ def _load_transit_data(module: object, map_name: str) -> tuple[tuple[int, ...], 
 def load_selected_definition() -> VanquishDefinition:
     region = _selected_region()
     map_name = _selected_map()
+    if not region or not map_name:
+        raise ValueError(
+            f'No PyQuish map found under {MAP_ROOT}. Select a region and a map in Config.'
+        )
     module_name = f'{MAP_PACKAGE}.{region}.{map_name}'
+    # The map pack is data, so drop the cached copy and re-read the file: a live
+    # edit is picked up on the next tree build after a widget reload.
+    importlib.invalidate_caches()
     try:
         module = importlib.import_module(module_name)
     except ModuleNotFoundError as error:
@@ -619,6 +728,7 @@ def load_selected_definition() -> VanquishDefinition:
                 f'Copy the NF_Desolation map pack into {MAP_PACKAGE.replace(".", "/")}.'
             ) from error
         raise
+    module = importlib.reload(module)
 
     ids = getattr(module, f'{map_name}_ids', None)
     if not isinstance(ids, Mapping):
@@ -797,18 +907,40 @@ def _build_keyword_action(
 
     if key == 'bless':
         faction, dialog_id = _blessing_parameters(definition.region)
-        child = BT.TakeBlessing(
-            pos=_coordinate(value, 'bless'),
-            faction=faction,
-            blessing_dialog_id=dialog_id,
-            multi_account=False,
-            log=True,
-        )
+        pos = _coordinate(value, 'bless')
+        if faction:
+            child = BT.TakeBlessing(
+                pos=pos,
+                faction=faction,
+                blessing_dialog_id=dialog_id,
+                multi_account=True,
+                log=True,
+            )
+        else:
+            # BT.TakeBlessing's no-faction multibox fan-out sends
+            # SharedCommandType.GetBlessing, whose ProcessMessages case is a
+            # no-op in Widgets/System/Messaging.py. The followers never receive
+            # the dialog, and the unconsumed message wedges their inbox, so
+            # later commands (restock, travel, resign) are never dispatched.
+            # Take the shrine through the fan-out commands whose receivers ARE
+            # wired instead, mirroring Reputation Farmer Multibox BT.
+            child = BT.Sequence(
+                name='BlessShrine',
+                children=[
+                    BT.Move(pos, tolerance=150.0, log=True),
+                    BT.TargetNearestAndAutoDialog(
+                        pos,
+                        buttons=0,
+                        multi_account=True,
+                        log=True,
+                    ),
+                ],
+            )
     elif key == 'gadget':
         child = BT.MoveAndInteractWithGadget(
             pos=_coordinate(value, 'gadget'),
             interaction_count=1,
-            multi_account=False,
+            multi_account=True,
             log=True,
         )
     elif key == 'npc':
@@ -818,11 +950,11 @@ def _build_keyword_action(
             log=True,
         )
     elif key == 'dialog':
-        child = BT.SendDialog(dialog_id=_dialog_id(value), multi_account=False, log=True)
+        child = BT.SendDialog(dialog_id=_dialog_id(value), multi_account=True, log=True)
     elif key == 'wait':
         child = BT.Wait(duration_ms=_integer(value, 'wait'), log=False)
     elif key == 'map':
-        child = BT.WaitForMapLoad(map_id=_integer(value, 'map'), timeout_ms=45_000)
+        child = BT.WaitForMapLoad(map_id=_integer(value, 'map'), timeout_ms=TRANSIT_TIMEOUT_MS)
     elif key == 'dropbundle':
         child = BT.DropBundle(log=True)
     elif key == 'followmodel':
@@ -924,57 +1056,53 @@ def _reverse_path(path: Sequence[object]) -> list[object]:
     return reversed_segments
 
 
-def _build_transit_tree(definition: VanquishDefinition) -> BehaviorTree:
-    children: list[BehaviorTree] = []
+def _build_outpost_exit(definition: VanquishDefinition) -> BehaviorTree:
+    """Walk out of the outpost into the first map of the vanquish."""
+    first_target = definition.explorable_id
+    if definition.transit_ids and definition.transit_ids[0] > 0:
+        first_target = definition.transit_ids[0]
+    if first_target <= 0:
+        raise ValueError(f'No target map ID for the outpost exit of {definition.display_name}.')
+    return BT.MoveAndExitMap(
+        definition.outpost_path,
+        target_map_id=first_target,
+        timeout_ms=TRANSIT_TIMEOUT_MS,
+        log=True,
+    )
 
-    if definition.outpost_path:
-        first_target = definition.explorable_id
-        if definition.transit_ids and definition.transit_ids[0] > 0:
-            first_target = definition.transit_ids[0]
-        if first_target <= 0:
-            raise ValueError(f'No target map ID for the outpost exit of {definition.display_name}.')
-        children.append(
-            BT.MoveAndExitMap(
-                definition.outpost_path,
-                target_map_id=first_target,
-                timeout_ms=45_000,
-                log=True,
-            )
+
+def _build_transit_leg(definition: VanquishDefinition, index: int) -> BehaviorTree:
+    """Walk one intermediate map between the outpost exit and the vanquish map."""
+    if index < 0 or index >= len(definition.transit_paths):
+        return BT.Succeeder(name=f'NoTransitLeg:{index + 1}')
+
+    transit_path = definition.transit_paths[index]
+    next_map_id = definition.explorable_id
+    if index + 1 < len(definition.transit_ids) and definition.transit_ids[index + 1] > 0:
+        next_map_id = definition.transit_ids[index + 1]
+
+    if _is_plain_path(transit_path) and next_map_id > 0:
+        transit_move_path = _coordinate_path(transit_path, f'transit path {index + 1}')
+        return BT.MoveAndExitMap(
+            transit_move_path,
+            target_map_id=next_map_id,
+            timeout_ms=TRANSIT_TIMEOUT_MS,
+            log=True,
         )
 
-    for index, transit_path in enumerate(definition.transit_paths):
-        next_map_id = definition.explorable_id
-        if index + 1 < len(definition.transit_ids) and definition.transit_ids[index + 1] > 0:
-            next_map_id = definition.transit_ids[index + 1]
-
-        if _is_plain_path(transit_path) and next_map_id > 0:
-            transit_move_path = _coordinate_path(transit_path, f'transit path {index + 1}')
-            children.append(
-                BT.MoveAndExitMap(
-                    transit_move_path,
-                    target_map_id=next_map_id,
-                    timeout_ms=45_000,
-                    log=True,
-                )
-            )
-            continue
-
-        children.append(
-            _build_path_tree(
-                definition,
-                transit_path,
-                name=f'TransitPath:{index + 1}',
-                clear_radius=0.0,
-                combat_path=False,
-                skip_when_completed=False,
-            )
+    children: list[BehaviorTree] = [
+        _build_path_tree(
+            definition,
+            transit_path,
+            name=f'TransitPath:{index + 1}',
+            clear_radius=0.0,
+            combat_path=False,
+            skip_when_completed=False,
         )
-        if next_map_id > 0:
-            children.append(BT.WaitForMapLoad(map_id=next_map_id, timeout_ms=45_000))
-
-    if not children:
-        return BT.Succeeder(name='NoTransitRequired')
-    return BT.Sequence(name='TravelToVanquishMap', children=children)
+    ]
+    if next_map_id > 0:
+        children.append(BT.WaitForMapLoad(map_id=next_map_id, timeout_ms=TRANSIT_TIMEOUT_MS))
+    return BT.Sequence(name=f'TransitPath:{index + 1}', children=children)
 
 
 def _mark_run_started() -> BehaviorTree.NodeState:
@@ -998,44 +1126,59 @@ def _mark_run_completed() -> BehaviorTree.NodeState:
 
 
 def _build_completion_fallback() -> BehaviorTree:
+    """Stop the bot when the vanquish is still incomplete after both sweeps."""
     return BT.Sequence(
         name='VanquishIncomplete',
         children=[
             BT.LogMessage(
                 message=(
                     'The vanquish is still incomplete after both cleanup sweeps. '
-                    'Restarting the cleanup step from the current map.'
+                    'Stopping the bot.'
                 ),
                 module_name=MODULE_NAME,
             ),
-            BT.Failer(name='RetryCleanupSweeps'),
+            _action('RequestBotStop', _request_bot_stop),
         ],
     )
 
 
 def _build_run_preparation(definition: VanquishDefinition) -> BehaviorTree:
     children: list[BehaviorTree] = [
+        # Travel first, with the same helper the staging and reward steps use, so
+        # the outpost approach also picks a randomised low-traffic district. The
+        # hard-mode switch that `BT.Sequence(map_id_or_name=...)` used to apply
+        # after its own travel now rides along explicitly.
+        _build_travel_to_map(definition.outpost_id, 'Outpost'),
+        # The shared travel helper only waits for the map, while the outpost
+        # approach also has to wait for the party to finish loading before the
+        # restock and the exit start touching the outpost.
+        RoutinesBT.Party.WaitForPartyLoaded(
+            timeout_ms=REMOTE_PARTY_TIMEOUT_MS,
+            log=True,
+        ),
+        BT.SetHardMode(hard_mode=True),
         ensure_botting_tree().Config.Aggressive(
-            multi_account=False,
+            multi_account=True,
             auto_loot=auto_loot,
-            resurrection_scroll=False,
+            resurrection_scroll=True,
         ),
     ]
 
-    if _restock_conset or _restock_pcons:
+    if _restock_conset or _restock_pcons or _restock_scroll_of_resurrection:
         children.append(_runtime_restock_node())
+        if _restock_multi_account:
+            children.append(_remote_restock_node())
 
-    children.extend(
-        [
-            _action('RecordRunStart', _mark_run_started),
-            _build_transit_tree(definition),
-        ]
-    )
+    children.append(_keep_gold_node())
+    children.append(_action('RecordRunStart', _mark_run_started))
+
+    # The outpost exit belongs to the preparation; the intermediate travels are
+    # their own named step and only exist when the map really has transit paths.
+    if definition.outpost_path:
+        children.append(_build_outpost_exit(definition))
 
     return BT.Sequence(
         name=f'Prepare:{definition.map_name}',
-        map_id_or_name=definition.outpost_id,
-        hard_mode=True,
         children=children,
     )
 
@@ -1126,27 +1269,107 @@ def _build_cleanup_sweeps(definition: VanquishDefinition) -> BehaviorTree:
 
 
 def _build_run_completion(definition: VanquishDefinition) -> BehaviorTree:
-    return BT.Sequence(
-        name=f'Complete:{definition.map_name}',
-        children=[
-            _action('RecordRunCompletion', _mark_run_completed),
+    children: list[BehaviorTree] = [_action('RecordRunCompletion', _mark_run_completed)]
+
+    # The trip back is needed by the repeat loop, which starts from an outpost,
+    # and by the staging flow, which ends in Embark Beach so the next run starts
+    # from a staged position.
+    if loop_runs or take_zquest:
+        children.append(
             BT.Resign(
                 wait_for_map_load=True,
                 target_map_id=definition.outpost_id,
-                multi_account=False,
+                multi_account=True,
                 log=True,
-            ),
-        ],
+            )
+        )
+
+    return BT.Sequence(
+        name=f'Complete:{definition.map_name}',
+        children=children,
     )
+
+
+def _isolation_enabled() -> bool:
+    """Whether the botting tree isolates this account from the wider group.
+
+    Mirrors the `Account Isolation` checkbox of the botting tree UI. While it is
+    on, the shared-memory gate only delivers messages between accounts that share
+    a party or an isolation group, so a party that does not exist yet cannot be
+    formed over the bus.
+    """
+    tree = botting_tree
+    if tree is None:
+        return False
+    try:
+        return bool(tree.IsIsolationEnabled())
+    except Exception:
+        return False
+
+
+def _build_form_party() -> BehaviorTree:
+    """Disband, gather the group on the leader's map and invite everyone back.
+
+    `BT.CreateParty(multibox_invite=True)` is the owning wrapper for this flow:
+    `LeaveParty` first, then `SummonAllAccounts` for the accounts that are on a
+    different map (it travels them to the leader's outpost, or to the guild hall
+    when the leader is in one), and finally `InviteAllAccounts`. Running it as the
+    first step means every run starts from a known party state instead of
+    inheriting whatever the previous run left behind.
+
+    Skipped when `Account Isolation` is enabled: the shared-memory gate refuses
+    messages between accounts that are not in the same party or isolation group,
+    so with no party yet the summon and invite would be dropped (each refusal
+    logs a warning and returns -1, so the step would silently do nothing) while
+    the local `LeaveParty` still disbanded whatever was left.
+    """
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if _isolation_enabled():
+            return BT.Succeeder('Form Party Skipped: Account Isolation')
+        return BT.CreateParty(
+            multibox_invite=True,
+            timeout_ms=REMOTE_PARTY_TIMEOUT_MS,
+            poll_interval_ms=100,
+            log=True,
+        )
+
+    return BT.Subtree(name='Form Party', subtree_fn=_build)
 
 
 def get_execution_steps(definition: VanquishDefinition) -> list[tuple[str, Callable[[], BehaviorTree]]]:
     steps: list[tuple[str, Callable[[], BehaviorTree]]] = [
+        # Party first: staging and preparation both assume the group is formed.
+        ('Form Party', _build_form_party),
+    ]
+
+    # Staging is its own named step so Navigation shows it and it can be
+    # restarted on its own.
+    if take_zquest:
+        steps.append(
+            (
+                'Take ZQuest',
+                lambda: _build_zquest_staging(),
+            )
+        )
+
+    steps.append(
         (
             f'Prepare {definition.map_name}',
             lambda definition=definition: _build_run_preparation(definition),
-        ),
-    ]
+        )
+    )
+
+    # Only the intermediate travels get their own step, one per transit path; the
+    # outpost exit lives in Prepare, so maps with just an outpost path show none.
+    for index in range(len(definition.transit_paths)):
+        leg_number = index + 1
+        steps.append(
+            (
+                f'Transit path {leg_number}',
+                lambda definition=definition, index=index: _build_transit_leg(definition, index),
+            )
+        )
 
     point_number = 0
     action_number = 0
@@ -1201,6 +1424,16 @@ def get_execution_steps(definition: VanquishDefinition) -> list[tuple[str, Calla
             ),
         ]
     )
+
+    # Staging flow ends by claiming the reward and dissolving the party, so the
+    # run finishes in the guild hall instead of the temple.
+    if take_zquest:
+        steps.append(
+            (
+                'Take ZQuest Reward',
+                lambda: _build_zquest_reward(),
+            )
+        )
     return steps
 
 
@@ -1214,7 +1447,7 @@ def _configure_upkeep(tree: BottingTree) -> None:
     """
     tree.Config.ConfigureUpkeep(
         looting_enabled=auto_loot,
-        resurrection_scroll=False,
+        resurrection_scroll=True,
         enable_party_wipe_recovery=True,
         heroai_state_logging=True,
         heroai_state_log_interval_ms=5000,
@@ -1237,7 +1470,7 @@ def ensure_botting_tree() -> BottingTree:
             routine_name='PyQuishAISequence',
             repeat=loop_runs,
             reset=False,
-            multi_account=False,
+            multi_account=True,
             auto_loot=auto_loot,
             configure_fn=_configure_upkeep,
         )
@@ -1251,6 +1484,35 @@ def ensure_botting_tree() -> BottingTree:
 def _request_rebuild() -> None:
     global pending_rebuild
     pending_rebuild = True
+
+
+def _request_bot_stop(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+    """Ask the widget loop to stop the bot and keep the step alive until it does.
+
+    Returning RUNNING instead of failing is deliberate: a failure would make the
+    planner restart the current named step, and the stop has to run outside the
+    tree tick so `BottingTree.Stop` can reset the tree and restore the account
+    state safely.
+    """
+    global _stop_after_sweeps
+    _stop_after_sweeps = True
+    return BehaviorTree.NodeState.RUNNING
+
+
+def _apply_pending_stop() -> None:
+    """Stop the bot when the tree requested it, outside of the tree tick."""
+    global _stop_after_sweeps
+    if not _stop_after_sweeps:
+        return
+    _stop_after_sweeps = False
+    if botting_tree is None:
+        return
+    botting_tree.Stop()
+    PySystem.Console.Log(
+        MODULE_NAME,
+        'Vanquish incomplete after both cleanup sweeps. Bot stopped.',
+        PySystem.Console.MessageType.Warning,
+    )
 
 
 def _apply_pending_rebuild() -> None:
@@ -1292,11 +1554,321 @@ def _apply_pending_rebuild() -> None:
         )
 
 
+def _staging_district() -> int:
+    """Random low-traffic district channel for a staging travel."""
+    return int(random.choice(STAGING_DISTRICTS))
+
+
+def _build_travel_to_map(map_id: int, label: str) -> BehaviorTree:
+    """Travel to a map unless the party is already there.
+
+    Shared by the staging travel, the reward travel and the approach to the
+    vanquish outpost, so all three land in the same randomised low-traffic
+    district instead of the default one. Travel is local: a formed party travels
+    with its leader, and broadcasting a TravelToMap command per follower would
+    fight the party travel.
+    """
+
+    if map_id <= 0:
+        return BT.Succeeder(name=f'No{label}Travel')
+
+    def _is_current_map() -> bool:
+        return int(Map.GetMapID() or 0) == map_id
+
+    def _request_travel() -> BehaviorTree.NodeState:
+        Map.TravelToDistrict(map_id, _staging_district())
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BT.Selector(
+        name=f'Ensure{label}',
+        children=[
+            _condition(f'AlreadyIn{label}', _is_current_map),
+            BT.Sequence(
+                name=f'TravelTo{label}',
+                children=[
+                    _action(f'Request{label}Travel', _request_travel),
+                    BT.WaitForMapLoad(map_id=map_id),
+                ],
+            ),
+        ],
+    )
+
+
+def _nearest_living_agent(
+    position: tuple[float, float],
+    *,
+    name_filter: str = '',
+    max_distance: float = 0.0,
+) -> tuple[int, tuple[float, float]]:
+    """Nearest living, non-player agent to a point, as (agent_id, xy).
+
+    Players are excluded so a party member standing on the spot cannot be picked
+    instead of the NPC. Names come from `Agent.GetNameByID`, which returns an
+    empty string until the client has decoded the name, hence the retry gate the
+    callers wrap around this.
+    """
+    player_id = int(Player.GetAgentID() or 0)
+    best_id = 0
+    best_position = (0.0, 0.0)
+    best_distance = 0.0
+
+    for agent_id in AgentArray.GetAgentArray():
+        if agent_id == player_id or not Agent.IsLiving(agent_id):
+            continue
+        if Agent.IsPlayer(agent_id):
+            continue
+        if name_filter:
+            name = str(Agent.GetNameByID(agent_id) or '')
+            if name_filter not in name.lower():
+                continue
+        x, y = Agent.GetXY(agent_id)
+        distance = math.hypot(x - position[0], y - position[1])
+        if max_distance > 0.0 and distance > max_distance:
+            continue
+        if best_id == 0 or distance < best_distance:
+            best_id = int(agent_id)
+            best_position = (float(x), float(y))
+            best_distance = distance
+    return best_id, best_position
+
+
+def _leader_anchor() -> tuple[float, float]:
+    """Leader position, falling back to the staging anchor when it cannot be read.
+
+    `Player.GetXY` is the only source that reflects where the party actually is;
+    the staging anchor is the last resort for the frames where the map data is not
+    ready yet, so the resolver always has a usable reference.
+    """
+    try:
+        position = Player.GetXY()
+        if position:
+            return float(position[0]), float(position[1])
+    except Exception:
+        pass
+    return VANQUISH_SIGNPOST
+
+
+def _resolve_vanquish_signpost() -> tuple[int, tuple[float, float]]:
+    """Nearest 'Zaishen Vanquish' signpost to the leader.
+
+    Embark Beach holds several signposts, so the name alone does not pick one. The
+    closest to the leader is the one the party is actually going to walk to,
+    whichever side of the outpost it spawned on; a fixed anchor assumed one side.
+    The anchor stays as the reference for the frames where the position cannot be
+    read yet.
+    """
+    return _nearest_living_agent(_leader_anchor(), name_filter=ZQUEST_SIGNPOST_NAME)
+
+
+def _resolve_reward_npc() -> tuple[int, tuple[float, float]]:
+    """Reward NPC in the Great Temple of Balthazar, resolved by its name.
+
+    "Zehnchu [Zaishen Challenge]" is a single NPC standing among others, so the
+    name is the identity and no distance filter is needed; `Agent.GetNameByID`
+    may return an empty string until the client decodes it, which is what the
+    caller's retry gate is for.
+    """
+    return _nearest_living_agent(ZQUEST_REWARD_NPC, name_filter=ZQUEST_REWARD_NPC_NAME)
+
+
+class MultiboxDialogSpec(NamedTuple):
+    """Everything one multibox autodialog step needs."""
+
+    button: int
+    fallback_point: tuple[float, float]
+    agent_key: str
+    refs_key: str
+    resolve: Callable[[], tuple[int, tuple[float, float]]]
+
+
+_SIGNPOST_DIALOG = MultiboxDialogSpec(
+    button=ZQUEST_DIALOG_BUTTON,
+    fallback_point=VANQUISH_SIGNPOST,
+    agent_key='zquest_signpost_agent_id',
+    refs_key='zquest_dialog_refs',
+    resolve=_resolve_vanquish_signpost,
+)
+
+_REWARD_DIALOG = MultiboxDialogSpec(
+    button=ZQUEST_DIALOG_BUTTON,
+    fallback_point=ZQUEST_REWARD_NPC,
+    agent_key='zquest_reward_agent_id',
+    refs_key='zquest_reward_refs',
+    resolve=_resolve_reward_npc,
+)
+
+
+def _build_multibox_dialog(spec: MultiboxDialogSpec) -> BehaviorTree:
+    """Resolve an agent, fan the dialog out and wait for every account.
+
+    The command goes to every account, this client included, so one handler does
+    all the work: it walks to the agent, interacts by id and presses the button.
+    Nothing runs locally in parallel, which is why the leader behaves exactly
+    like the rest. When the agent cannot be resolved the point-based node takes
+    over and fans out the same dialog after walking there. Confirmation is a
+    message-dispatch wait, so it only proves each handler finished, not that the
+    game accepted the dialog.
+    """
+
+    def _resolve(node: BehaviorTree.Node) -> bool:
+        agent_id = int(spec.resolve()[0] or 0)
+        node.blackboard[spec.agent_key] = agent_id
+        return agent_id > 0
+
+    def _resolved_branch(node: BehaviorTree.Node) -> BehaviorTree:
+        agent_id = int(node.blackboard.get(spec.agent_key, 0) or 0)
+        if agent_id <= 0:
+            return _condition('DialogAgentMissing', lambda: False)
+        return BT.Sequence(
+            name='DispatchAndWaitDialog',
+            children=[
+                BT.Subtree(name='DispatchDialog', subtree_fn=_dispatch),
+                BT.Subtree(name='WaitDialogs', subtree_fn=_wait),
+            ],
+        )
+
+    def _fallback_branch(node: BehaviorTree.Node) -> BehaviorTree:
+        agent_id = int(node.blackboard.get(spec.agent_key, 0) or 0)
+        if agent_id > 0:
+            return _condition('DialogAgentAlreadyResolved', lambda: False)
+        return BT.TargetNearestAndAutoDialog(
+            spec.fallback_point,
+            buttons=spec.button,
+            multi_account=True,
+            log=True,
+        )
+
+    def _dispatch(node: BehaviorTree.Node) -> BehaviorTree:
+        agent_id = int(node.blackboard.get(spec.agent_key, 0) or 0)
+        if agent_id <= 0:
+            return BT.Succeeder('DialogDispatchSkipped')
+        return RoutinesBT.Shared.SendCommand(
+            command=SharedCommandType.TakeDialogWithTarget,
+            params=(float(agent_id), float(spec.button), 0.0, 0.0),
+            include_self=True,
+            refs_blackboard_key=spec.refs_key,
+            log=True,
+        )
+
+    def _wait(_node: BehaviorTree.Node) -> BehaviorTree:
+        return RoutinesBT.Shared.WaitCommandDispatch(
+            command=SharedCommandType.TakeDialogWithTarget,
+            refs_blackboard_key=spec.refs_key,
+            timeout_ms=ZQUEST_DIALOG_TIMEOUT_MS,
+            poll_interval_ms=250,
+            log=True,
+        )
+
+    return BT.Sequence(
+        name='MultiboxDialog',
+        children=[
+            BT.Selector(
+                name='FindDialogAgent',
+                children=[
+                    BehaviorTree(
+                        BehaviorTree.WaitUntilNode(
+                            name='WaitForDialogAgent',
+                            condition_fn=_resolve,
+                            throttle_interval_ms=250,
+                            timeout_ms=ZQUEST_AGENT_WAIT_MS,
+                        )
+                    ),
+                    BT.Succeeder('DialogAgentNotVisibleYet'),
+                ],
+            ),
+            BT.Selector(
+                name='DialogPath',
+                children=[
+                    BT.Subtree(name='ResolvedDialog', subtree_fn=_resolved_branch),
+                    BT.Subtree(name='FallbackDialog', subtree_fn=_fallback_branch),
+                ],
+            ),
+            BT.Wait(duration_ms=ZQUEST_DIALOG_SETTLE_MS),
+        ],
+    )
+
+
+def _build_zquest_staging() -> BehaviorTree:
+    """Travel to Embark Beach and take the vanquish quest from the signpost.
+
+    Runs before Prepare travels to the vanquish outpost. The step is only
+    included when `take_zquest` is on, and the UI keeps that toggle off while the
+    repeat loop is enabled.
+    """
+    return BT.Sequence(
+        name='TakeZQuest',
+        children=[
+            _build_travel_to_map(EMBARK_BEACH_MAP_ID, 'EmbarkBeach'),
+            _build_multibox_dialog(_SIGNPOST_DIALOG),
+        ],
+    )
+
+
+def _build_leave_party_and_travel_gh() -> BehaviorTree:
+    """Dissolve the party on every account and send them to the guild hall.
+
+    Mirrors HeroAI's "Leave & Travel to GH" command: every account, this client
+    included, receives LeaveParty and then TravelToGuildHall through its own
+    Messaging widget. That means the leader needs the widget enabled as well; if
+    it is off the leave is never acknowledged and the step fails after
+    `ZQUEST_MESSAGE_TIMEOUT_MS`.
+
+    The leave is awaited so every client is out of the party before the guild
+    hall travel is dispatched. The travel itself is fire-and-forget: a map load
+    takes longer than a message ack, and this is the last step of the plan.
+    """
+
+    def _remote_leave(_node: BehaviorTree.Node) -> BehaviorTree:
+        return RoutinesBT.Shared.SendAndWait(
+            command=SharedCommandType.LeaveParty,
+            include_self=True,
+            refs_blackboard_key='zquest_leave_refs',
+            timeout_ms=ZQUEST_MESSAGE_TIMEOUT_MS,
+            poll_interval_ms=250,
+            log=True,
+        )
+
+    def _remote_travel(_node: BehaviorTree.Node) -> BehaviorTree:
+        return RoutinesBT.Shared.SendCommand(
+            command=SharedCommandType.TravelToGuildHall,
+            include_self=True,
+            refs_blackboard_key='zquest_gh_refs',
+            log=True,
+        )
+
+    return BT.Sequence(
+        name='LeavePartyAndTravelGH',
+        children=[
+            BT.Subtree(name='RemoteLeaveParty', subtree_fn=_remote_leave),
+            BT.Subtree(name='RemoteTravelGH', subtree_fn=_remote_travel),
+        ],
+    )
+
+
+def _build_zquest_reward() -> BehaviorTree:
+    """Claim the quest reward in the Great Temple of Balthazar.
+
+    Runs after the run completed and resigned, so the party travels from the
+    vanquish outpost to the temple and claims the reward there. The dialog is
+    fanned out like the signpost one: every account walks to the reward NPC, and
+    the step only ends once all of them finished.
+    """
+    return BT.Sequence(
+        name='ZQuestReward',
+        children=[
+            _build_travel_to_map(GREAT_TEMPLE_MAP_ID, 'GreatTempleOfBalthazar'),
+            _build_multibox_dialog(_REWARD_DIALOG),
+            _build_leave_party_and_travel_gh(),
+        ],
+    )
+
+
 def _draw_config() -> None:
     global region_index
     global map_index
     global loop_runs
     global auto_loot
+    global take_zquest
     global forward_clear_radius
     global reverse_clear_radius_1
     global reverse_clear_radius_2
@@ -1323,9 +1895,14 @@ def _draw_config() -> None:
         _request_rebuild()
 
     PyImGui.separator()
-    new_loop_runs = PyImGui.checkbox('Repeat completed vanquish', loop_runs)
+    new_loop_runs = PyImGui.checkbox('Loop vanquish', loop_runs)
     if new_loop_runs != loop_runs:
         loop_runs = new_loop_runs
+        if loop_runs:
+            # A repeated full pass starts from the first step again, so staging
+            # would run on every cycle. Keeping both on makes no sense, and the
+            # pair is resolved here instead of guessing from the map at runtime.
+            take_zquest = False
         _request_rebuild()
 
     new_auto_loot = PyImGui.checkbox('Automatic looting', auto_loot)
@@ -1333,11 +1910,23 @@ def _draw_config() -> None:
         auto_loot = new_auto_loot
         _request_rebuild()
 
+    PyImGui.begin_disabled(loop_runs)
+    new_take_zquest = PyImGui.checkbox('Take ZQuest', take_zquest)
+    if new_take_zquest != take_zquest:
+        take_zquest = new_take_zquest
+        _request_rebuild()
+    PyImGui.end_disabled()
+    if loop_runs:
+        PyImGui.text_colored(
+            'Take ZQuest is off while Loop vanquish is enabled.',
+            (160, 160, 160, 255),
+        )
+
     PyImGui.separator()
-    PyImGui.text('Enemy sweep radii')
-    new_forward = max(1200, min(5000, PyImGui.input_int('Forward pass', forward_clear_radius)))
-    new_reverse_1 = max(1200, min(5000, PyImGui.input_int('Reverse pass 1', reverse_clear_radius_1)))
-    new_reverse_2 = max(1200, min(5000, PyImGui.input_int('Reverse pass 2', reverse_clear_radius_2)))
+    PyImGui.text('Enemy sweep radius')
+    new_forward = max(1200, min(10000, PyImGui.input_int('Forward pass', forward_clear_radius)))
+    new_reverse_1 = max(1200, min(10000, PyImGui.input_int('Reverse pass 1', reverse_clear_radius_1)))
+    new_reverse_2 = max(1200, min(10000, PyImGui.input_int('Reverse pass 2', reverse_clear_radius_2)))
     if (new_forward, new_reverse_1, new_reverse_2) != (
         forward_clear_radius,
         reverse_clear_radius_1,
@@ -1347,6 +1936,7 @@ def _draw_config() -> None:
         reverse_clear_radius_1 = new_reverse_1
         reverse_clear_radius_2 = new_reverse_2
         _request_rebuild()
+
     PyImGui.end_disabled()
 
 def _apply_consumable_upkeep_change() -> None:
@@ -1418,6 +2008,9 @@ def _draw_consumable_group(
 def _draw_consumables() -> None:
     global _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons
+    global _restock_scroll_of_resurrection
+    global _restock_multi_account
+    global _keep_gold_on_accounts
     global _selected_conset, _selected_pcons
 
     def _persist() -> None:
@@ -1487,6 +2080,46 @@ def _draw_consumables() -> None:
         _selected_pcons = updated_pcons
 
     PyImGui.separator()
+
+    PyImGui.text('Scroll Of Resurrection')
+    new_restock_scroll_of_resurrection = PyImGui.checkbox('Restock Scroll Of Resurrection from storage##group', _restock_scroll_of_resurrection)
+    if new_restock_scroll_of_resurrection != _restock_scroll_of_resurrection:
+        _restock_scroll_of_resurrection = new_restock_scroll_of_resurrection
+        _persist()
+
+    PyImGui.separator()
+
+    PyImGui.text('Multibox restock')
+    new_restock_multi_account = PyImGui.checkbox('Also restock the other accounts##group', _restock_multi_account)
+    if new_restock_multi_account != _restock_multi_account:
+        _restock_multi_account = new_restock_multi_account
+        _persist()
+    PyImGui.text_wrapped(
+        'The other accounts are restocked through the shared command bus, so the '
+        'Messaging widget must be enabled on every client. Each group uses the '
+        'same quantity as this account, but the bus cannot carry the per-item '
+        'checklist: remote clients restock their whole conset or pcon group.'
+    )
+
+    PyImGui.separator()
+
+    PyImGui.text('Gold')
+    new_keep_gold_on_accounts = PyImGui.checkbox(
+        f'Keep {KEEP_GOLD_AMOUNT} gold on every account##group',
+        _keep_gold_on_accounts,
+    )
+    if new_keep_gold_on_accounts != _keep_gold_on_accounts:
+        _keep_gold_on_accounts = new_keep_gold_on_accounts
+        _persist()
+    PyImGui.text_wrapped(
+        'Runs during the Prepare step, right after the restock: character gold '
+        'above the keep amount goes into storage, on this account and on the other '
+        'accounts of the group through the shared command bus. Accounts below the '
+        'keep amount are topped up from storage, so every client ends the step '
+        'with the same amount.'
+    )
+
+    PyImGui.separator()
     active = _enabled_consumable_upkeeps()
     if active:
         PyImGui.text(f'Upkeep active for {len(active)} consumable model(s).')
@@ -1506,8 +2139,10 @@ def _draw_help() -> None:
     PyImGui.text_wrapped('Select a map in Config, then start it from the Main tab.')
     PyImGui.text_wrapped('Every route coordinate is a named planner step: Point 1, Point 2, and so on.')
     PyImGui.text_wrapped('A failed movement or party-wipe recovery restarts the current point instead of the full route.')
-    PyImGui.text_wrapped('Choose the Prepare step in Navigation to force a complete restart from the outpost.')
+    PyImGui.text_wrapped('Choose the first step in Navigation to restart from staging; Prepare starts from the outpost.')
+    PyImGui.text_wrapped('Form Party disbands, summons the other accounts to the leader map and invites them back before every run; it is skipped while Account Isolation is enabled.')
     PyImGui.text_wrapped('The bot performs the forward route, followed by up to two reverse sweeps if foes remain.')
+    PyImGui.text_wrapped('Take ZQuest travels to Embark Beach and takes the vanquish quest from the signpost before each run.')
     PyImGui.text_wrapped('Consumable upkeep is configured in the Consumables tab: consets and pcons are separated.')
     PyImGui.text_wrapped('Enable Restock to pull consumables from storage into bags during each Prepare step.')
 
@@ -1575,6 +2210,7 @@ def main() -> None:
             return
         initialized = True
 
+    _apply_pending_stop()
     _apply_pending_rebuild()
     tree = ensure_botting_tree()
     tree.tick()
