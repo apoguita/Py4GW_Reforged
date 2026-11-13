@@ -176,6 +176,20 @@ class BottingTree(
 
         PySystem.Console.Log('BottingTree', 'Botting tree started.', PySystem.Console.MessageType.Info)
 
+    def _release_runtime_state(self) -> None:
+        """Hand back what `Start` took over, without touching the planner state.
+
+        Shared by `Stop` and by the planner completion paths in `ticks.py`: a run
+        that ends on its own has to restore the account exactly like a manual
+        stop. Without it the HeroAI widget disabled for headless mode stayed off
+        and a later `Stop()` could not fix it, because that method is guarded by
+        `self.started`.
+        """
+        self.RestoreWidgetStates()
+        self.RestoreAutoInventoryHandlerState()
+        self._restore_heroai_widget_after_headless()
+        self._sync_multibox_heroai_widget(False)
+
     def Stop(self):
         if self.started:
             self.started = False
@@ -183,10 +197,7 @@ class BottingTree(
             self.ClearPendingMessages()
             self.RestoreAccountIsolation()
             self.Reset()
-            self.RestoreWidgetStates()
-            self.RestoreAutoInventoryHandlerState()
-            self._restore_heroai_widget_after_headless()
-            self._sync_multibox_heroai_widget(False)
+            self._release_runtime_state()
 
             PySystem.Console.Log('BottingTree', 'Botting tree stopped and reset.', PySystem.Console.MessageType.Info)
 
