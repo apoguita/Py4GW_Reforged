@@ -29,7 +29,13 @@ def _edit_color(label: str, color: int) -> int:
 def _draw_skillbar(controller: SkillbarPlusController) -> None:
     config = controller.config
     PyImGui.text_wrapped("Recharge timers, effect backgrounds, and duration bars drawn over the in-game skillbar.")
+    enabled = PyImGui.checkbox("Enable skillbar overlay", config.skillbar_enabled)
+    if enabled != config.skillbar_enabled:
+        _set(controller, "skillbar_enabled", enabled)
+    if not config.skillbar_enabled:
+        PyImGui.text_colored("Overlay hidden in game. The settings below are kept.", _MUTED)
     PyImGui.separator()
+    PyImGui.begin_disabled(not config.skillbar_enabled)
     value = PyImGui.slider_int("Recharge font size", config.skill_font_size, 10, 100)
     if value != config.skill_font_size:
         _set(controller, "skill_font_size", value)
@@ -62,17 +68,26 @@ def _draw_skillbar(controller: SkillbarPlusController) -> None:
         offset = PyImGui.input_int("Duration bar Y offset", config.duration_offset)
         if offset != config.duration_offset:
             _set(controller, "duration_offset", offset)
+    PyImGui.end_disabled()
 
 
 def _draw_effects(controller: SkillbarPlusController) -> None:
     config = controller.config
     PyImGui.text_wrapped("Show remaining durations on the game's active-effect frames.")
+    enabled = PyImGui.checkbox("Enable effect duration overlay", config.effects_enabled)
+    if enabled != config.effects_enabled:
+        _set(controller, "effects_enabled", enabled)
+    if not config.effects_enabled:
+        PyImGui.text_colored("Durations hidden in game. The settings below are kept.", _MUTED)
+    PyImGui.separator()
+    PyImGui.begin_disabled(not config.effects_enabled)
     value = PyImGui.slider_int("Effects font size", config.effects_font_size, 5, 50)
     if value != config.effects_font_size:
         _set(controller, "effects_font_size", value)
     color = _edit_color("Background", config.effects_background)
     if color != config.effects_background:
         _set(controller, "effects_background", color)
+    PyImGui.end_disabled()
 
 
 def _draw_autocast(controller: SkillbarPlusController) -> None:
