@@ -73,6 +73,7 @@ def load() -> model.SkillbarPlusConfig:
     if not _has_new_values(settings):
         _migrate_legacy(config, settings)
 
+    config.skillbar_enabled = settings.get_bool("Skillbar", "skillbar_enabled", config.skillbar_enabled)
     config.skill_font_size = settings.get_int("Skillbar", "skill_font_size", config.skill_font_size)
     config.draw_background = settings.get_bool("Skillbar", "draw_background", config.draw_background)
     config.background_color = settings.get_int("Skillbar", "background_color", config.background_color)
@@ -83,6 +84,7 @@ def load() -> model.SkillbarPlusConfig:
     config.duration_background = settings.get_int("Skillbar", "duration_background", config.duration_background)
     config.duration_foreground = settings.get_int("Skillbar", "duration_foreground", config.duration_foreground)
     config.duration_offset = settings.get_int("Skillbar", "duration_offset", config.duration_offset)
+    config.effects_enabled = settings.get_bool("Effects", "effects_enabled", config.effects_enabled)
     config.effects_font_size = settings.get_int("Effects", "font_size", config.effects_font_size)
     config.effects_background = settings.get_int("Effects", "background", config.effects_background)
     config.auto_cast_alt_right_click = settings.get_bool(
@@ -98,6 +100,7 @@ def save(config: model.SkillbarPlusConfig, settings=None) -> None:
     if target is None:
         return
 
+    target.set("Skillbar", "skillbar_enabled", config.skillbar_enabled)
     target.set("Skillbar", "skill_font_size", config.skill_font_size)
     target.set("Skillbar", "draw_background", config.draw_background)
     target.set("Skillbar", "background_color", config.background_color)
@@ -108,6 +111,7 @@ def save(config: model.SkillbarPlusConfig, settings=None) -> None:
     target.set("Skillbar", "duration_background", config.duration_background)
     target.set("Skillbar", "duration_foreground", config.duration_foreground)
     target.set("Skillbar", "duration_offset", config.duration_offset)
+    target.set("Effects", "effects_enabled", config.effects_enabled)
     target.set("Effects", "font_size", config.effects_font_size)
     target.set("Effects", "background", config.effects_background)
     target.set("Auto Cast", "alt_right_click", config.auto_cast_alt_right_click)
