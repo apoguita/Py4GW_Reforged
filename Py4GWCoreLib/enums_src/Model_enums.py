@@ -970,6 +970,7 @@ class ModelID(IntEnum):
     Belt_Pouch_Reward = 33
     Belt_Pouch = 34
     Berserker_Horn = 27046
+    Birds_Eye_Compass = 38614
     Birthday_Cupcake = 22269
     Birthday_Present = 37798
     Bison_Championship_Token = 27563
@@ -1692,6 +1693,7 @@ class ModelID(IntEnum):
     Squash_Serum = 6369
     Staff_Head = 896
     Staff_Wrapping = 908
+    Stalkers_Ration = 38613
     Star_Of_Transference = 25896
     Steel_Ingot = 949
     Steel_Key = 5967
