@@ -7,6 +7,7 @@ from dataclasses import dataclass
 class SkillbarPlusConfig:
     """Persisted Skillbar+ options using the shared ABGR integer colour format."""
 
+    skillbar_enabled: bool = True
     skill_font_size: int = 40
     draw_background: bool = True
     background_color: int = 0x3200FF00
@@ -17,6 +18,7 @@ class SkillbarPlusConfig:
     duration_background: int = 0xFF000000
     duration_foreground: int = 0xFF646464
     duration_offset: int = 0
+    effects_enabled: bool = True
     effects_font_size: int = 20
     effects_background: int = 0x96000000
     auto_cast_alt_right_click: bool = False

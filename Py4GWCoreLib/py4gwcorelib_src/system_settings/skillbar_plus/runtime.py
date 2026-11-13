@@ -300,9 +300,11 @@ class SkillbarPlusRuntime:
             and not UIManager.IsWorldMapShowing()
         ):
             return
-        if not self.skills.coords:
-            self.skills.get_skill_frames()
-        self.skills.draw()
-        self.effects.draw()
+        if self.config.skillbar_enabled:
+            if not self.skills.coords:
+                self.skills.get_skill_frames()
+            self.skills.draw()
+        if self.config.effects_enabled:
+            self.effects.draw()
         self.auto.cast()
         self.auto.toggle_hovered_skill()

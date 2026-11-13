@@ -176,6 +176,7 @@ def _register_skillbar_plus() -> None:
         config = controller.config
         return (
             SettingsSectionOperation(document, "Skillbar", {
+                "skillbar_enabled": config.skillbar_enabled,
                 "skill_font_size": config.skill_font_size,
                 "draw_background": config.draw_background,
                 "background_color": config.background_color,
@@ -188,6 +189,7 @@ def _register_skillbar_plus() -> None:
                 "duration_offset": config.duration_offset,
             }),
             SettingsSectionOperation(document, "Effects", {
+                "effects_enabled": config.effects_enabled,
                 "font_size": config.effects_font_size,
                 "background": config.effects_background,
             }),
