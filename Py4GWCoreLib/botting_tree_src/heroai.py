@@ -81,6 +81,15 @@ class BottingTreeHeroAIMixin:
             return False
 
         desired_state = bool(enabled)
+        if not desired_state:
+            # Going idle must not turn the followers' HeroAI off. They fight with
+            # their own widget while the run is active, so switching them off here
+            # left the whole group idle and forced a manual re-enable on every
+            # account after each stop. Forget the last broadcast instead, so the
+            # next start announces its state again.
+            self._last_multibox_heroai_widget_state = None
+            return False
+
         if getattr(self, '_last_multibox_heroai_widget_state', None) is desired_state:
             return False
 
@@ -89,7 +98,7 @@ class BottingTreeHeroAIMixin:
             return False
 
         widget_name = self._get_heroai_widget_toggle_name()
-        command = SharedCommandType.EnableWidget if desired_state else SharedCommandType.DisableWidget
+        command = SharedCommandType.EnableWidget
         sent_any = False
         for account in GLOBAL_CACHE.ShMem.GetAllAccountData():
             receiver_email = str(getattr(account, 'AccountEmail', '') or '')
