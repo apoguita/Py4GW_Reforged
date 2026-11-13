@@ -39,6 +39,7 @@ class _BottingTreeTicksHost(Protocol):
     def EnsureHeroAIOptionsEnabled(self) -> None: ...
     def _should_log_heroai_state(self, state: str) -> bool: ...
     def RestoreAccountIsolation(self) -> bool: ...
+    def _release_runtime_state(self) -> None: ...
     def GetNamedPlannerStepNames(self) -> list[str]: ...
 
 
@@ -226,6 +227,7 @@ class BottingTreeTicksMixin:
             self.started = False
             self.paused = False
             self.RestoreAccountIsolation()
+            self._release_runtime_state()
         elif planner_result == BehaviorTree.NodeState.FAILURE:
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
             current_step_name = str(bb.get('current_step_name', '') or '')
@@ -244,6 +246,7 @@ class BottingTreeTicksMixin:
                 self.started = False
                 self.paused = False
                 self.RestoreAccountIsolation()
+                self._release_runtime_state()
         return BehaviorTree.NodeState.RUNNING
 
     def _tick_service_tree(
