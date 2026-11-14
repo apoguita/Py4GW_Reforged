@@ -831,20 +831,20 @@ def _build_keyword_action(key: str, value: object) -> list[BehaviorTree]:
 
     if key == 'bless':
         pos = _coordinate(value, 'bless')
-        # Bounty data carries no faction, so the shrine is taken with the three
-        # region dialog ids and whichever one is present answers. The fan-out
-        # rides on the wired dialog commands instead of BT.TakeBlessing's
-        # GetBlessing, whose ProcessMessages case is a no-op.
+        # The shrine answers to a dialog id, not to a button index: 0x84 is the
+        # EotN blessing, 0x85 the Nightfall one and 0x86 the Factions one. Sending
+        # them through TargetNearestAndAutoDialog made every client press
+        # "button 132", and Player.SendAutomaticDialog drops a button that is not
+        # on screen, so the dialog opened and nothing was ever pressed.
+        # Bounty data carries no faction, so the three ids are tried in turn, as
+        # the legacy widget fanned them out to the group.
         child = BT.Sequence(
             name='BlessShrine',
             children=[
                 BT.Move(pos, tolerance=150.0, log=True),
-                BT.TargetNearestAndAutoDialog(
-                    pos,
-                    buttons=[0x84, 0x85, 0x86],
-                    multi_account=True,
-                    log=True,
-                ),
+                BT.TargetNearestAndSendDialog(pos, dialog_id=0x84, multi_account=True, log=True),
+                BT.TargetNearestAndSendDialog(pos, dialog_id=0x85, multi_account=True, log=True),
+                BT.TargetNearestAndSendDialog(pos, dialog_id=0x86, multi_account=True, log=True),
             ],
         )
     elif key == 'gadget':
