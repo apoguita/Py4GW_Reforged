@@ -30,6 +30,7 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
     CONSET_UPKEEPS,
     CONSUMABLE_UPKEEPS,
 )
+from Py4GWCoreLib.routines_src.Checks import Checks
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
@@ -155,6 +156,10 @@ BOUNTY_FIGHT_TIMEOUT_MS = 180_000
 # Extra settle before the run is marked complete: loot, the death animation and
 # the client's own state need a beat after the last foe drops.
 BOUNTY_COMPLETION_SETTLE_MS = 10_000
+# `BT.Resign` raises the party-wipe suppression while it works, so the deaths it
+# causes are not read as a wipe. This cap clears a flag left behind by a reset in
+# the middle of a resign, which would otherwise disable recovery for the session.
+RECOVERY_SUPPRESS_TIMEOUT_MS = 90_000
 CONSUMABLE_RESTOCK_ITEMS: tuple[tuple[int, int], ...] = tuple(
     (int(model_id), CONSUMABLE_RESTOCK_QUANTITY)
     for model_id in CONSUMABLE_UPKEEPS
@@ -909,21 +914,6 @@ def _is_plain_path(path: Sequence[object]) -> bool:
     return bool(path) and all(_is_coordinate(point) for point in path)
 
 
-def _build_path_tree(path: Sequence[object], *, name: str) -> BehaviorTree:
-    children: list[BehaviorTree] = []
-
-    if _is_plain_path(path):
-        children.extend(_build_keyword_action('path', path))
-    else:
-        for segment in path:
-            for key, value in _iter_segment_items(segment):
-                children.extend(_build_keyword_action(key, value))
-
-    if not children:
-        return BT.Succeeder(name=f'{name}:Empty')
-    return BT.Sequence(name=name, children=children)
-
-
 def _build_outpost_exit(definition: BountyDefinition) -> BehaviorTree:
     """Walk out of the outpost towards the first map of the bounty.
 
@@ -956,55 +946,530 @@ def _build_outpost_exit(definition: BountyDefinition) -> BehaviorTree:
     )
 
 
-def _build_transit_leg(definition: BountyDefinition, index: int) -> BehaviorTree:
-    """Walk one intermediate map between the outpost exit and the bounty map."""
-    if index < 0 or index >= len(definition.transit_paths):
-        return BT.Succeeder(name=f'NoTransitLeg:{index + 1}')
+class RouteItem(NamedTuple):
+    """One planner step of a walking leg.
 
-    transit_path = definition.transit_paths[index]
-    next_map_id = definition.explorable_id
+    The map is carried with the point, and in the step name, because transit legs
+    and the bounty route use their own coordinate spaces: a resume that mixed a
+    point from one map with a position from another would path into a wall.
+    """
+
+    kind: str  # 'point' | 'exit' | 'action' | 'wait_map'
+    step_name: str
+    map_id: int
+    point: Coordinate | None = None
+    key: str = ''
+    value: object = None
+
+
+def _iter_path_items(path: Sequence[object]) -> list[tuple[str, object]]:
+    """Flatten a route path into (keyword, value) items in walking order."""
+
+    if _is_plain_path(path):
+        return [('path', path)]
+
+    items: list[tuple[str, object]] = []
+    for segment in path:
+        items.extend(_iter_segment_items(segment))
+    return items
+
+
+def _transit_leg_map_id(definition: BountyDefinition, index: int) -> int:
+    """Map one transit leg walks in: its own target, not the final map.
+
+    A bounty whose target lives in the outpost map carries no explorable id, so
+    the leg falls back to the outpost before giving up: a point without a map can
+    never be a valid resume target.
+    """
+
+    if 0 <= index < len(definition.transit_ids) and definition.transit_ids[index] > 0:
+        return int(definition.transit_ids[index])
+    return int(definition.explorable_id or definition.outpost_id)
+
+
+def _transit_next_map_id(definition: BountyDefinition, index: int) -> int:
     if index + 1 < len(definition.transit_ids) and definition.transit_ids[index + 1] > 0:
-        next_map_id = definition.transit_ids[index + 1]
+        return int(definition.transit_ids[index + 1])
+    return int(definition.explorable_id)
 
-    if _is_plain_path(transit_path) and next_map_id > 0:
-        transit_move_path = _coordinate_path(transit_path, f'transit path {index + 1}')
-        return BT.MoveAndExitMap(
-            transit_move_path,
-            target_map_id=next_map_id,
-            timeout_ms=TRANSIT_TIMEOUT_MS,
-            log=True,
+
+def _bounty_route_map_id(definition: BountyDefinition) -> int:
+    return int(definition.explorable_id or definition.outpost_id)
+
+
+def _route_items(definition: BountyDefinition) -> list[RouteItem]:
+    """Every walking step in planner order, split by point and by keyword.
+
+    Transit legs and the bounty route are expanded by the same code, so a wipe on
+    a transit resumes there as well. `get_execution_steps` builds the plan from
+    this list and the wipe recovery resolves its resume step from it, which keeps
+    the step names and the coordinates from drifting apart.
+    """
+
+    items: list[RouteItem] = []
+    point_number = 0
+    action_number = 0
+
+    def _add_point(map_id: int, point: Coordinate, *, exit_target: int = 0) -> None:
+        nonlocal point_number
+        point_number += 1
+        items.append(
+            RouteItem(
+                kind='exit' if exit_target > 0 else 'point',
+                step_name=f'Point {point_number} (map {map_id})',
+                map_id=map_id,
+                point=point,
+                value=exit_target if exit_target > 0 else None,
+            )
         )
 
-    children: list[BehaviorTree] = [
-        _build_path_tree(transit_path, name=f'TransitPath:{index + 1}'),
-    ]
-    # Only bounties with a known explorable map get the explicit wait. When the
-    # data carries no `map_id`, the route segments wait for the map change
-    # themselves through their own `map` keyword, exactly like the legacy script.
-    if next_map_id > 0 and definition.explorable_id > 0:
-        children.append(BT.WaitForMapLoad(map_id=next_map_id, timeout_ms=TRANSIT_TIMEOUT_MS))
-    return BT.Sequence(name=f'TransitPath:{index + 1}', children=children)
+    def _add_action(map_id: int, label: str, key: str, value: object, *, kind: str = 'action') -> None:
+        nonlocal action_number
+        action_number += 1
+        items.append(
+            RouteItem(
+                kind=kind,
+                step_name=f'Action {action_number}: {label}',
+                map_id=map_id,
+                key=key,
+                value=value,
+            )
+        )
+
+    for index, transit_path in enumerate(definition.transit_paths):
+        map_id = _transit_leg_map_id(definition, index)
+        next_map_id = _transit_next_map_id(definition, index)
+
+        if _is_plain_path(transit_path) and next_map_id > 0:
+            # A plain transit leg used to be one MoveAndExitMap: walked in order and
+            # exited at the portal. Split by point, the exit stays on the last one.
+            points = _coordinate_path(transit_path, f'transit path {index + 1}')
+            for position, point in enumerate(points):
+                is_last = position == len(points) - 1
+                _add_point(map_id, point, exit_target=next_map_id if is_last else 0)
+            if not points:
+                _add_action(map_id, f'map {next_map_id}', 'wait_map', next_map_id, kind='wait_map')
+            continue
+
+        for key, value in _iter_path_items(transit_path):
+            if key == 'path':
+                for point in _coordinate_path(value, f'transit path {index + 1}'):
+                    _add_point(map_id, point)
+                continue
+            _add_action(map_id, key, key, value)
+
+        # The same explicit wait the leg builder appends: only bounties with a known
+        # explorable map get it, the rest rely on their own `map` keyword.
+        if next_map_id > 0 and definition.explorable_id > 0:
+            _add_action(map_id, f'map {next_map_id}', 'wait_map', next_map_id, kind='wait_map')
+
+    route_map_id = _bounty_route_map_id(definition)
+    for key, value in _iter_path_items(definition.bounty_path):
+        if key == 'path':
+            for point in _coordinate_path(value, 'bounty path'):
+                _add_point(route_map_id, point)
+            continue
+        _add_action(route_map_id, key, key, value)
+
+    return items
 
 
-def _build_bounty_path(definition: BountyDefinition) -> BehaviorTree:
-    """Walk the bounty route and let the fight happen.
+def _build_route_point(point: Coordinate) -> BehaviorTree:
+    """One waypoint walked inside a map.
 
-    A bounty is a target at a known spot, not a map to clear: the route is
-    walked with combat pausing and nothing sweeps the area. The step ends by
-    waiting until the party is out of combat, so the completion step cannot
-    resign in the middle of the kill; the settle pause before the run is counted
-    lives in the completion step instead.
-
-    The out-of-combat wait has a cap, and a fight still running when it expires
-    fails this step, which the planner answers by restarting it from the route.
+    A bounty is a target at a known spot, not a map to clear, so the point is
+    walked with combat pausing and nothing sweeps the area.
     """
-    return BT.Sequence(
-        name=f'BountyPath:{definition.bounty_name}',
-        children=[
-            _build_path_tree(definition.bounty_path, name='BountyRoute'),
-            BT.WaitUntilOutOfCombat(timeout_ms=BOUNTY_FIGHT_TIMEOUT_MS),
-        ],
+
+    return BT.Move(
+        [point],
+        pause_on_combat=True,
+        tolerance=150.0,
+        log=True,
     )
+
+
+def _build_route_exit(point: Coordinate, target_map_id: int) -> BehaviorTree:
+    """Last point of a transit leg: walk to the portal and wait for the map."""
+
+    return BT.MoveAndExitMap(
+        [point],
+        target_map_id=target_map_id,
+        timeout_ms=TRANSIT_TIMEOUT_MS,
+        log=True,
+    )
+
+
+def _build_route_item(item: RouteItem) -> BehaviorTree:
+    """Build the tree for one route item, labelled with its step name."""
+
+    if item.kind == 'action':
+        children = _build_keyword_action(str(item.key), item.value)
+        if not children:
+            return BT.Succeeder(name=f'{item.step_name}:Empty')
+        return BT.Sequence(name=item.step_name, children=children)
+
+    if item.kind == 'wait_map':
+        return BT.WaitForMapLoad(
+            map_id=int(item.value or 0),
+            timeout_ms=TRANSIT_TIMEOUT_MS,
+        )
+
+    point = item.point
+    if point is None:
+        return BT.Succeeder(name=f'{item.step_name}:Empty')
+
+    if item.kind == 'exit':
+        return _build_route_exit(point, int(item.value or 0))
+
+    return _build_route_point(point)
+
+
+def _now_ms() -> float:
+    """Monotonic clock in milliseconds for the recovery deadlines."""
+
+    return time.monotonic() * 1000.0
+
+
+def _recovery_suppression(
+    suppressed: bool,
+    since_ms: float,
+    now_ms: float,
+) -> tuple[bool, float, bool]:
+    """Decide whether the resign suppression still blocks recovery.
+
+    Returns `(blocked, suppressed_since_ms, timed_out)`.
+
+    `BT.Resign` raises `party_wipe_recovery_suppressed` before it sends the
+    resign and clears it once the party is back in the outpost, precisely so the
+    deaths it causes are not read as a party wipe. The timeout exists because a
+    tree reset during the resign can leave the flag raised, and a stuck flag
+    would silently disable recovery for the rest of the session.
+    """
+
+    if not suppressed:
+        return False, 0.0, False
+    if since_ms <= 0.0:
+        return True, now_ms, False
+    if now_ms - since_ms >= RECOVERY_SUPPRESS_TIMEOUT_MS:
+        return False, 0.0, True
+    return True, since_ms, False
+
+
+def _route_resume_step(
+    definition: BountyDefinition,
+    map_id: int,
+    position: Coordinate,
+    failed_step_name: str,
+    planner_names: Sequence[str],
+) -> str:
+    """Nearest waypoint to the shrine, ahead or behind, in the map the party is in.
+
+    The rule is geometric: whichever point is closest to the resurrection shrine
+    wins, whether the party had already walked it or not, so the resume walk is
+    as short as the map allows.
+
+    One guard remains: the search stops at the next non-point step, so a resume
+    can never land past a blessing, a gadget or a map change that has not run yet.
+    """
+
+    items = _route_items(definition)
+    names = list(planner_names)
+
+    points = [
+        item
+        for item in items
+        if item.point is not None and item.map_id == map_id and item.step_name in names
+    ]
+    if not points:
+        return ''
+
+    failed_index = names.index(failed_step_name) if failed_step_name in names else -1
+
+    limit = len(names)
+    for item in items:
+        if item.point is not None or item.step_name not in names:
+            continue
+        index = names.index(item.step_name)
+        if index > failed_index:
+            limit = index
+            break
+
+    eligible = [item for item in points if names.index(item.step_name) < limit]
+    if not eligible:
+        return ''
+
+    def _distance_sq(item: RouteItem) -> float:
+        point = item.point
+        if point is None:
+            return float('inf')
+        return (float(point[0]) - position[0]) ** 2 + (float(point[1]) - position[1]) ** 2
+
+    return min(eligible, key=_distance_sq).step_name
+
+
+def ZBountyPartyWipeRecoveryService() -> BehaviorTree:
+    """Resume a party wipe from the nearest waypoint the party had not reached.
+
+    The core service restarts the step that was running. This one goes further:
+    after a shrine revival it resolves the waypoint nearest to the shrine, ahead or
+    behind the failed step, on the current map, so the party walks the shortest
+    distance back into its route. A party defeat restarts from Prepare, which is
+    the step that knows how to travel back.
+    """
+
+    state: dict[str, object] = {
+        "active": False,
+        "mode": "",
+        "failed_step_name": "",
+        "last_return_ms": 0.0,
+        "player_was_dead": False,
+        "player_dead_pos": None,
+        "suppressed_since_ms": 0.0,
+    }
+
+    def _log(message: str, message_type: int = PySystem.Console.MessageType.Info) -> None:
+        PySystem.Console.Log("ZBountyWipeRecovery", message, message_type)
+
+    def _current_step(node: BehaviorTree.Node) -> str:
+        step_name = str(node.blackboard.get("current_step_name", "") or "")
+        if step_name:
+            return step_name
+        return str(node.blackboard.get("last_active_planner_step_name", "") or "")
+
+    def _planner_step_names() -> list[str]:
+        if botting_tree is None:
+            return []
+        try:
+            return list(botting_tree.GetNamedPlannerStepNames() or [])
+        except Exception:
+            return []
+
+    def _detect_revive_teleport() -> bool:
+        """Report a move from the death spot to a distant shrine."""
+
+        try:
+            player_id = Player.GetAgentID()
+            if not Agent.IsValid(player_id):
+                return False
+            current_pos = Agent.GetXY(player_id)
+            is_dead = bool(Agent.IsDead(player_id))
+        except Exception:
+            return False
+
+        def _far(death_pos) -> bool:
+            return math.hypot(death_pos[0] - current_pos[0], death_pos[1] - current_pos[1]) > 1200.0
+
+        if is_dead:
+            if not state["player_was_dead"]:
+                state["player_was_dead"] = True
+                state["player_dead_pos"] = current_pos
+                return False
+            death_pos = state["player_dead_pos"]
+            if death_pos and _far(death_pos):
+                # Some revive flows teleport the dead agent before it becomes alive.
+                state["player_was_dead"] = False
+                state["player_dead_pos"] = None
+                return True
+            return False
+
+        if not state["player_was_dead"]:
+            return False
+
+        state["player_was_dead"] = False
+        death_pos = state["player_dead_pos"]
+        state["player_dead_pos"] = None
+        return bool(death_pos) and _far(death_pos)
+
+    def _player_is_alive() -> bool:
+        try:
+            player_id = Player.GetAgentID()
+            return bool(Agent.IsValid(player_id) and not Agent.IsDead(player_id))
+        except Exception:
+            return False
+
+    def _can_resume_in_explorable() -> bool:
+        try:
+            return bool(Map.IsMapReady() and Map.IsExplorable() and _player_is_alive())
+        except Exception:
+            return False
+
+    def _can_resume_from_outpost() -> bool:
+        try:
+            return bool(Map.IsMapReady() and Map.IsOutpost())
+        except Exception:
+            return False
+
+    def _reset_state(node: BehaviorTree.Node) -> None:
+        state["active"] = False
+        state["mode"] = ""
+        state["failed_step_name"] = ""
+        state["last_return_ms"] = 0.0
+        state["player_was_dead"] = False
+        state["player_dead_pos"] = None
+        node.blackboard["party_wipe_recovery_active"] = False
+        node.blackboard["party_wipe_recovery_mode"] = ""
+        node.blackboard["party_wipe_recovery_step_name"] = ""
+
+    def _begin_recovery(node: BehaviorTree.Node, mode: str) -> None:
+        state["active"] = True
+        state["mode"] = mode
+        state["failed_step_name"] = _current_step(node)
+        state["last_return_ms"] = 0.0
+        node.blackboard["party_wipe_recovery_active"] = True
+        node.blackboard["party_wipe_recovery_mode"] = mode
+        node.blackboard["party_wipe_recovery_step_name"] = state["failed_step_name"]
+        detail = (
+            "Returning to the outpost to restart from Prepare."
+            if mode == "defeated"
+            else "Waiting for the shrine revival."
+        )
+        _log(
+            f"Party wipe on '{state['failed_step_name']}'. {detail}",
+            PySystem.Console.MessageType.Warning,
+        )
+
+    def _resolve_restart_step(mode: str) -> str:
+        failed_step_name = str(state["failed_step_name"] or "")
+        names = _planner_step_names()
+
+        if mode == "defeated":
+            # From an outpost the route coordinates belong to another map, so the
+            # only step that can get the party back there is the preparation.
+            for step_name in names:
+                if step_name.startswith("Prepare "):
+                    return step_name
+            return failed_step_name
+
+        try:
+            definition = load_selected_definition()
+            player_id = Player.GetAgentID()
+            position = Agent.GetXY(player_id)
+            map_id = int(Map.GetMapID() or 0)
+        except Exception as error:
+            _log(f"Could not resolve the shrine resume point: {error}", PySystem.Console.MessageType.Warning)
+            return failed_step_name
+
+        step_name = _route_resume_step(definition, map_id, position, failed_step_name, names)
+        if step_name:
+            _log(
+                f"Shrine at ({position[0]:.0f}, {position[1]:.0f}) on map {map_id}: "
+                f"resuming at '{step_name}'.",
+                PySystem.Console.MessageType.Success,
+            )
+            return step_name
+
+        _log(
+            f"No waypoint on map {map_id}; restarting '{failed_step_name}' instead.",
+            PySystem.Console.MessageType.Warning,
+        )
+        return failed_step_name
+
+    def _request_restart(node: BehaviorTree.Node, mode: str) -> bool:
+        step_name = _resolve_restart_step(mode)
+        if not step_name:
+            _log("Recovery finished but no planner step could be resolved.", PySystem.Console.MessageType.Warning)
+            return False
+
+        node.blackboard["party_wipe_recovery_step_name"] = step_name
+        node.blackboard["current_step_name"] = step_name
+        node.blackboard["last_active_planner_step_name"] = step_name
+        node.blackboard["restart_step_name_request"] = step_name
+        return True
+
+    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        # Never write this flag: `BT.Resign` raises it around the resign so the
+        # deaths it causes are not recovered, and the widget disables the core
+        # service instead of suppressing it.
+        now = _now_ms()
+        blocked, state["suppressed_since_ms"], timed_out = _recovery_suppression(
+            bool(node.blackboard.get("party_wipe_recovery_suppressed", False)),
+            float(state["suppressed_since_ms"]),
+            now,
+        )
+        if timed_out:
+            node.blackboard["party_wipe_recovery_suppressed"] = False
+            _log(
+                "The resign suppression never cleared; recovery re-armed.",
+                PySystem.Console.MessageType.Warning,
+            )
+        if blocked:
+            # The party dying here is a resign we asked for, not a wipe.
+            _reset_state(node)
+            return BehaviorTree.NodeState.RUNNING
+
+        revived_at_shrine = _detect_revive_teleport()
+        try:
+            party_wiped = bool(Checks.Party.IsPartyWiped())
+            party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
+        except Exception:
+            party_wiped = False
+            party_defeated = False
+
+        if not bool(state["active"]):
+            if not (party_wiped or party_defeated or revived_at_shrine):
+                node.blackboard["party_wipe_recovery_active"] = False
+                return BehaviorTree.NodeState.RUNNING
+
+            mode = "defeated" if party_defeated else "shrine"
+            _begin_recovery(node, mode)
+
+            if mode == "shrine" and revived_at_shrine and _can_resume_in_explorable():
+                restarted = _request_restart(node, mode)
+                _reset_state(node)
+                return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+            return BehaviorTree.NodeState.RUNNING
+
+        if party_defeated and state["mode"] != "defeated":
+            state["mode"] = "defeated"
+            _log("The shrine recovery became a party defeat; switching to outpost recovery.")
+
+        node.blackboard["party_wipe_recovery_active"] = True
+        node.blackboard["party_wipe_recovery_mode"] = state["mode"]
+
+        if state["mode"] == "shrine":
+            if _can_resume_from_outpost():
+                state["mode"] = "defeated"
+                _log("The party returned to an outpost during shrine recovery; switching to outpost recovery.")
+            else:
+                if revived_at_shrine or (not party_wiped and _can_resume_in_explorable()):
+                    restarted = _request_restart(node, "shrine")
+                    _reset_state(node)
+                    return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+                return BehaviorTree.NodeState.RUNNING
+
+        if _can_resume_from_outpost():
+            restarted = _request_restart(node, "defeated")
+            _reset_state(node)
+            return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+
+        if now - float(state["last_return_ms"]) >= 1000.0:
+            state["last_return_ms"] = now
+            try:
+                GLOBAL_CACHE.Party.ReturnToOutpost()
+            except Exception as error:
+                _log(f"ReturnToOutpost failed: {error}", PySystem.Console.MessageType.Warning)
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='ZBountyPartyWipeRecovery',
+            action_fn=_tick,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _build_bounty_fight() -> BehaviorTree:
+    """Wait until the fight the route walked into is over.
+
+    This used to be the tail of the single route step. Split out, a wipe during
+    the fight restarts the wait rather than a waypoint, and a fight that outlasts
+    the cap fails this step alone, so the planner restarts the wait instead of
+    walking the route again.
+    """
+
+    return BT.WaitUntilOutOfCombat(timeout_ms=BOUNTY_FIGHT_TIMEOUT_MS)
 
 
 def _mark_run_started() -> BehaviorTree.NodeState:
@@ -1165,25 +1630,13 @@ def get_execution_steps(definition: BountyDefinition) -> list[tuple[str, Callabl
         )
     )
 
-    # Only the intermediate travels get their own step, one per transit path; the
-    # outpost exit lives in Prepare, so bounties with just an outpost path show none.
-    for index in range(len(definition.transit_paths)):
-        leg_number = index + 1
-        steps.append(
-            (
-                f'Transit path {leg_number}',
-                lambda definition=definition, index=index: _build_transit_leg(definition, index),
-            )
-        )
+    # Transit legs and the bounty route are the same kind of step now: one per
+    # waypoint and one per keyword, each named with the map it walks in. The wipe
+    # recovery resolves its resume step from this same list.
+    for item in _route_items(definition):
+        steps.append((item.step_name, lambda item=item: _build_route_item(item)))
 
-    # A bounty is a single target, so the whole route is one named step: there is
-    # no area to sweep and nothing to walk twice.
-    steps.append(
-        (
-            f'Bounty path {definition.bounty_name}',
-            lambda definition=definition: _build_bounty_path(definition),
-        )
-    )
+    steps.append(('Bounty fight', _build_bounty_fight))
 
     steps.append(
         (
@@ -1215,11 +1668,17 @@ def _configure_upkeep(tree: BottingTree) -> None:
     tree.Config.ConfigureUpkeep(
         looting_enabled=auto_loot,
         resurrection_scroll=True,
-        enable_party_wipe_recovery=True,
+        # The widget installs its own recovery service below: it resumes at the
+        # nearest waypoint ahead instead of restarting the failed step, and a party
+        # defeat goes back through Prepare, which is the step that can travel.
+        enable_party_wipe_recovery=False,
         heroai_state_logging=True,
         heroai_state_log_interval_ms=5000,
         consumable_upkeeps=_enabled_consumable_upkeeps(),
     )
+    # ConfigureUpkeep replaces every service tree, so this has to be re-added on
+    # each call, not only at creation.
+    tree.AddServiceTree('ZBountyPartyWipeRecoveryService', ZBountyPartyWipeRecoveryService)
 
 
 def ensure_botting_tree() -> BottingTree:
@@ -1847,9 +2306,9 @@ def _draw_help() -> None:
     PyImGui.text_wrapped('Zaishen Bounty rebuilt on BottingTree and BehaviorTree nodes only. No legacy FSM is used.')
     PyImGui.separator()
     PyImGui.text_wrapped('Select a bounty in Config, then start it from the Main tab.')
-    PyImGui.text_wrapped('Steps: Form Party, Take ZBounty, Prepare, Transit path N, Bounty path, Complete and return, Take ZBounty Reward.')
+    PyImGui.text_wrapped('Steps: Form Party, Take ZBounty, Prepare, Point N (map M), Bounty fight, Complete and return, Take ZBounty Reward.')
     PyImGui.text_wrapped('A bounty is a single target: the route is walked with combat pausing and no area is swept, so there is no clear radius.')
-    PyImGui.text_wrapped('A failed movement or party-wipe recovery restarts the current step instead of the whole route.')
+    PyImGui.text_wrapped('Transit legs and the route are split into one step per waypoint, each named with the map it walks in, so a party wipe resumes at the point closest to the shrine on the map the party is standing on.')
     PyImGui.text_wrapped('Choose the first step in Navigation to restart from staging; Prepare starts from the outpost.')
     PyImGui.text_wrapped('Form Party disbands, summons the other accounts to the leader map and invites them back before every run; it is skipped while Account Isolation is enabled.')
     PyImGui.text_wrapped('Take ZBounty travels to Embark Beach and takes the bounty quest from the signpost before each run.')
