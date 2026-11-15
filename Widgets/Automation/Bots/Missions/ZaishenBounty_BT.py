@@ -156,10 +156,13 @@ BOUNTY_FIGHT_TIMEOUT_MS = 180_000
 # Extra settle before the run is marked complete: loot, the death animation and
 # the client's own state need a beat after the last foe drops.
 BOUNTY_COMPLETION_SETTLE_MS = 10_000
-# `BT.Resign` raises the party-wipe suppression while it works, so the deaths it
-# causes are not read as a wipe. This cap clears a flag left behind by a reset in
-# the middle of a resign, which would otherwise disable recovery for the session.
+# `BT.Resign` raises `party_wipe_recovery_suppressed` while it works, and the
+# core recovery service that the planner installs unconditionally reads it. This
+# widget keeps that flag raised for the whole session (so the core service never
+# acts) and uses its own key to mark the resign, which is what its own recovery
+# honours. The cap clears the key left behind by a reset in the middle of a resign.
 RECOVERY_SUPPRESS_TIMEOUT_MS = 90_000
+_RESIGNING_KEY = 'zbounty_resigning'
 CONSUMABLE_RESTOCK_ITEMS: tuple[tuple[int, int], ...] = tuple(
     (int(model_id), CONSUMABLE_RESTOCK_QUANTITY)
     for model_id in CONSUMABLE_UPKEEPS
@@ -1136,14 +1139,14 @@ def _recovery_suppression(
     since_ms: float,
     now_ms: float,
 ) -> tuple[bool, float, bool]:
-    """Decide whether the resign suppression still blocks recovery.
+    """Decide whether a resign still blocks recovery.
 
     Returns `(blocked, suppressed_since_ms, timed_out)`.
 
-    `BT.Resign` raises `party_wipe_recovery_suppressed` before it sends the
-    resign and clears it once the party is back in the outpost, precisely so the
-    deaths it causes are not read as a party wipe. The timeout exists because a
-    tree reset during the resign can leave the flag raised, and a stuck flag
+    The widget marks its own resign around `BT.Resign`, because the core service
+    that ships with the planner reads `party_wipe_recovery_suppressed` and this
+    widget keeps that flag raised for its whole life. The timeout exists because
+    a tree reset during the resign can leave the marker set, and a stuck marker
     would silently disable recovery for the rest of the session.
     """
 
@@ -1378,19 +1381,21 @@ def ZBountyPartyWipeRecoveryService() -> BehaviorTree:
         return True
 
     def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        # Never write this flag: `BT.Resign` raises it around the resign so the
-        # deaths it causes are not recovered, and the widget disables the core
-        # service instead of suppressing it.
+        # The planner installs the core recovery service unconditionally, so the
+        # only way to keep it quiet is to hold its flag raised. The widget's own
+        # resign marker is what this service honours.
+        node.blackboard["party_wipe_recovery_suppressed"] = True
+
         now = _now_ms()
         blocked, state["suppressed_since_ms"], timed_out = _recovery_suppression(
-            bool(node.blackboard.get("party_wipe_recovery_suppressed", False)),
+            bool(node.blackboard.get(_RESIGNING_KEY, False)),
             float(state["suppressed_since_ms"]),
             now,
         )
         if timed_out:
-            node.blackboard["party_wipe_recovery_suppressed"] = False
+            node.blackboard[_RESIGNING_KEY] = False
             _log(
-                "The resign suppression never cleared; recovery re-armed.",
+                "The resign marker never cleared; recovery re-armed.",
                 PySystem.Console.MessageType.Warning,
             )
         if blocked:
@@ -1533,6 +1538,23 @@ def _build_run_preparation(definition: BountyDefinition) -> BehaviorTree:
     )
 
 
+def _mark_recovery_suppression(value: bool) -> BehaviorTree:
+    """Set or clear the widget's own resign marker.
+
+    Kept separate from `party_wipe_recovery_suppressed`, which this widget holds
+    raised so the core recovery service never acts.
+    """
+
+    def _set(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        node.blackboard[_RESIGNING_KEY] = bool(value)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return _action(
+        'MarkZbountyResigning' if value else 'ClearZbountyResigning',
+        _set,
+    )
+
+
 def _build_run_completion(definition: BountyDefinition) -> BehaviorTree:
     children: list[BehaviorTree] = [
         # The route step already waited for combat to clear; this pause covers the
@@ -1545,6 +1567,7 @@ def _build_run_completion(definition: BountyDefinition) -> BehaviorTree:
     # and by the staging flow, which ends in Embark Beach so the next run starts
     # from a staged position.
     if loop_runs or take_bounty:
+        children.append(_mark_recovery_suppression(True))
         children.append(
             BT.Resign(
                 wait_for_map_load=True,
@@ -1553,6 +1576,7 @@ def _build_run_completion(definition: BountyDefinition) -> BehaviorTree:
                 log=True,
             )
         )
+        children.append(_mark_recovery_suppression(False))
 
     return BT.Sequence(
         name=f'Complete:{definition.bounty_name}',
@@ -1578,9 +1602,16 @@ def _isolation_enabled() -> bool:
 
 
 def _build_form_party() -> BehaviorTree:
-    """Disband, gather the group on the leader's map and invite everyone back.
+    """Travel to the temple, then disband, gather and invite everyone back.
 
-    `BT.CreateParty(multibox_invite=True)` is the owning wrapper for this flow:
+    The leader travels to the Great Temple of Balthazar first, in a randomised
+    low-traffic district, because that is the hub the other accounts are summoned
+    to: summoning them to wherever the previous run left the leader spread the
+    group over outposts that no longer had anything to do with this run. The
+    travel goes first on purpose, so a party left over from the previous run
+    travels along with its leader instead of being dragged back afterwards.
+
+    `BT.CreateParty(multibox_invite=True)` is the owning wrapper for the rest:
     `LeaveParty` first, then `SummonAllAccounts` for the accounts that are on a
     different map (it travels them to the leader's outpost, or to the guild hall
     when the leader is in one), and finally `InviteAllAccounts`. Running it as the
@@ -1591,17 +1622,25 @@ def _build_form_party() -> BehaviorTree:
     messages between accounts that are not in the same party or isolation group,
     so with no party yet the summon and invite would be dropped (each refusal
     logs a warning and returns -1, so the step would silently do nothing) while
-    the local `LeaveParty` still disbanded whatever was left.
+    the local `LeaveParty` still disbanded whatever was left. The temple travel
+    is skipped with it: a solo account has nobody to gather, and `Prepare`
+    already travels to the bounty outpost.
     """
 
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         if _isolation_enabled():
             return BT.Succeeder('Form Party Skipped: Account Isolation')
-        return BT.CreateParty(
-            multibox_invite=True,
-            timeout_ms=REMOTE_PARTY_TIMEOUT_MS,
-            poll_interval_ms=100,
-            log=True,
+        return BT.Sequence(
+            name='FormParty',
+            children=[
+                _build_travel_to_map(GREAT_TEMPLE_MAP_ID, 'GreatTempleOfBalthazar'),
+                BT.CreateParty(
+                    multibox_invite=True,
+                    timeout_ms=REMOTE_PARTY_TIMEOUT_MS,
+                    poll_interval_ms=100,
+                    log=True,
+                ),
+            ],
         )
 
     return BT.Subtree(name='Form Party', subtree_fn=_build)
@@ -1869,6 +1908,7 @@ class MultiboxDialogSpec(NamedTuple):
     agent_key: str
     refs_key: str
     resolve: Callable[[], tuple[int, tuple[float, float]]]
+    label: str
 
 
 _SIGNPOST_DIALOG = MultiboxDialogSpec(
@@ -1877,6 +1917,7 @@ _SIGNPOST_DIALOG = MultiboxDialogSpec(
     agent_key='bounty_signpost_agent_id',
     refs_key='bounty_dialog_refs',
     resolve=_resolve_bounty_signpost,
+    label='Signpost',
 )
 
 _REWARD_DIALOG = MultiboxDialogSpec(
@@ -1885,7 +1926,88 @@ _REWARD_DIALOG = MultiboxDialogSpec(
     agent_key='bounty_reward_agent_id',
     refs_key='bounty_reward_refs',
     resolve=_resolve_reward_npc,
+    label='Reward',
 )
+
+
+def _remote_accounts_on_leader_map() -> tuple[bool, list[str]]:
+    """Whether every other account reports the leader's map and district.
+
+    Each account publishes its map in shared memory only after its own client is
+    fully loaded, so a leader that finishes loading first sees the others still
+    pointed at the previous map. The dialog fan-out resolves its agent on the
+    leader and messages the rest: sending it now means the followers receive an
+    order for a map they are not in yet, acknowledge it, do nothing, and the party
+    ends up with only some accounts holding the quest.
+    """
+
+    sender_email = ''
+    pending: list[str] = []
+    try:
+        sender_email = str(Player.GetAccountEmail() or '')
+        map_id = int(Map.GetMapID() or 0)
+        district = int(Map.GetDistrict() or 0)
+    except Exception:
+        return False, pending
+
+    if map_id <= 0:
+        return False, pending
+
+    try:
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData() or []
+    except Exception:
+        return False, pending
+
+    for account in accounts:
+        if not bool(getattr(account, 'IsAccount', False)):
+            continue
+        email = str(getattr(account, 'AccountEmail', '') or '')
+        if not email or email == sender_email:
+            continue
+        map_struct = getattr(getattr(account, 'AgentData', None), 'Map', None)
+        reported_map = int(getattr(map_struct, 'MapID', 0) or 0)
+        reported_district = int(getattr(map_struct, 'District', 0) or 0)
+        if reported_map != map_id:
+            pending.append(email)
+        elif district > 0 and reported_district > 0 and reported_district != district:
+            pending.append(email)
+
+    return not pending, pending
+
+
+def _wait_remote_accounts_ready(label: str) -> BehaviorTree:
+    """Hold a multibox dialog until the other accounts are in the same instance.
+
+    Bounded on purpose: an account that is legitimately elsewhere must not stall
+    the step forever, so the wait gives up after the remote party timeout and
+    leaves a warning naming the accounts that were not ready.
+    """
+
+    state = {'started_ms': 0.0, 'reported': False}
+
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        ready, pending = _remote_accounts_on_leader_map()
+        if ready:
+            return BehaviorTree.NodeState.SUCCESS
+
+        now = _now_ms()
+        if state['started_ms'] <= 0.0:
+            state['started_ms'] = now
+        if now - state['started_ms'] < REMOTE_PARTY_TIMEOUT_MS:
+            return BehaviorTree.NodeState.RUNNING
+
+        if not state['reported']:
+            state['reported'] = True
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f'{label}: {len(pending)} account(s) still not on this map after '
+                f'{REMOTE_PARTY_TIMEOUT_MS // 1000}s ({", ".join(pending)}); '
+                'sending the dialog anyway.',
+                PySystem.Console.MessageType.Warning,
+            )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return _action(f'Wait{label}AccountsReady', _tick)
 
 
 def _build_multibox_dialog(spec: MultiboxDialogSpec) -> BehaviorTree:
@@ -1898,6 +2020,11 @@ def _build_multibox_dialog(spec: MultiboxDialogSpec) -> BehaviorTree:
     over and fans out the same dialog after walking there. Confirmation is a
     message-dispatch wait, so it only proves each handler finished, not that the
     game accepted the dialog.
+
+    It waits for the other accounts to report this map first: a leader that
+    finishes loading before its followers would otherwise dispatch an order for
+    an agent the followers cannot see yet, and only some of them would end up
+    with the quest.
     """
 
     def _resolve(node: BehaviorTree.Node) -> bool:
@@ -1952,6 +2079,7 @@ def _build_multibox_dialog(spec: MultiboxDialogSpec) -> BehaviorTree:
     return BT.Sequence(
         name='MultiboxDialog',
         children=[
+            _wait_remote_accounts_ready(spec.label),
             BT.Selector(
                 name='FindDialogAgent',
                 children=[
@@ -2310,7 +2438,7 @@ def _draw_help() -> None:
     PyImGui.text_wrapped('A bounty is a single target: the route is walked with combat pausing and no area is swept, so there is no clear radius.')
     PyImGui.text_wrapped('Transit legs and the route are split into one step per waypoint, each named with the map it walks in, so a party wipe resumes at the point closest to the shrine on the map the party is standing on.')
     PyImGui.text_wrapped('Choose the first step in Navigation to restart from staging; Prepare starts from the outpost.')
-    PyImGui.text_wrapped('Form Party disbands, summons the other accounts to the leader map and invites them back before every run; it is skipped while Account Isolation is enabled.')
+    PyImGui.text_wrapped('Form Party travels to a random Great Temple of Balthazar district, then disbands, summons the other accounts there and invites them back; it is skipped while Account Isolation is enabled.')
     PyImGui.text_wrapped('Take ZBounty travels to Embark Beach and takes the bounty quest from the signpost before each run.')
     PyImGui.text_wrapped('Consumable upkeep is configured in the Consumables tab: consets and pcons are separated.')
     PyImGui.text_wrapped('Enable Restock to pull consumables from storage into bags during each Prepare step.')
