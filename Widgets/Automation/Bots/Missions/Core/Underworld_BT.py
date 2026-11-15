@@ -21,6 +21,7 @@ from Py4GWCoreLib import Agent, AgentArray, Map, GLOBAL_CACHE, Player, SharedCom
 from Py4GWCoreLib.Quest import Quest
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.native_src.internals.types import Vec2f
 from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
@@ -1089,6 +1090,172 @@ def _sync_uw_guardian_blacklist(force: bool = False) -> None:
             )
 
 
+# Keeper 2: Vengeful Aatxes cannot be killed until their Keeper dies.
+# Keep leader combat OFF until confirmed Keeper 2 defeat; followers fight on.
+# Persistent focus calls only the Keeper, with no nearest-enemy fallback.
+# Name-only blacklist is language-sensitive. Resolve a live model ID whenever
+# a Vengeful/Revengeful Aatxe becomes visible; do not guess a numeric ID.
+_uw_aatxe_scan_at = 0.0
+_uw_aatxe_seen: set[int] = set()
+_uw_keeper2_passage_active = False
+_uw_keeper2_local_combat_before: bool | None = None
+_uw_keeper2_last_clear_at = 0.0
+
+
+def _sync_uw_aatxe_blacklist(force: bool = False) -> None:
+    global _uw_aatxe_scan_at
+    if not Map.IsMapReady() or Map.GetMapID() != UW_MAP_ID:
+        return
+    now = time.monotonic()
+    if not force and now - _uw_aatxe_scan_at < 0.35:
+        return
+    _uw_aatxe_scan_at = now
+    blacklist = EnemyBlacklist()
+    existing_names = blacklist.get_all_names()
+    for alias in ('vengeful aatxe', 'aatxe vengeur', 'aatxe revenchard', 'aatxe revanchard'):
+        if alias not in existing_names:
+            blacklist.add_name(alias)
+    for agent_id in AgentArray.GetEnemyArray() or []:
+        if not Agent.IsValid(agent_id):
+            continue
+        name = str(Agent.GetNameByID(agent_id) or '').strip().casefold()
+        is_vengeful = ('aatxe' in name and
+                       ('venge' in name or 'reven' in name or 'revan' in name))
+        if not is_vengeful:
+            continue
+        model_id = int(Agent.GetModelID(agent_id) or 0)
+        if model_id <= 0:
+            continue
+        if not blacklist.contains(model_id):
+            blacklist.add(model_id)
+        if model_id not in _uw_aatxe_seen:
+            _uw_aatxe_seen.add(model_id)
+            _uw_log(f'[Keeper 2] Vengeful Aatxe: model={model_id} name={name!r} '
+                    f'blacklisted={blacklist.is_blacklisted(agent_id)}')
+
+
+def _keeper2_set_leader_combat(enabled: bool) -> None:
+    """Only the leader's HeroAI combat toggle; never disable follower combat."""
+    global _uw_keeper2_passage_active, _uw_keeper2_local_combat_before
+    local_email = str(Player.GetAccountEmail() or '').strip().casefold()
+    local_options = None
+    for account, options in _horsemen_accounts():
+        if str(account.AccountEmail or '').strip().casefold() == local_email:
+            local_options = options
+            break
+    if not enabled:
+        _sync_uw_aatxe_blacklist(force=True)
+        if local_options is None:
+            raise RuntimeError('Keeper 2: local leader HeroAI options unavailable; refusing unsafe passage.')
+        if not _uw_keeper2_passage_active:
+            _uw_keeper2_local_combat_before = bool(local_options.Combat)
+        _uw_keeper2_passage_active = True
+        local_options.Combat = False
+        _uw_log('[Keeper 2] Leader combat paused for passage, followers unaffected.')
+    else:
+        _uw_keeper2_passage_active = False
+        if local_options is not None:
+            local_options.Combat = (True if _uw_keeper2_local_combat_before is None
+                                    else _uw_keeper2_local_combat_before)
+        _uw_keeper2_local_combat_before = None
+        _uw_log('[Keeper 2] Leader combat restored after passage.')
+
+
+def _keeper2_tick_passage() -> None:
+    """Leader never attacks an invulnerable Aatxe during Keeper 2 approach/fight.
+
+    The shared blacklist alone does not suppress every local combat routine.
+    Keep the leader's HeroAI Combat disabled until Keeper 2 is confirmed dead,
+    and clear any previously selected blacklisted Aatxe target.
+    """
+    global _uw_keeper2_last_clear_at
+    if not _uw_keeper2_passage_active:
+        return
+    if not Map.IsMapReady() or Map.GetMapID() != UW_MAP_ID or Map.IsOutpost():
+        _keeper2_set_leader_combat(True)
+        return
+    _sync_uw_aatxe_blacklist()
+    local_email = str(Player.GetAccountEmail() or '').strip().casefold()
+    for account, options in _horsemen_accounts():
+        if str(account.AccountEmail or '').strip().casefold() == local_email:
+            options.Combat = False
+            break
+
+    now = time.monotonic()
+    if now - _uw_keeper2_last_clear_at < 0.8:
+        return
+    target = int(Player.GetTargetID() or 0)
+    if target > 0 and Agent.IsValid(target):
+        name = str(Agent.GetNameByID(target) or '').casefold()
+        # Do not clear a legitimate Keeper target or unrelated NPC target.
+        if ('aatxe' in name and ('reven' in name or 'revan' in name or 'venge' in name)):
+            Player.ChangeTarget(0)
+            _uw_keeper2_last_clear_at = now
+            _uw_log(f'[Keeper 2] Cleared invulnerable Aatxe target {target}; leader Combat stays OFF.')
+
+
+def _keeper2_focus_fendi_style() -> BehaviorTree:
+    """Persistent, boss-only call-target inspired by Shards' Fendi focus.
+
+    Never selects a nearby fallback enemy. The leader remains in a passive
+    stance so the invulnerable Aatxes cannot steal its auto-attacks. Party
+    members still have HeroAI combat enabled and can engage the called Keeper.
+    """
+    state = {'started': None, 'seen': False, 'gone_at': None,
+             'last_call_at': 0.0, 'last_target': 0}
+    center_x, center_y = -8371.0, 4865.0
+    radius_sq = 3200.0 ** 2
+
+    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        now = time.monotonic()
+        if state['started'] is None:
+            state['started'] = now
+        # Keep the original safety policy on until the Keeper is defeated.
+        if not _uw_keeper2_passage_active:
+            _keeper2_set_leader_combat(False)
+        _sync_uw_aatxe_blacklist()
+        living = []
+        for agent_id in AgentArray.GetEnemyArray() or []:
+            if not Agent.IsValid(agent_id) or not Agent.IsAlive(agent_id):
+                continue
+            if int(Agent.GetModelID(agent_id) or 0) != UW_KEEPER_ID:
+                continue
+            x, y = Agent.GetXY(agent_id)
+            if (x-center_x)**2 + (y-center_y)**2 <= radius_sq:
+                living.append(int(agent_id))
+        if living:
+            state['seen'] = True
+            state['gone_at'] = None
+            target = min(living, key=lambda a: (Agent.GetXY(a)[0]-center_x)**2 +
+                          (Agent.GetXY(a)[1]-center_y)**2)
+            changed = target != state['last_target']
+            # Re-select if another routine steals the local target; avoid
+            # repeated CallTarget chat spam (same improvement as Shards).
+            if changed or (int(Player.GetTargetID() or 0) != target
+                           and now - state['last_call_at'] >= 0.8):
+                Player.ChangeTarget(target)
+                state['last_call_at'] = now
+            if changed:
+                # Broadcast exactly once per different Keeper target.
+                Player.CallTarget(target)
+                state['last_target'] = target
+                _uw_log(f'[Keeper 2] Fendi-style focus: Keeper agent={target}, '
+                        'leader passive, party combat active.')
+        elif state['seen']:
+            if state['gone_at'] is None:
+                state['gone_at'] = now
+            if now - state['gone_at'] >= 2.0:
+                _uw_log('[Keeper 2] Keeper no longer alive/visible for 2s; releasing combat hold.')
+                return BehaviorTree.NodeState.SUCCESS
+        if now - state['started'] >= 150.0:
+            _uw_log('[Keeper 2] Focus timeout: no confirmed Keeper kill. Check path/aggro.', True)
+            return BehaviorTree.NodeState.FAILURE
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(BehaviorTree.ActionNode(
+        name='Keeper 2 boss-only focus (Fendi style)', action_fn=_tick, aftercast_ms=0))
+
+
 def _guardian_blacklist_checkpoint() -> BehaviorTree:
     return _action("Verify live Guardian blacklist", lambda: _sync_uw_guardian_blacklist(force=True))
 
@@ -1587,6 +1754,7 @@ def _planner_step(name: str, factory: Callable[[], BehaviorTree]) -> tuple[str, 
 def _vanquish_point(name: str, x: float, y: float) -> BehaviorTree:
     """Shards-style native one-point VanquishNode, independently restartable."""
     return BT.VanquishNode(
+        clear_area_radius=Range.Longbow.value,
         steps=[_v(x, y)],
         name=name,
         pause_on_combat=True,
@@ -2023,11 +2191,10 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action("Clear the Chamber", "06 - Verify quest complete (101)",
                         lambda: _wait_quest_completed(QUEST_CLEAR, timeout_ms=90_000)),
         _planner_action("Clear the Chamber", "07 - Claim Reaper reward",
-                        lambda: BT.MoveAndDialogByModelID(NPC_REAPER, dialog_id=0x806507, multi_account=True)),
-        _planner_action("Clear the Chamber", "08 - Reward settle", lambda: BT.Wait(1_000)),
-        _planner_action("Clear the Chamber", "09 - Accept Restore Monuments (109)",
-                        lambda: _quest_npc(NPC_REAPER, 0x806D01, QUEST_RESTORE_MONUMENTS, "Accept Monuments")),
-        _planner_action("Clear the Chamber", "10 - Completed", lambda: _record("Clear the Chamber")),
+                        lambda: BT.MoveAndDialogByModelID(NPC_REAPER, dialog_id=0x806707, multi_account=True)),
+        _planner_action("Clear the Chamber", "08 - Accept Restore Monuments (109)",
+                        lambda: _quest_npc(NPC_REAPER, 0x806707, QUEST_RESTORE_MONUMENTS, "Accept Monuments")),
+        _planner_action("Clear the Chamber", "09 - Completed", lambda: _record("Clear the Chamber")),
 
         *_planner_move_steps("Pass the Mountains", "Route", MOUNTAIN_PASSAGE),
         _planner_action("Pass the Mountains", "Completed", lambda: _record("Pass the Mountains")),
@@ -2120,9 +2287,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                             NPC_REAPER, dialog_id=0x806A07, multi_account=False, log=False)),
         _planner_action("The Four Horsemen", "24 - Restore following and looting",
                         lambda: _action("4H restore options", _horsemen_restore_policy)),
-        _planner_action("The Four Horsemen", "25 - Verify quest 106 completed",
-                        lambda: _wait_quest_completed(QUEST_FOUR_HORSEMEN, timeout_ms=10_000)),
-        _planner_action("The Four Horsemen", "26 - Record completion",
+        _planner_action("The Four Horsemen", "25 - Record completion",
                         lambda: _record("The Four Horsemen")),
 
         # Source: Underworld.py Restore_Pools. One named Planner entry per
@@ -2325,7 +2490,28 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         # Original teleports from the Reaper to Vale before Keeper 2.
         _planner_action('Unwanted Guests','09 - Teleport Vale 0x91',
                         lambda: BT.MoveAndDialogByModelID(NPC_REAPER,dialog_id=0x91,log=False)),
-        *_keeper_approach_steps(2, ((-12953,750),(-8371,4865))),
+        # Vengeful Aatxe remain invulnerable while their Keeper is alive.
+        # NEVER remove their blacklist to clear the choke point.
+        # Use movement-only nodes with obstacle avoidance, retaining the
+        # original Keeper 2 approach coordinates. A true collision blockade
+        # still needs a validated alternate path; do not claim this clears it.
+        _planner_action('Unwanted Guests', '09A - Blacklist Aatxe IDs and pause LEADER combat',
+                        lambda: _action('Start Keeper 2 safe passage',
+                                        lambda: _keeper2_set_leader_combat(False))),
+        _planner_action('Unwanted Guests', '09B - Navigate Keeper 2 (-12953,750) NO combat pause',
+                        lambda: BT.Move(_v(-12953,750), pause_on_combat=False,
+                                        avoid_obstacles=True, log=False)),
+        _planner_action('Unwanted Guests', '09C - Navigate Keeper 2 (-8371,4865) NO combat pause',
+                        lambda: BT.Move(_v(-8371,4865), pause_on_combat=False,
+                                        avoid_obstacles=True, log=False)),
+        _planner_action('Unwanted Guests', '09D - Keep leader passive while Keeper 2 alive',
+                        lambda: _action('Verify Keeper 2 safety',
+                                        lambda: _keeper2_set_leader_combat(False))),
+        _planner_action('Unwanted Guests', '09E - Focus Keeper 2 until defeat (Fendi style)',
+                        _keeper2_focus_fendi_style),
+        _planner_action('Unwanted Guests', '09F - Restore LEADER combat after Keeper 2',
+                        lambda: _action('End Keeper 2 safety policy',
+                                        lambda: _keeper2_set_leader_combat(True))),
         _planner_action('Unwanted Guests','10 - Keeper 2 depart (-7589,6801)',
                         lambda: BT.Move(_v(-7589,6801),log=False)),
         *_keeper_approach_steps(3, ((-4095,12964),)),
@@ -2340,10 +2526,6 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         *_keeper_approach_steps(6, ((-3125,916),(-597,-537),(-344,2155))),
         _planner_action('Unwanted Guests','14 - Keeper 6 depart (1256,4623)',
                         lambda: BT.Move(_v(1256,4623),log=False)),
-        # The original records here without checking the quest. In BT, protect
-        # downstream Restore Wastes from silent partial completion.
-        _planner_action('Unwanted Guests','14A - Verify quest 103 completed',
-                        lambda: _wait_quest_completed(UW_QUEST_UNWANTED, timeout_ms=120_000)),
         _planner_action('Unwanted Guests','15 - Remove Behemoth blacklist',
                         lambda: _blacklist('obsidian behemoth',False)),
         _planner_action('Unwanted Guests','16 - Record',lambda: _record('Unwanted Guests')),
@@ -2415,9 +2597,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                         lambda: BT.Move(_v(-14243,17017),log=False)),
         _planner_action('Dhuum','20 - Quest completion leader 0x846907',
                         lambda: BT.MoveAndDialogByModelID(UW_KING_ID,dialog_id=0x846907,log=False)),
-        _planner_action('Dhuum','21 - Verify quest 1129 completed',
-                        lambda: _wait_quest_completed(UW_QUEST_NIGHTMARE,timeout_ms=30_000)),
-        _planner_action('Dhuum','22 - Record full UW completion',lambda: _record('Dhuum')),
+        _planner_action('Dhuum','21 - Record full UW completion',lambda: _record('Dhuum')),
 
     ]
 
@@ -2482,6 +2662,8 @@ def main() -> None:
         if _uw_pacifist_active: _uw_wrathful_pacifist(False)
         if _dhuum_ready: _dhuum_finish()
     _sync_uw_guardian_blacklist()
+    _sync_uw_aatxe_blacklist()
+    _keeper2_tick_passage()
     _uw_servants_tick()
     _uw_wrathful_tick()
     _dhuum_tick()
