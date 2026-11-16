@@ -30,6 +30,7 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
     CONSET_UPKEEPS,
     CONSUMABLE_UPKEEPS,
 )
+from Py4GWCoreLib.routines_src.Checks import Checks
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
@@ -91,6 +92,17 @@ ZQUEST_DIALOG_TIMEOUT_MS = 100_000
 # Settle after the dialog before the next step travels: a map change cancels an
 # open dialog, and the handler marks its message finished as soon as it presses.
 ZQUEST_DIALOG_SETTLE_MS = 500
+# Automatic ZQuest handling names the area from the quest the signpost hands
+# over, so its text has to be requested and polled for.
+ZQUEST_QUEST_RESOLVE_TIMEOUT_MS = 20_000
+ZQUEST_QUEST_TEXT_POLL_MS = 500
+# `BT.Resign` raises `party_wipe_recovery_suppressed` while it works, and the core
+# recovery service that the planner installs unconditionally reads it. This widget
+# keeps that flag raised for the whole session (so the core service never acts) and
+# uses its own key to mark the resign, which is what its own recovery honours. The
+# cap clears the key left behind by a reset in the middle of a resign.
+RECOVERY_SUPPRESS_TIMEOUT_MS = 90_000
+_RESIGNING_KEY = 'zquest_resigning'
 
 # Consumable upkeep. The core list already separates the conset trio from the
 # plain pcons, so the same split the Reputation Farmer uses is reused here
@@ -168,6 +180,7 @@ _KEY_SELECTED_PCONS = 'SelectedPcons'
 _KEY_RESTOCK_SCROLL_OF_RESURRECTION = 'RestockScrollOfResurrection'
 _KEY_RESTOCK_MULTI_ACCOUNT = 'RestockMultiAccount'
 _KEY_KEEP_GOLD_ON_ACCOUNTS = 'KeepGoldOnAccounts'
+_KEY_AUTOMATIC_ZQUEST = 'AutomaticZQuestHandling'
 
 MAP_ROOT = os.path.join(
     PySystem.Console.get_projects_path(),
@@ -319,6 +332,13 @@ loaded_map_index = 0
 loop_runs = False
 auto_loot = True
 take_zquest = True
+# Automatic ZQuest handling: the map is the one the signpost quest names, so the
+# plan is built from the quest text read after the dialog instead of from the
+# combo. `_auto_definition` holds the definition resolved this run and
+# `_pending_planner_swap` asks the widget loop to replace the discovery steps.
+automatic_zquest = False
+_auto_definition: VanquishDefinition | None = None
+_pending_planner_swap = False
 forward_clear_radius = 3000
 reverse_clear_radius_1 = 10000
 reverse_clear_radius_2 = 10000
@@ -376,6 +396,8 @@ def _load_settings() -> None:
     global _restock_multi_account
     global _keep_gold_on_accounts
     global _selected_conset, _selected_pcons
+    global automatic_zquest
+    global take_zquest, loop_runs
 
     if _settings_loaded:
         return
@@ -386,6 +408,13 @@ def _load_settings() -> None:
     _restock_scroll_of_resurrection = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_SCROLL_OF_RESURRECTION, True)
     _restock_multi_account = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_MULTI_ACCOUNT, True)
     _keep_gold_on_accounts = _settings.get_bool(_SETTINGS_SECTION, _KEY_KEEP_GOLD_ON_ACCOUNTS, True)
+    automatic_zquest = _settings.get_bool(_SETTINGS_SECTION, _KEY_AUTOMATIC_ZQUEST, False)
+    if automatic_zquest:
+        # A stored combination from an older build has to respect the rule the UI
+        # enforces: the signpost feeds the resolution and a loop would have
+        # nothing left to accept on its second pass.
+        take_zquest = True
+        loop_runs = False
 
     stored_conset = _settings.get_str(_SETTINGS_SECTION, _KEY_SELECTED_CONSET, '')
     if stored_conset.strip():
@@ -406,6 +435,7 @@ def _save_settings() -> None:
     _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_SCROLL_OF_RESURRECTION, _restock_scroll_of_resurrection)
     _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_MULTI_ACCOUNT, _restock_multi_account)
     _settings.set(_SETTINGS_SECTION, _KEY_KEEP_GOLD_ON_ACCOUNTS, _keep_gold_on_accounts)
+    _settings.set(_SETTINGS_SECTION, _KEY_AUTOMATIC_ZQUEST, automatic_zquest)
     _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_CONSET, _serialize_model_id_list(_selected_conset))
     _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_PCONS, _serialize_model_id_list(_selected_pcons))
 
@@ -548,6 +578,103 @@ def _remote_account_emails() -> list[str]:
             continue
         recipients.append(email)
     return recipients
+
+
+def _summon_map_tuple(account: object) -> tuple[int, int, int, int]:
+    """The four fields `SummonAllAccounts` compares between accounts.
+
+    Copied from `routines_src/behaviourtrees_src/shared.py:_account_map_tuple` so
+    the census reports exactly what the summon step decides on: map, region,
+    district and language. Region and language are part of that comparison even
+    though no travel can change them, which is why they are printed here.
+    """
+    map_obj = getattr(getattr(account, 'AgentData', None), 'Map', None)
+    return (
+        int(getattr(account, 'MapID', 0) or getattr(map_obj, 'MapID', 0) or 0),
+        int(getattr(account, 'MapRegion', 0) or getattr(map_obj, 'Region', 0) or 0),
+        int(getattr(account, 'MapDistrict', 0) or getattr(map_obj, 'District', 0) or 0),
+        int(getattr(account, 'MapLanguage', 0) or getattr(map_obj, 'Language', 0) or 0),
+    )
+
+
+def _live_map_tuple() -> tuple[int, int, int, int]:
+    """This client's map identity straight from the live API."""
+    try:
+        return (
+            int(Map.GetMapID() or 0),
+            int(Map.GetRegion()[0] or 0),
+            int(Map.GetDistrict() or 0),
+            int(Map.GetLanguage()[0] or 0),
+        )
+    except Exception:
+        return (0, 0, 0, 0)
+
+
+def _shared_memory_census(include_isolated: bool = True) -> list[str]:
+    """One line per account the account mirror shows right now.
+
+    The mirror is written by the native multibox module: one slot per client, a
+    full push every frame from each client's `DrawLoop`, and this side only reads
+    it. So an alt missing from this list is not being hidden by a stale reader —
+    it either is not publishing (client not injected, still logging in, or stuck
+    on a loading screen) or it lost a slot claim to another client. Neither is
+    something this widget can refresh; the census exists to tell the two apart
+    from "the alt is there but somewhere else".
+
+    `match` compares each account's map tuple against the leader's the same way
+    the summon step does, so a run log shows who that step would target and why.
+
+    `include_isolated` is on because isolation hides accounts from every normal
+    query, and a hidden alt looks exactly like a missing one in the logs.
+    """
+    try:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData(include_isolated=include_isolated) or [])
+    except Exception as error:
+        return [f'shared memory unavailable: {error}']
+
+    local_email = str(Player.GetAccountEmail() or '').strip()
+    local_account = None
+    for account in accounts:
+        if str(getattr(account, 'AccountEmail', '') or '').strip() == local_email:
+            local_account = account
+            break
+    if local_account is not None:
+        local_tuple = _summon_map_tuple(local_account)
+        local_source = 'mirror'
+    else:
+        local_tuple = _live_map_tuple()
+        local_source = 'live map'
+
+    now = int(PySystem.get_tick_count64())
+    lines = [
+        f'{len(accounts)} account slot(s) visible',
+        f'  local {local_email or "<no email>"} tuple={local_tuple} from {local_source}',
+    ]
+    for account in accounts:
+        email = str(getattr(account, 'AccountEmail', '') or '').strip() or '<no email>'
+        map_id, region, district, language = _summon_map_tuple(account)
+        is_account = 'yes' if bool(getattr(account, 'IsAccount', False)) else 'no'
+        isolated = ' isolated' if bool(getattr(account, 'IsIsolated', False)) else ''
+        matches_leader = 'yes' if (map_id, region, district, language) == local_tuple else 'no'
+        # LastUpdated is a 32-bit truncation of the frame clock. A value ahead of
+        # ours (publishers run a frame or two later) would otherwise read as a
+        # 49-day-old slot, so the top half of the range is treated as "just now".
+        age_ms = (now - int(getattr(account, 'LastUpdated', 0) or 0)) % (1 << 32)
+        if age_ms > 0x80000000:
+            age_ms = 0
+        lines.append(
+            f'  slot {int(getattr(account, "SlotNumber", 0) or 0)} {email} '
+            f'map={map_id} region={region} district={district} language={language} '
+            f'account={is_account} match={matches_leader} age={age_ms}ms{isolated}'
+        )
+    return lines
+
+
+def _log_shared_memory_census() -> BehaviorTree.NodeState:
+    """Write the census to the console before anyone is gathered."""
+    for line in _shared_memory_census():
+        PySystem.Console.Log(MODULE_NAME, line, PySystem.Console.MessageType.Info)
+    return BehaviorTree.NodeState.SUCCESS
 
 
 def _remote_restock_commands() -> tuple[tuple[SharedCommandType, int], ...]:
@@ -711,6 +838,15 @@ def load_selected_definition() -> VanquishDefinition:
         raise ValueError(
             f'No PyQuish map found under {MAP_ROOT}. Select a region and a map in Config.'
         )
+    return load_definition(region, map_name)
+
+
+def load_definition(region: str, map_name: str) -> VanquishDefinition:
+    """Load one map module by region and name, whoever picked it.
+
+    Split out of `load_selected_definition` so the automatic ZQuest handling can
+    load the area it read from the quest without touching the combos.
+    """
     module_name = f'{MAP_PACKAGE}.{region}.{map_name}'
     # The map pack is data, so drop the cached copy and re-read the file: a live
     # edit is picked up on the next tree build after a widget reload.
@@ -765,6 +901,170 @@ def load_selected_definition() -> VanquishDefinition:
         transit_ids=transit_ids,
         transit_paths=transit_paths,
     )
+
+
+def _active_map_name() -> str:
+    """Map the UI reports: the resolved one in automatic mode."""
+    if automatic_zquest and _auto_definition is not None:
+        return _auto_definition.map_name
+    return _selected_map()
+
+
+def _strip_quest_markup(text: str) -> str:
+    """Quest text without the client's markup and control characters.
+
+    Two kinds of noise show up in the strings the client returns: colour tags like
+    `<c=@Quest>` and unresolved substitution markers like the `{s}` the vanquish
+    objective can carry at the very start. Both are dropped, otherwise the text
+    never begins with the verb the parser looks for.
+    """
+    plain: list[str] = []
+    angle = 0
+    brace = 0
+    for character in text:
+        if character == '<':
+            angle += 1
+            continue
+        if character == '>' and angle:
+            angle -= 1
+            continue
+        if character == '{':
+            brace += 1
+            continue
+        if character == '}' and brace:
+            brace -= 1
+            continue
+        if angle or brace:
+            continue
+        plain.append(character if character.isprintable() else ' ')
+    return ' '.join(''.join(plain).split())
+
+
+def _objective_area(objectives: str) -> tuple[str, str]:
+    """(area, location) named by a vanquish objective.
+
+    Objectives read `Clear <area> near <outpost> of all enemies in hard mode.` or
+    `Clear <area> in <region> of all enemies in hard mode.`. The area is what is
+    left after the verb, once the mode clause and the location clause are cut
+    away: `Clear the Floodplain of Mahnkelon in Kourna of all enemies in hard
+    mode.` yields (`the Floodplain of Mahnkelon`, `Kourna`). Returns two empty
+    strings when the text is not a vanquish objective.
+    """
+    text = _strip_quest_markup(objectives or '')
+    lowered = text.lower()
+    for verb in ('clear ', 'vanquish '):
+        if lowered.startswith(verb):
+            rest = text[len(verb):]
+            rest_lowered = lowered[len(verb):]
+            break
+    else:
+        return '', ''
+
+    # The mode clause sits at the end and must go first: `in hard mode` is also a
+    # location-looking phrase and would otherwise be taken as the area's location.
+    for marker in (' of all enemies', ' in hard mode', ' in normal mode'):
+        position = rest_lowered.find(marker)
+        if position >= 0:
+            rest = rest[:position]
+            rest_lowered = rest_lowered[:position]
+
+    area = rest
+    location = ''
+    for marker in (' near ', ' in '):
+        position = rest_lowered.find(marker)
+        if position >= 0:
+            area = rest[:position]
+            location = rest[position + len(marker):]
+            break
+    return area.strip(), location.strip()
+
+
+def _area_key(text: str) -> str:
+    """Comparison key for an area or region name.
+
+    Map files are named without spaces (`PongmeiValley`, `TheAlkaliPan`) while the
+    objective has them and often carries a leading article, so the key drops
+    everything but letters and digits and then the article.
+    """
+    key = ''.join(character for character in text.lower() if character.isalnum())
+    if key.startswith('the'):
+        key = key[3:]
+    return key
+
+
+def _region_matches_hint(region: str, location: str) -> bool:
+    """Whether a catalog region answers the location clause of the objective."""
+    hint = _area_key(location)
+    if not hint:
+        return False
+    region_key = _area_key(region.replace('_', ' '))
+    return hint in region_key or region_key in hint
+
+
+# Map files whose name differs from the in-game area name. The wiki and the
+# client both spell this one `Tahnnakai Temple`; the file drops an `a`, so the
+# day it comes up the area would never match.
+_MAP_FILE_ALIASES: dict[str, tuple[str, str]] = {
+    'tahnnakaitemple': ('Factions_KainengCity', 'TahnnakiTemple'),
+}
+
+
+def _match_map_key(area_key: str, location: str = '') -> tuple[str, str]:
+    """Catalog (region, map) whose name matches the area, most specific first.
+
+    Tiers: equality, map name ending with the area, area ending with the map name,
+    containment. A tier that names several maps is narrowed by the location
+    clause when the objective has one, which is what separates the two
+    `DeldrimorBowl` entries. Anything still ambiguous is reported as no match:
+    guessing would run the wrong route.
+    """
+    if not area_key:
+        return '', ''
+    alias = _MAP_FILE_ALIASES.get(area_key)
+    if alias and alias[1] in MAP_CATALOG.get(alias[0], ()):
+        return alias
+    pairs = [
+        (region, map_name)
+        for region, maps in MAP_CATALOG.items()
+        for map_name in maps
+    ]
+    tiers: tuple[Callable[[str], bool], ...] = (
+        lambda key: key == area_key,
+        lambda key: key.endswith(area_key),
+        lambda key: area_key.endswith(key),
+        lambda key: area_key in key or key in area_key,
+    )
+    for matches in tiers:
+        found = [pair for pair in pairs if matches(_area_key(pair[1]))]
+        if len(found) == 1:
+            return found[0]
+        if len(found) > 1:
+            hinted = [pair for pair in found if _region_matches_hint(pair[0], location)]
+            if len(hinted) == 1:
+                return hinted[0]
+            # The map pack can hold one area twice under different region folders
+            # (`DeldrimorBowl`). Those entries describe the same area, so the first
+            # one wins instead of stopping the run over a data duplication.
+            if len({pair[1] for pair in found}) == 1:
+                return sorted(found)[0]
+            return '', ''
+    return '', ''
+
+
+def _resolve_map_from_text(text: str) -> tuple[str, str]:
+    """Catalog (region, map) named by a vanquish objective or description."""
+    area, location = _objective_area(text)
+    if not area:
+        return '', ''
+    return _match_map_key(_area_key(area), location)
+
+
+def _resolve_map_from_quest_name(name: str) -> tuple[str, str]:
+    """Catalog (region, map) named by a quest title, the last fallback source."""
+    text = _strip_quest_markup(name or '')
+    if ':' in text:
+        text = text.rsplit(':', 1)[-1]
+    return _match_map_key(_area_key(_objective_area(text)[0] or text))
 
 
 def _condition(name: str, condition_fn: Callable[[], bool]) -> BehaviorTree:
@@ -1071,40 +1371,6 @@ def _build_outpost_exit(definition: VanquishDefinition) -> BehaviorTree:
     )
 
 
-def _build_transit_leg(definition: VanquishDefinition, index: int) -> BehaviorTree:
-    """Walk one intermediate map between the outpost exit and the vanquish map."""
-    if index < 0 or index >= len(definition.transit_paths):
-        return BT.Succeeder(name=f'NoTransitLeg:{index + 1}')
-
-    transit_path = definition.transit_paths[index]
-    next_map_id = definition.explorable_id
-    if index + 1 < len(definition.transit_ids) and definition.transit_ids[index + 1] > 0:
-        next_map_id = definition.transit_ids[index + 1]
-
-    if _is_plain_path(transit_path) and next_map_id > 0:
-        transit_move_path = _coordinate_path(transit_path, f'transit path {index + 1}')
-        return BT.MoveAndExitMap(
-            transit_move_path,
-            target_map_id=next_map_id,
-            timeout_ms=TRANSIT_TIMEOUT_MS,
-            log=True,
-        )
-
-    children: list[BehaviorTree] = [
-        _build_path_tree(
-            definition,
-            transit_path,
-            name=f'TransitPath:{index + 1}',
-            clear_radius=0.0,
-            combat_path=False,
-            skip_when_completed=False,
-        )
-    ]
-    if next_map_id > 0:
-        children.append(BT.WaitForMapLoad(map_id=next_map_id, timeout_ms=TRANSIT_TIMEOUT_MS))
-    return BT.Sequence(name=f'TransitPath:{index + 1}', children=children)
-
-
 def _mark_run_started() -> BehaviorTree.NodeState:
     stats.start_run()
     PySystem.Console.Log(
@@ -1183,6 +1449,528 @@ def _build_run_preparation(definition: VanquishDefinition) -> BehaviorTree:
     )
 
 
+class RouteItem(NamedTuple):
+    """One planner step of a walking leg.
+
+    The map is carried with the point, and in the step name, because transit legs
+    and the vanquish route use their own coordinate spaces: reading a point from
+    one map against a position from another paths into a wall, and the console
+    cannot tell the two apart without the id in the name.
+
+    `combat` selects the flavour: the forward route vanquishes each point with its
+    clear radius, while a transit leg only walks it.
+    """
+
+    kind: str  # 'point' | 'exit' | 'action' | 'wait_map'
+    step_name: str
+    map_id: int
+    point: Coordinate | None = None
+    key: str = ''
+    value: object = None
+    number: int = 0
+    combat: bool = False
+
+
+def _iter_path_items(path: Sequence[object]) -> list[tuple[str, object]]:
+    """Flatten a route path into (keyword, value) items in walking order."""
+
+    if _is_plain_path(path):
+        return [('path', path)]
+
+    items: list[tuple[str, object]] = []
+    for segment in path:
+        items.extend(_iter_segment_items(segment))
+    return items
+
+
+def _transit_leg_map_id(definition: VanquishDefinition, index: int) -> int:
+    """Map one transit leg walks in: its own target, not the final map."""
+    if 0 <= index < len(definition.transit_ids) and definition.transit_ids[index] > 0:
+        return int(definition.transit_ids[index])
+    return int(definition.explorable_id or definition.outpost_id)
+
+
+def _transit_next_map_id(definition: VanquishDefinition, index: int) -> int:
+    if index + 1 < len(definition.transit_ids) and definition.transit_ids[index + 1] > 0:
+        return int(definition.transit_ids[index + 1])
+    return int(definition.explorable_id)
+
+
+def _vanquish_route_map_id(definition: VanquishDefinition) -> int:
+    return int(definition.explorable_id or definition.outpost_id)
+
+
+def _vanquish_route_items(definition: VanquishDefinition) -> list[RouteItem]:
+    """Every walking step in planner order, split by point and by keyword.
+
+    Transit legs are expanded by the same code as the vanquish route, so the
+    Navigation list shows one step per waypoint for both and every step name
+    carries the map it walks in. The reverse sweeps stay one step: they re-walk
+    the whole path, not a single waypoint.
+    """
+
+    items: list[RouteItem] = []
+    point_number = 0
+    action_number = 0
+
+    def _add_point(map_id: int, point: Coordinate, *, combat: bool, exit_target: int = 0) -> None:
+        nonlocal point_number
+        point_number += 1
+        items.append(
+            RouteItem(
+                kind='exit' if exit_target > 0 else 'point',
+                step_name=f'Point {point_number} (map {map_id})',
+                map_id=map_id,
+                point=point,
+                value=exit_target if exit_target > 0 else None,
+                number=point_number,
+                combat=combat,
+            )
+        )
+
+    def _add_action(map_id: int, label: str, key: str, value: object, *, combat: bool) -> None:
+        nonlocal action_number
+        action_number += 1
+        items.append(
+            RouteItem(
+                kind='wait_map' if key == 'map' else 'action',
+                step_name=f'Action {action_number}: {label}',
+                map_id=map_id,
+                key=key,
+                value=value,
+                number=action_number,
+                combat=combat,
+            )
+        )
+
+    for index, transit_path in enumerate(definition.transit_paths):
+        map_id = _transit_leg_map_id(definition, index)
+        next_map_id = _transit_next_map_id(definition, index)
+
+        if _is_plain_path(transit_path) and next_map_id > 0:
+            # A plain transit leg used to be one MoveAndExitMap: walked in order and
+            # exited at the portal. Split by point, the exit stays on the last one.
+            points = _coordinate_path(transit_path, f'transit path {index + 1}')
+            for position, point in enumerate(points):
+                is_last = position == len(points) - 1
+                _add_point(map_id, point, combat=False, exit_target=next_map_id if is_last else 0)
+            if not points:
+                _add_action(map_id, f'map {next_map_id}', 'map', next_map_id, combat=False)
+            continue
+
+        for key, value in _iter_path_items(transit_path):
+            if key == 'path':
+                for point in _coordinate_path(value, f'transit path {index + 1}'):
+                    _add_point(map_id, point, combat=False)
+                continue
+            _add_action(map_id, key, key, value, combat=False)
+
+        # The same explicit wait the leg builder appends, so a structured leg also
+        # ends on the map it walks into.
+        if next_map_id > 0 and definition.explorable_id > 0:
+            _add_action(map_id, f'map {next_map_id}', 'map', next_map_id, combat=False)
+
+    route_map_id = _vanquish_route_map_id(definition)
+    for key, value in _iter_path_items(definition.vanquish_path):
+        if key == 'path':
+            for point in _coordinate_path(value, 'vanquish path'):
+                _add_point(route_map_id, point, combat=True)
+            continue
+        _add_action(route_map_id, key, key, value, combat=True)
+
+    return items
+
+
+def _build_route_item(definition: VanquishDefinition, item: RouteItem) -> BehaviorTree:
+    """Build the tree for one route item, labelled with its step name."""
+
+    if item.kind == 'wait_map':
+        return BT.WaitForMapLoad(
+            map_id=int(item.value or 0),
+            timeout_ms=TRANSIT_TIMEOUT_MS,
+        )
+
+    if item.kind == 'action':
+        children = _build_keyword_action(
+            definition,
+            str(item.key),
+            item.value,
+            float(forward_clear_radius) if item.combat else 0.0,
+            item.combat,
+            item.combat,
+        )
+        if not children:
+            return BT.Succeeder(name=f'{item.step_name}:Empty')
+        return BT.Sequence(name=item.step_name, children=children)
+
+    point = item.point
+    if point is None:
+        return BT.Succeeder(name=f'{item.step_name}:Empty')
+
+    if item.kind == 'exit':
+        return BT.MoveAndExitMap(
+            [point],
+            target_map_id=int(item.value or 0),
+            timeout_ms=TRANSIT_TIMEOUT_MS,
+            log=True,
+        )
+
+    if item.combat:
+        return _build_forward_point(definition, point, item.number)
+
+    # A transit waypoint: the same movement the leg builder used before the split
+    # (pause on combat, no clear radius), just walked one point at a time.
+    return BT.Move([point], pause_on_combat=True, log=False)
+
+
+def _recovery_suppression(
+    suppressed: bool,
+    since_ms: float,
+    now_ms: float,
+) -> tuple[bool, float, bool]:
+    """Decide whether a resign still blocks recovery.
+
+    Returns `(blocked, suppressed_since_ms, timed_out)`.
+
+    The widget marks its own resign around `BT.Resign`, because the core service
+    that ships with the planner reads `party_wipe_recovery_suppressed` and this
+    widget keeps that flag raised for its whole life. The timeout exists because a
+    tree reset during the resign can leave the marker set, and a stuck marker
+    would silently disable recovery for the rest of the session.
+    """
+
+    if not suppressed:
+        return False, 0.0, False
+    if since_ms <= 0.0:
+        return True, now_ms, False
+    if now_ms - since_ms >= RECOVERY_SUPPRESS_TIMEOUT_MS:
+        return False, 0.0, True
+    return True, since_ms, False
+
+
+def _route_resume_step(
+    definition: VanquishDefinition,
+    map_id: int,
+    position: Coordinate,
+    failed_step_name: str,
+    planner_names: Sequence[str],
+) -> str:
+    """Nearest waypoint to the shrine, ahead or behind, in the map the party is in.
+
+    The rule is geometric: whichever point is closest to the resurrection shrine
+    wins, whether the party had already walked it or not, so the resume walk is as
+    short as the map allows. Transit legs are included, because their points carry
+    the map they walk in.
+
+    One guard remains: the search stops at the next non-point step, so a resume can
+    never land past a blessing, a gadget or a map change that has not run yet.
+    """
+
+    items = _vanquish_route_items(definition)
+    names = list(planner_names)
+
+    points = [
+        item
+        for item in items
+        if item.point is not None and item.map_id == map_id and item.step_name in names
+    ]
+    if not points:
+        return ''
+
+    failed_index = names.index(failed_step_name) if failed_step_name in names else -1
+
+    limit = len(names)
+    for item in items:
+        if item.point is not None or item.step_name not in names:
+            continue
+        index = names.index(item.step_name)
+        if index > failed_index:
+            limit = index
+            break
+
+    eligible = [item for item in points if names.index(item.step_name) < limit]
+    if not eligible:
+        return ''
+
+    def _distance_sq(item: RouteItem) -> float:
+        point = item.point
+        if point is None:
+            return float('inf')
+        return (float(point[0]) - position[0]) ** 2 + (float(point[1]) - position[1]) ** 2
+
+    return min(eligible, key=_distance_sq).step_name
+
+
+def ZQuestPartyWipeRecoveryService() -> BehaviorTree:
+    """Resume a party wipe from the nearest waypoint to the shrine.
+
+    The core service restarts the step that was running, which after the per-point
+    split is the waypoint the party died on: correct, but it walks the party back
+    to that spot from the shrine. This one goes further: after a shrine revival it
+    resolves the waypoint nearest to the shrine, ahead or behind the failed step and
+    on the current map, so the party walks the shortest distance back into its
+    route. A party defeat restarts from Prepare, the step that knows how to travel
+    back, because the route coordinates belong to another map.
+
+    The planner installs the core recovery service unconditionally, so this widget
+    holds `party_wipe_recovery_suppressed` raised for its whole life to keep it
+    quiet and honours its own resign marker instead.
+    """
+
+    state: dict[str, object] = {
+        "active": False,
+        "mode": "",
+        "failed_step_name": "",
+        "last_return_ms": 0.0,
+        "player_was_dead": False,
+        "player_dead_pos": None,
+        "suppressed_since_ms": 0.0,
+    }
+
+    def _log(message: str, message_type: int = PySystem.Console.MessageType.Info) -> None:
+        PySystem.Console.Log("ZQuestWipeRecovery", message, message_type)
+
+    def _current_step(node: BehaviorTree.Node) -> str:
+        step_name = str(node.blackboard.get("current_step_name", "") or "")
+        if step_name:
+            return step_name
+        return str(node.blackboard.get("last_active_planner_step_name", "") or "")
+
+    def _planner_step_names() -> list[str]:
+        if botting_tree is None:
+            return []
+        try:
+            return list(botting_tree.GetNamedPlannerStepNames() or [])
+        except Exception:
+            return []
+
+    def _detect_revive_teleport() -> bool:
+        """Report a move from the death spot to a distant shrine."""
+
+        try:
+            player_id = Player.GetAgentID()
+            if not Agent.IsValid(player_id):
+                return False
+            current_pos = Agent.GetXY(player_id)
+            is_dead = bool(Agent.IsDead(player_id))
+        except Exception:
+            return False
+
+        def _far(death_pos) -> bool:
+            return math.hypot(death_pos[0] - current_pos[0], death_pos[1] - current_pos[1]) > 1200.0
+
+        if is_dead:
+            if not state["player_was_dead"]:
+                state["player_was_dead"] = True
+                state["player_dead_pos"] = current_pos
+                return False
+            death_pos = state["player_dead_pos"]
+            if death_pos and _far(death_pos):
+                # Some revive flows teleport the dead agent before it becomes alive.
+                state["player_was_dead"] = False
+                state["player_dead_pos"] = None
+                return True
+            return False
+
+        if not state["player_was_dead"]:
+            return False
+
+        state["player_was_dead"] = False
+        death_pos = state["player_dead_pos"]
+        state["player_dead_pos"] = None
+        return bool(death_pos) and _far(death_pos)
+
+    def _player_is_alive() -> bool:
+        try:
+            player_id = Player.GetAgentID()
+            return bool(Agent.IsValid(player_id) and not Agent.IsDead(player_id))
+        except Exception:
+            return False
+
+    def _can_resume_in_explorable() -> bool:
+        try:
+            return bool(Map.IsMapReady() and Map.IsExplorable() and _player_is_alive())
+        except Exception:
+            return False
+
+    def _can_resume_from_outpost() -> bool:
+        try:
+            return bool(Map.IsMapReady() and Map.IsOutpost())
+        except Exception:
+            return False
+    def _reset_state(node: BehaviorTree.Node) -> None:
+        state["active"] = False
+        state["mode"] = ""
+        state["failed_step_name"] = ""
+        state["last_return_ms"] = 0.0
+        state["player_was_dead"] = False
+        state["player_dead_pos"] = None
+        node.blackboard["party_wipe_recovery_active"] = False
+        node.blackboard["party_wipe_recovery_mode"] = ""
+        node.blackboard["party_wipe_recovery_step_name"] = ""
+
+    def _begin_recovery(node: BehaviorTree.Node, mode: str) -> None:
+        # Whatever was queued when the party died would otherwise run after the
+        # revive and fight the step the recovery just resumed at. The core service
+        # flushes here for the same reason.
+        from Py4GWCoreLib.py4gwcorelib_src.ActionQueue import ActionQueueManager
+
+        state["active"] = True
+        state["mode"] = mode
+        state["failed_step_name"] = _current_step(node)
+        state["last_return_ms"] = 0.0
+        node.blackboard["party_wipe_recovery_active"] = True
+        node.blackboard["party_wipe_recovery_mode"] = mode
+        node.blackboard["party_wipe_recovery_step_name"] = state["failed_step_name"]
+        ActionQueueManager().ResetAllQueues()
+        detail = (
+            "Returning to the outpost to restart from Prepare."
+            if mode == "defeated"
+            else "Waiting for the shrine revival."
+        )
+        _log(
+            f"Party wipe on '{state['failed_step_name']}'. {detail}",
+            PySystem.Console.MessageType.Warning,
+        )
+
+    def _resolve_restart_step(mode: str) -> str:
+        failed_step_name = str(state["failed_step_name"] or "")
+        names = _planner_step_names()
+
+        if mode == "defeated":
+            # From an outpost the route coordinates belong to another map, so the
+            # only step that can get the party back there is the preparation.
+            for step_name in names:
+                if step_name.startswith("Prepare "):
+                    return step_name
+            return failed_step_name
+
+        try:
+            # Automatic mode resolved a map the combos never selected, so the plan
+            # that is running belongs to `_auto_definition`.
+            if automatic_zquest and _auto_definition is not None:
+                definition = _auto_definition
+            else:
+                definition = load_selected_definition()
+            player_id = Player.GetAgentID()
+            position = Agent.GetXY(player_id)
+            map_id = int(Map.GetMapID() or 0)
+        except Exception as error:
+            _log(f"Could not resolve the shrine resume point: {error}", PySystem.Console.MessageType.Warning)
+            return failed_step_name
+
+        step_name = _route_resume_step(definition, map_id, position, failed_step_name, names)
+        if step_name:
+            _log(
+                f"Shrine at ({position[0]:.0f}, {position[1]:.0f}) on map {map_id}: "
+                f"resuming at '{step_name}'.",
+                PySystem.Console.MessageType.Success,
+            )
+            return step_name
+
+        _log(
+            f"No waypoint on map {map_id}; restarting '{failed_step_name}' instead.",
+            PySystem.Console.MessageType.Warning,
+        )
+        return failed_step_name
+
+    def _request_restart(node: BehaviorTree.Node, mode: str) -> bool:
+        step_name = _resolve_restart_step(mode)
+        if not step_name:
+            _log("Recovery finished but no planner step could be resolved.", PySystem.Console.MessageType.Warning)
+            return False
+
+        node.blackboard["party_wipe_recovery_step_name"] = step_name
+        node.blackboard["current_step_name"] = step_name
+        node.blackboard["last_active_planner_step_name"] = step_name
+        node.blackboard["restart_step_name_request"] = step_name
+        return True
+
+    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        # The planner installs the core recovery service unconditionally, so the
+        # only way to keep it quiet is to hold its flag raised. The widget's own
+        # resign marker is what this service honours.
+        node.blackboard["party_wipe_recovery_suppressed"] = True
+
+        now = _now_ms()
+        blocked, state["suppressed_since_ms"], timed_out = _recovery_suppression(
+            bool(node.blackboard.get(_RESIGNING_KEY, False)),
+            float(state["suppressed_since_ms"]),
+            now,
+        )
+        if timed_out:
+            node.blackboard[_RESIGNING_KEY] = False
+            _log(
+                "The resign marker never cleared; recovery re-armed.",
+                PySystem.Console.MessageType.Warning,
+            )
+        if blocked:
+            # The party dying here is a resign we asked for, not a wipe.
+            _reset_state(node)
+            return BehaviorTree.NodeState.RUNNING
+
+        revived_at_shrine = _detect_revive_teleport()
+        try:
+            party_wiped = bool(Checks.Party.IsPartyWiped())
+            party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
+        except Exception:
+            party_wiped = False
+            party_defeated = False
+
+        if not bool(state["active"]):
+            if not (party_wiped or party_defeated or revived_at_shrine):
+                node.blackboard["party_wipe_recovery_active"] = False
+                return BehaviorTree.NodeState.RUNNING
+
+            mode = "defeated" if party_defeated else "shrine"
+            _begin_recovery(node, mode)
+
+            if mode == "shrine" and revived_at_shrine and _can_resume_in_explorable():
+                restarted = _request_restart(node, mode)
+                _reset_state(node)
+                return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+            return BehaviorTree.NodeState.RUNNING
+
+        if party_defeated and state["mode"] != "defeated":
+            state["mode"] = "defeated"
+            _log("The shrine recovery became a party defeat; switching to outpost recovery.")
+
+        node.blackboard["party_wipe_recovery_active"] = True
+        node.blackboard["party_wipe_recovery_mode"] = state["mode"]
+
+        if state["mode"] == "shrine":
+            if _can_resume_from_outpost():
+                state["mode"] = "defeated"
+                _log("The party returned to an outpost during shrine recovery; switching to outpost recovery.")
+            else:
+                if revived_at_shrine or (not party_wiped and _can_resume_in_explorable()):
+                    restarted = _request_restart(node, "shrine")
+                    _reset_state(node)
+                    return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+                return BehaviorTree.NodeState.RUNNING
+
+        if _can_resume_from_outpost():
+            restarted = _request_restart(node, "defeated")
+            _reset_state(node)
+            return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+
+        if now - float(state["last_return_ms"]) >= 1000.0:
+            state["last_return_ms"] = now
+            try:
+                GLOBAL_CACHE.Party.ReturnToOutpost()
+            except Exception as error:
+                _log(f"ReturnToOutpost failed: {error}", PySystem.Console.MessageType.Warning)
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='ZQuestPartyWipeRecovery',
+            action_fn=_tick,
+            aftercast_ms=0,
+        )
+    )
+
+
 def _build_forward_point(
     definition: VanquishDefinition,
     point: Coordinate,
@@ -1196,28 +1984,6 @@ def _build_forward_point(
         log=False,
     )
     return _skip_if_completed(child, f'ForwardPoint:{point_number}')
-
-
-def _build_forward_action(
-    definition: VanquishDefinition,
-    key: str,
-    value: object,
-    action_number: int,
-) -> BehaviorTree:
-    children = _build_keyword_action(
-        definition,
-        key,
-        value,
-        clear_radius=float(forward_clear_radius),
-        combat_path=True,
-        skip_when_completed=True,
-    )
-    if not children:
-        return BT.Succeeder(name=f'ForwardAction:{action_number}:Empty')
-    return BT.Sequence(
-        name=f'ForwardAction:{action_number}:{key}',
-        children=children,
-    )
 
 
 def _build_cleanup_sweeps(definition: VanquishDefinition) -> BehaviorTree:
@@ -1268,6 +2034,20 @@ def _build_cleanup_sweeps(definition: VanquishDefinition) -> BehaviorTree:
     return completion
 
 
+def _mark_recovery_suppression(value: bool) -> BehaviorTree:
+    """Set or clear the widget's own resign marker.
+
+    Kept separate from `party_wipe_recovery_suppressed`, which this widget holds
+    raised so the core recovery service never acts.
+    """
+
+    def _set(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        node.blackboard[_RESIGNING_KEY] = bool(value)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return _action(f'MarkResigning:{value}', _set)
+
+
 def _build_run_completion(definition: VanquishDefinition) -> BehaviorTree:
     children: list[BehaviorTree] = [_action('RecordRunCompletion', _mark_run_completed)]
 
@@ -1275,6 +2055,7 @@ def _build_run_completion(definition: VanquishDefinition) -> BehaviorTree:
     # and by the staging flow, which ends in Embark Beach so the next run starts
     # from a staged position.
     if loop_runs or take_zquest:
+        children.append(_mark_recovery_suppression(True))
         children.append(
             BT.Resign(
                 wait_for_map_load=True,
@@ -1283,6 +2064,7 @@ def _build_run_completion(definition: VanquishDefinition) -> BehaviorTree:
                 log=True,
             )
         )
+        children.append(_mark_recovery_suppression(False))
 
     return BT.Sequence(
         name=f'Complete:{definition.map_name}',
@@ -1317,6 +2099,9 @@ def _build_form_party() -> BehaviorTree:
     first step means every run starts from a known party state instead of
     inheriting whatever the previous run left behind.
 
+    The shared-memory census runs first, so the log records who this client could
+    see at the moment it asked for a party.
+
     Skipped when `Account Isolation` is enabled: the shared-memory gate refuses
     messages between accounts that are not in the same party or isolation group,
     so with no party yet the summon and invite would be dropped (each refusal
@@ -1325,19 +2110,41 @@ def _build_form_party() -> BehaviorTree:
     """
 
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        # The census runs even when the step is skipped: it is the record of who
+        # this client could see when the run asked for a party, and that is what
+        # tells a missing account apart from a hidden or misplaced one.
+        census = _action('LogSharedMemoryCensus', _log_shared_memory_census)
         if _isolation_enabled():
-            return BT.Succeeder('Form Party Skipped: Account Isolation')
-        return BT.CreateParty(
-            multibox_invite=True,
-            timeout_ms=REMOTE_PARTY_TIMEOUT_MS,
-            poll_interval_ms=100,
-            log=True,
+            return BT.Sequence(
+                name='FormPartyIsolated',
+                children=[
+                    census,
+                    BT.Succeeder('Form Party Skipped: Account Isolation'),
+                ],
+            )
+        return BT.Sequence(
+            name='FormParty',
+            children=[
+                census,
+                BT.CreateParty(
+                    multibox_invite=True,
+                    timeout_ms=REMOTE_PARTY_TIMEOUT_MS,
+                    poll_interval_ms=100,
+                    log=True,
+                ),
+            ],
         )
 
     return BT.Subtree(name='Form Party', subtree_fn=_build)
 
 
-def get_execution_steps(definition: VanquishDefinition) -> list[tuple[str, Callable[[], BehaviorTree]]]:
+def get_execution_steps(definition: VanquishDefinition | None) -> list[tuple[str, Callable[[], BehaviorTree]]]:
+    """Named planner steps for a run.
+
+    `definition=None` is the automatic ZQuest handling before the map is known:
+    the plan stops after the signpost, with a resolver step that reads the
+    accepted quest and asks the widget for the real plan.
+    """
     steps: list[tuple[str, Callable[[], BehaviorTree]]] = [
         # Party first: staging and preparation both assume the group is formed.
         ('Form Party', _build_form_party),
@@ -1353,6 +2160,10 @@ def get_execution_steps(definition: VanquishDefinition) -> list[tuple[str, Calla
             )
         )
 
+    if definition is None:
+        steps.append(('Resolve ZQuest', _build_auto_zquest_resolver))
+        return steps
+
     steps.append(
         (
             f'Prepare {definition.map_name}',
@@ -1360,55 +2171,14 @@ def get_execution_steps(definition: VanquishDefinition) -> list[tuple[str, Calla
         )
     )
 
-    # Only the intermediate travels get their own step, one per transit path; the
-    # outpost exit lives in Prepare, so maps with just an outpost path show none.
-    for index in range(len(definition.transit_paths)):
-        leg_number = index + 1
+    # Every walking step, one per waypoint and per keyword, transit legs included,
+    # each named with the map it walks in. The outpost exit lives in Prepare, so
+    # maps with just an outpost path still show none.
+    for item in _vanquish_route_items(definition):
         steps.append(
             (
-                f'Transit path {leg_number}',
-                lambda definition=definition, index=index: _build_transit_leg(definition, index),
-            )
-        )
-
-    point_number = 0
-    action_number = 0
-    path_items: list[tuple[str, object]] = []
-    if _is_plain_path(definition.vanquish_path):
-        path_items.append(('path', definition.vanquish_path))
-    else:
-        for segment in definition.vanquish_path:
-            path_items.extend(_iter_segment_items(segment))
-
-    for key, value in path_items:
-        if key == 'path':
-            points = _coordinate_path(value, 'vanquish path')
-            for point in points:
-                point_number += 1
-                current_point_number = point_number
-                steps.append(
-                    (
-                        f'Point {current_point_number}',
-                        lambda definition=definition, point=point, point_number=current_point_number: _build_forward_point(
-                            definition,
-                            point,
-                            point_number,
-                        ),
-                    )
-                )
-            continue
-
-        action_number += 1
-        current_action_number = action_number
-        steps.append(
-            (
-                f'Action {current_action_number}: {key}',
-                lambda definition=definition, key=key, value=value, action_number=current_action_number: _build_forward_action(
-                    definition,
-                    key,
-                    value,
-                    action_number,
-                ),
+                item.step_name,
+                lambda definition=definition, item=item: _build_route_item(definition, item),
             )
         )
 
@@ -1448,11 +2218,17 @@ def _configure_upkeep(tree: BottingTree) -> None:
     tree.Config.ConfigureUpkeep(
         looting_enabled=auto_loot,
         resurrection_scroll=True,
-        enable_party_wipe_recovery=True,
+        # The widget installs its own recovery service below: it resumes at the
+        # nearest waypoint to the shrine instead of the failed step, and a party
+        # defeat goes back through Prepare, which is the step that can travel.
+        enable_party_wipe_recovery=False,
         heroai_state_logging=True,
         heroai_state_log_interval_ms=5000,
         consumable_upkeeps=_enabled_consumable_upkeeps(),
     )
+    # ConfigureUpkeep replaces every service tree, so this has to be re-added on
+    # each call, not only at creation.
+    tree.AddServiceTree('ZQuestPartyWipeRecoveryService', ZQuestPartyWipeRecoveryService)
 
 
 def ensure_botting_tree() -> BottingTree:
@@ -1462,7 +2238,9 @@ def ensure_botting_tree() -> BottingTree:
     global loaded_map_index
 
     if botting_tree is None:
-        definition = load_selected_definition()
+        # Automatic mode starts from the discovery plan: the map is unknown until
+        # the signpost quest has been accepted and read.
+        definition = None if automatic_zquest else load_selected_definition()
         last_load_error = ''
         botting_tree = BottingTree.Create(
             MODULE_NAME,
@@ -1521,6 +2299,7 @@ def _apply_pending_rebuild() -> None:
     global last_load_error
     global region_index
     global map_index
+    global _auto_definition
 
     if not pending_rebuild:
         return
@@ -1534,6 +2313,9 @@ def _apply_pending_rebuild() -> None:
         previous_tree.Stop()
     botting_tree = None
     pending_rebuild = False
+    # A fresh tree in automatic mode goes back to the discovery plan, so the map
+    # resolved by the previous run must not survive it.
+    _auto_definition = None
 
     try:
         ensure_botting_tree()
@@ -1671,6 +2453,96 @@ def _resolve_reward_npc() -> tuple[int, tuple[float, float]]:
     return _nearest_living_agent(ZQUEST_REWARD_NPC, name_filter=ZQUEST_REWARD_NPC_NAME)
 
 
+def _now_ms() -> float:
+    """Monotonic clock in milliseconds for the readiness deadline."""
+
+    return time.monotonic() * 1000.0
+
+
+def _remote_accounts_on_leader_map() -> tuple[bool, list[str]]:
+    """Whether every other account reports the leader's map and district.
+
+    Each account publishes its map in shared memory only after its own client is
+    fully loaded, so a leader that finishes loading first sees the others still
+    pointed at the previous map. The dialog fan-out resolves its agent on the
+    leader and messages the rest: sending it now means the followers receive an
+    order for a map they are not in yet, acknowledge it, do nothing, and the party
+    ends up with only some accounts holding the quest.
+    """
+
+    sender_email = ''
+    pending: list[str] = []
+    try:
+        sender_email = str(Player.GetAccountEmail() or '')
+        map_id = int(Map.GetMapID() or 0)
+        district = int(Map.GetDistrict() or 0)
+    except Exception:
+        return False, pending
+
+    if map_id <= 0:
+        return False, pending
+
+    try:
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData() or []
+    except Exception:
+        return False, pending
+
+    for account in accounts:
+        if not bool(getattr(account, 'IsAccount', False)):
+            continue
+        email = str(getattr(account, 'AccountEmail', '') or '')
+        if not email or email == sender_email:
+            continue
+        map_struct = getattr(getattr(account, 'AgentData', None), 'Map', None)
+        reported_map = int(getattr(map_struct, 'MapID', 0) or 0)
+        reported_district = int(getattr(map_struct, 'District', 0) or 0)
+        if reported_map != map_id:
+            pending.append(email)
+        elif district > 0 and reported_district > 0 and reported_district != district:
+            pending.append(email)
+
+    return not pending, pending
+
+
+def _wait_remote_accounts_ready(label: str) -> BehaviorTree:
+    """Hold a multibox dialog until the other accounts are in the same instance.
+
+    Bounded on purpose: an account that is legitimately elsewhere must not stall
+    the step forever, so the wait gives up after the remote party timeout and
+    leaves a warning naming the accounts that were not ready.
+    """
+
+    state = {'started_ms': 0.0, 'reported': False}
+
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        ready, pending = _remote_accounts_on_leader_map()
+        if ready:
+            return BehaviorTree.NodeState.SUCCESS
+
+        now = _now_ms()
+        if state['started_ms'] <= 0.0:
+            state['started_ms'] = now
+        if now - state['started_ms'] < REMOTE_PARTY_TIMEOUT_MS:
+            return BehaviorTree.NodeState.RUNNING
+
+        if not state['reported']:
+            state['reported'] = True
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f'{label}: {len(pending)} account(s) still not on this map after '
+                f'{REMOTE_PARTY_TIMEOUT_MS // 1000}s ({", ".join(pending)}); '
+                'sending the dialog anyway.',
+                PySystem.Console.MessageType.Warning,
+            )
+            # The census right after the warning is what separates "the alt is
+            # in another district" from "the alt is not publishing at all".
+            for line in _shared_memory_census():
+                PySystem.Console.Log(MODULE_NAME, line, PySystem.Console.MessageType.Warning)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return _action(f'Wait{label}AccountsReady', _tick)
+
+
 class MultiboxDialogSpec(NamedTuple):
     """Everything one multibox autodialog step needs."""
 
@@ -1679,6 +2551,7 @@ class MultiboxDialogSpec(NamedTuple):
     agent_key: str
     refs_key: str
     resolve: Callable[[], tuple[int, tuple[float, float]]]
+    label: str
 
 
 _SIGNPOST_DIALOG = MultiboxDialogSpec(
@@ -1687,6 +2560,7 @@ _SIGNPOST_DIALOG = MultiboxDialogSpec(
     agent_key='zquest_signpost_agent_id',
     refs_key='zquest_dialog_refs',
     resolve=_resolve_vanquish_signpost,
+    label='Signpost',
 )
 
 _REWARD_DIALOG = MultiboxDialogSpec(
@@ -1695,7 +2569,47 @@ _REWARD_DIALOG = MultiboxDialogSpec(
     agent_key='zquest_reward_agent_id',
     refs_key='zquest_reward_refs',
     resolve=_resolve_reward_npc,
+    label='Reward',
 )
+
+
+def _wait_dialog_agent(spec: MultiboxDialogSpec) -> BehaviorTree:
+    """Resolve the dialog agent, waiting until the client has decoded its name.
+
+    `BehaviorTree.WaitUntilNode` is not usable for this: a `False` from its
+    condition is a terminal FAILURE, not "keep waiting", so a predicate that
+    answers "not yet" burns the whole retry budget on its first evaluation. After
+    a party map load the agent array exists but `Agent.GetNameByID` still returns
+    empty while names decode, so the resolver answers "not yet" for a second or
+    two — and the step dropped straight into the fallback branch. That branch
+    interacts locally and only messages the group once the local dialog is
+    accepted, so the leader ends up at the signpost with the followers still
+    standing at the portal and the whole step fails on the local dialog timeout.
+    """
+
+    state = {'deadline_ms': 0.0}
+
+    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        agent_id = int(spec.resolve()[0] or 0)
+        if agent_id > 0:
+            node.blackboard[spec.agent_key] = agent_id
+            return BehaviorTree.NodeState.SUCCESS
+
+        now = _now_ms()
+        if state['deadline_ms'] <= 0.0:
+            state['deadline_ms'] = now + ZQUEST_AGENT_WAIT_MS
+        if now < state['deadline_ms']:
+            return BehaviorTree.NodeState.RUNNING
+
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f'{spec.label}: no dialog agent resolved within {ZQUEST_AGENT_WAIT_MS // 1000}s; '
+            'falling back to the point-based dialog.',
+            PySystem.Console.MessageType.Warning,
+        )
+        return BehaviorTree.NodeState.FAILURE
+
+    return _action(f'Resolve{spec.label}DialogAgent', _tick)
 
 
 def _build_multibox_dialog(spec: MultiboxDialogSpec) -> BehaviorTree:
@@ -1708,12 +2622,12 @@ def _build_multibox_dialog(spec: MultiboxDialogSpec) -> BehaviorTree:
     over and fans out the same dialog after walking there. Confirmation is a
     message-dispatch wait, so it only proves each handler finished, not that the
     game accepted the dialog.
-    """
 
-    def _resolve(node: BehaviorTree.Node) -> bool:
-        agent_id = int(spec.resolve()[0] or 0)
-        node.blackboard[spec.agent_key] = agent_id
-        return agent_id > 0
+    It waits for the other accounts to report this map first: a leader that
+    finishes loading before its followers would otherwise dispatch an order for
+    an agent the followers cannot see yet, and only some of them would end up
+    with the quest.
+    """
 
     def _resolved_branch(node: BehaviorTree.Node) -> BehaviorTree:
         agent_id = int(node.blackboard.get(spec.agent_key, 0) or 0)
@@ -1762,17 +2676,11 @@ def _build_multibox_dialog(spec: MultiboxDialogSpec) -> BehaviorTree:
     return BT.Sequence(
         name='MultiboxDialog',
         children=[
+            _wait_remote_accounts_ready(spec.label),
             BT.Selector(
                 name='FindDialogAgent',
                 children=[
-                    BehaviorTree(
-                        BehaviorTree.WaitUntilNode(
-                            name='WaitForDialogAgent',
-                            condition_fn=_resolve,
-                            throttle_interval_ms=250,
-                            timeout_ms=ZQUEST_AGENT_WAIT_MS,
-                        )
-                    ),
+                    _wait_dialog_agent(spec),
                     BT.Succeeder('DialogAgentNotVisibleYet'),
                 ],
             ),
@@ -1786,6 +2694,164 @@ def _build_multibox_dialog(spec: MultiboxDialogSpec) -> BehaviorTree:
             BT.Wait(duration_ms=ZQUEST_DIALOG_SETTLE_MS),
         ],
     )
+
+
+def _active_quest_id() -> int:
+    """The active quest id, or 0.
+
+    Only the active quest is read, never the log. `RequestQuestInfo` is what the
+    client uses to select a quest, so asking for the text of every logged quest
+    walks the quest tracker through unrelated entries: the run ends up resolving a
+    map, and switching the client, for a quest the party is not doing.
+    """
+    try:
+        return int(GLOBAL_CACHE.Quest.GetActiveQuest() or 0)
+    except Exception:
+        return 0
+
+
+def _quest_text_value(raw: object) -> str:
+    """Client quest string, minus the decoder's failure sentinel.
+
+    The async decoders answer `Timeout` when the text has not arrived yet; the
+    rest of the repo treats it as a retry signal (`quest_data_src.py`), never as
+    text. Returning '' keeps the poll going instead of trying to match an area
+    called "Timeout".
+    """
+    text = str(raw or '')
+    return '' if text.strip().lower() == 'timeout' else text
+
+
+def _read_quest_texts(quest_id: int, request: bool, request_info: bool = False) -> tuple[str, str, str]:
+    """(objectives, description, name) for a quest, empty while not ready.
+
+    The vanquish objective is the string that names the area (`Clear Pongmei
+    Valley near Kaineng City of all enemies in hard mode.`), so it is the primary
+    source; the description is only a fallback and the title the last resort.
+
+    `request_info` asks the client for the quest record itself, once per quest:
+    the per-field decoders answer with the `Timeout` sentinel when the record was
+    never requested, which is what the account quest cache does before it reads
+    a field.
+    """
+    if request_info:
+        GLOBAL_CACHE.Quest.RequestQuestInfo(quest_id)
+    if request:
+        GLOBAL_CACHE.Quest.RequestQuestObjectives(quest_id)
+        GLOBAL_CACHE.Quest.RequestQuestDescription(quest_id)
+        GLOBAL_CACHE.Quest.RequestQuestName(quest_id)
+    objectives = ''
+    if GLOBAL_CACHE.Quest.IsQuestObjectivesReady(quest_id):
+        objectives = _quest_text_value(GLOBAL_CACHE.Quest.GetQuestObjectives(quest_id))
+    description = ''
+    if GLOBAL_CACHE.Quest.IsQuestDescriptionReady(quest_id):
+        description = _quest_text_value(GLOBAL_CACHE.Quest.GetQuestDescription(quest_id))
+    name = ''
+    if GLOBAL_CACHE.Quest.IsQuestNameReady(quest_id):
+        name = _quest_text_value(GLOBAL_CACHE.Quest.GetQuestName(quest_id))
+    return objectives, description, name
+
+
+def _select_map(region: str, map_name: str) -> None:
+    """Point the combos at the resolved map so the UI and the plan agree."""
+    global region_index
+    global map_index
+    if region in REGIONS:
+        region_index = REGIONS.index(region)
+    maps = MAP_CATALOG.get(region, ())
+    if map_name in maps:
+        map_index = maps.index(map_name)
+
+
+def _build_auto_zquest_resolver() -> BehaviorTree:
+    """Name the area from the vanquish quest the signpost just gave the party.
+
+    The plan cannot be built before this runs: the route belongs to the map and
+    the signpost picks the map. The step reads the objectives of the **active**
+    quest — never the quest log, because `RequestQuestInfo` selects the quest it
+    describes and walking the log would leave the client tracking an unrelated
+    one — resolves the area against the map catalog and stores the definition,
+    then asks the widget to swap the remaining steps for the resolved run.
+
+    It never reports success while it is waiting: a completed pass stops the tree,
+    and the swap has to happen with the tree still running, so the step stays
+    RUNNING until the new plan replaces it. The clock is capped, and when it runs
+    out the step logs the text it saw and reports success so the run ends instead
+    of retrying a quest that will not resolve.
+    """
+    state: dict[str, float | str | bool] = {
+        'deadline_ms': 0.0,
+        'last_request_ms': 0.0,
+        'last_text': '',
+        'info_requested': False,
+    }
+
+    def _stop(message: str) -> BehaviorTree.NodeState:
+        PySystem.Console.Log(MODULE_NAME, message, PySystem.Console.MessageType.Error)
+        return BehaviorTree.NodeState.SUCCESS
+
+    def _resolve(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        global _auto_definition
+        global _pending_planner_swap
+
+        if _auto_definition is not None and not _pending_planner_swap:
+            # The swap clears the request; seeing the definition without it means
+            # the planner was not replaced and this step would run forever.
+            return _stop(
+                'Automatic ZQuest: the map was resolved but the planner swap did '
+                'not apply. Stopping instead of walking the wrong plan.'
+            )
+
+        now = _now_ms()
+        if not state['deadline_ms']:
+            state['deadline_ms'] = now + ZQUEST_QUEST_RESOLVE_TIMEOUT_MS
+
+        request = now - float(state['last_request_ms']) >= ZQUEST_QUEST_TEXT_POLL_MS
+        if request:
+            state['last_request_ms'] = now
+
+        quest_id = _active_quest_id()
+        if quest_id > 0:
+            # The quest record is asked for once; the per-field decoders answer
+            # with the `Timeout` sentinel until it has been requested.
+            request_info = not bool(state['info_requested'])
+            if request_info:
+                state['info_requested'] = True
+            objectives, description, name = _read_quest_texts(quest_id, request, request_info)
+            if objectives or description or name:
+                state['last_text'] = objectives or description or name
+            region, map_name = (
+                _resolve_map_from_text(objectives)
+                or _resolve_map_from_text(description)
+                or _resolve_map_from_quest_name(name)
+            )
+            if region and map_name:
+                definition = load_definition(region, map_name)
+                _select_map(region, map_name)
+                _auto_definition = definition
+                _pending_planner_swap = True
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f'Automatic ZQuest: quest {quest_id} names {region}/{map_name} '
+                        f'("{state["last_text"]}"). Continuing at Prepare.'
+                    ),
+                    PySystem.Console.MessageType.Success,
+                )
+                return BehaviorTree.NodeState.RUNNING
+
+        if now >= float(state['deadline_ms']):
+            return _stop(
+                'Automatic ZQuest: no map matched the active quest after '
+                f'{ZQUEST_QUEST_RESOLVE_TIMEOUT_MS // 1000}s (active quest {quest_id}, '
+                f'last read: "{state["last_text"] or "nothing"}"). '
+                'Stop the bot, check the quest is in the log and that its area '
+                'exists under Sources/aC_Scripts/PyQuishAI_maps.'
+            )
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return _action('ResolveZQuest', _resolve)
 
 
 def _build_zquest_staging() -> BehaviorTree:
@@ -1802,6 +2868,68 @@ def _build_zquest_staging() -> BehaviorTree:
             _build_multibox_dialog(_SIGNPOST_DIALOG),
         ],
     )
+
+
+def _apply_pending_planner_swap() -> None:
+    """Replace the discovery steps with the plan for the resolved map.
+
+    Runs from the widget loop, after the tick that resolved the map: the running
+    planner must not be mutated from inside one of its own nodes. The new steps
+    are installed with `start_from` at the preparation step, so the run continues
+    where the quest was accepted instead of travelling back to Embark Beach.
+    """
+    global _pending_planner_swap
+    global _auto_definition
+
+    if not _pending_planner_swap:
+        return
+
+    tree = botting_tree
+    definition = _auto_definition
+    if tree is None or definition is None or not tree.IsStarted():
+        _pending_planner_swap = False
+        return
+
+    try:
+        tree.SetNamedPlannerSteps(
+            get_execution_steps(definition),
+            start_from=f'Prepare {definition.map_name}',
+            name='PyQuishAISequence',
+            repeat=loop_runs,
+        )
+    except Exception as error:
+        _pending_planner_swap = False
+        _auto_definition = None
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f'Automatic ZQuest: could not build the plan for {definition.map_name}: {error}',
+            PySystem.Console.MessageType.Error,
+        )
+        tree.Stop()
+        return
+
+    _pending_planner_swap = False
+    PySystem.Console.Log(
+        MODULE_NAME,
+        (
+            f'Automatic ZQuest: plan for {definition.region}/{definition.map_name} '
+            f'installed, continuing at Prepare {definition.map_name}.'
+        ),
+        PySystem.Console.MessageType.Info,
+    )
+
+
+def _reset_auto_resolution_on_stop(tree: BottingTree) -> None:
+    """Put the discovery plan back once an automatic run is over.
+
+    The completed run replaced the planner steps with the resolved route, so a
+    new start would skip the signpost and walk a map the party may no longer
+    hold. Rebuilding the tree restores the discovery steps and clears the
+    resolved map.
+    """
+    if not automatic_zquest or _auto_definition is None or tree.IsStarted():
+        return
+    _request_rebuild()
 
 
 def _build_leave_party_and_travel_gh() -> BehaviorTree:
@@ -1869,6 +2997,8 @@ def _draw_config() -> None:
     global loop_runs
     global auto_loot
     global take_zquest
+    global automatic_zquest
+    global _auto_definition
     global forward_clear_radius
     global reverse_clear_radius_1
     global reverse_clear_radius_2
@@ -1881,6 +3011,20 @@ def _draw_config() -> None:
         PyImGui.text_colored('Stop the bot before changing the map.', (255, 190, 80, 255))
 
     PyImGui.begin_disabled(locked)
+    new_automatic = PyImGui.checkbox('Automatic ZQuest handling', automatic_zquest)
+    if new_automatic != automatic_zquest:
+        automatic_zquest = new_automatic
+        if automatic_zquest:
+            # The map comes from the quest the signpost hands over, so the staging
+            # step has to run, and a repeated pass would have nothing left to
+            # accept.
+            take_zquest = True
+            loop_runs = False
+        _auto_definition = None
+        _save_settings()
+        _request_rebuild()
+
+    PyImGui.begin_disabled(automatic_zquest)
     new_region_index = PyImGui.combo('Region', region_index, list(REGIONS))
     if new_region_index != region_index:
         region_index = new_region_index
@@ -1893,8 +3037,15 @@ def _draw_config() -> None:
     if new_map_index != map_index:
         map_index = new_map_index
         _request_rebuild()
+    PyImGui.end_disabled()
+    if automatic_zquest:
+        PyImGui.text_colored(
+            'The map is read from the quest the signpost gives the party.',
+            (160, 160, 160, 255),
+        )
 
     PyImGui.separator()
+    PyImGui.begin_disabled(automatic_zquest)
     new_loop_runs = PyImGui.checkbox('Loop vanquish', loop_runs)
     if new_loop_runs != loop_runs:
         loop_runs = new_loop_runs
@@ -1904,19 +3055,25 @@ def _draw_config() -> None:
             # pair is resolved here instead of guessing from the map at runtime.
             take_zquest = False
         _request_rebuild()
+    PyImGui.end_disabled()
 
     new_auto_loot = PyImGui.checkbox('Automatic looting', auto_loot)
     if new_auto_loot != auto_loot:
         auto_loot = new_auto_loot
         _request_rebuild()
 
-    PyImGui.begin_disabled(loop_runs)
+    PyImGui.begin_disabled(loop_runs or automatic_zquest)
     new_take_zquest = PyImGui.checkbox('Take ZQuest', take_zquest)
     if new_take_zquest != take_zquest:
         take_zquest = new_take_zquest
         _request_rebuild()
     PyImGui.end_disabled()
-    if loop_runs:
+    if automatic_zquest:
+        PyImGui.text_colored(
+            'Take ZQuest is always on with Automatic ZQuest handling.',
+            (160, 160, 160, 255),
+        )
+    elif loop_runs:
         PyImGui.text_colored(
             'Take ZQuest is off while Loop vanquish is enabled.',
             (160, 160, 160, 255),
@@ -2137,10 +3294,12 @@ def _draw_help() -> None:
     PyImGui.text_wrapped('PyQuishAI rebuilt on BottingTree and BehaviorTree nodes only. No legacy FSM is used.')
     PyImGui.separator()
     PyImGui.text_wrapped('Select a map in Config, then start it from the Main tab.')
-    PyImGui.text_wrapped('Every route coordinate is a named planner step: Point 1, Point 2, and so on.')
+    PyImGui.text_wrapped('With Automatic ZQuest handling on, the region and map combos are disabled: the plan is built from the quest the signpost gives the party, resolved from its "Clear <area> ..." objective.')
+    PyImGui.text_wrapped('Every route coordinate is a named planner step carrying the map it walks in: Point 1 (map 99), Point 2 (map 103), and so on, transit legs included.')
     PyImGui.text_wrapped('A failed movement or party-wipe recovery restarts the current point instead of the full route.')
     PyImGui.text_wrapped('Choose the first step in Navigation to restart from staging; Prepare starts from the outpost.')
-    PyImGui.text_wrapped('Form Party disbands, summons the other accounts to the leader map and invites them back before every run; it is skipped while Account Isolation is enabled.')
+    PyImGui.text_wrapped('Form Party disbands, summons the other accounts to the leader map and invites them back before every run, and logs the shared-memory census first; it is skipped while Account Isolation is enabled.')
+    PyImGui.text_wrapped('The quest dialogs wait for the other accounts to report the leader map and district before the order is sent, so no follower misses the quest because it was still loading.')
     PyImGui.text_wrapped('The bot performs the forward route, followed by up to two reverse sweeps if foes remain.')
     PyImGui.text_wrapped('Take ZQuest travels to Embark Beach and takes the vanquish quest from the signpost before each run.')
     PyImGui.text_wrapped('Consumable upkeep is configured in the Consumables tab: consets and pcons are separated.')
@@ -2155,7 +3314,12 @@ def _format_time(seconds: float) -> str:
 
 
 def _draw_run_status() -> None:
-    PyImGui.text(f'Selected: {_selected_region()} / {_selected_map()}')
+    if automatic_zquest and _auto_definition is None:
+        PyImGui.text('Selected: (pending quest)')
+    elif automatic_zquest:
+        PyImGui.text(f'Selected: {_active_map_name()} (from quest)')
+    else:
+        PyImGui.text(f'Selected: {_selected_region()} / {_active_map_name()}')
     if last_load_error:
         PyImGui.text_colored(f'Load error: {last_load_error}', (255, 80, 80, 255))
 
@@ -2214,6 +3378,8 @@ def main() -> None:
     _apply_pending_rebuild()
     tree = ensure_botting_tree()
     tree.tick()
+    _apply_pending_planner_swap()
+    _reset_auto_resolution_on_stop(tree)
     _freeze_stopped_run(tree)
     tree.UI.draw_window(
         icon_path=TEXTURE,
