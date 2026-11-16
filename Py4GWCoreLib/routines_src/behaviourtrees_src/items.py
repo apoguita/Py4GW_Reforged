@@ -46,7 +46,7 @@ Docstring parsing rules
 from __future__ import annotations
 
 import time
-from collections.abc import Generator, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any, Optional, cast
 
@@ -67,8 +67,8 @@ from ...UIManager import (
     UIManager,
 )
 from ...enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
-from ...enums_src.Item_enums import Bags, Rarity, SalvageMode
-from ...Item import Bag, Item
+from ...enums_src.Item_enums import INVENTORY_BAGS, Bags, Rarity, SalvageMode
+from ...Item import Item
 from Sources.frenkeyLib.ItemHandling.Items.item_snapshot import ItemSnapshot
 from Sources.frenkeyLib.ItemHandling.UIManagerExtensions import UIManagerExtensions
 from ...enums_src.Model_enums import ModelID
@@ -2149,11 +2149,6 @@ class BTItems:
           UserDescription: Use this when you want a BT step that manages salvage UI and progress automatically for one item.
           Notes: Stores runtime state in the blackboard, supports expert or lesser kits, and returns running while the salvage flow is in progress.
         """
-        lesser_kit_model_ids = (
-            ModelID.Salvage_Kit,
-            ModelID.Salvage_Kit_preSearing,
-        )
-
         def _reset_state(node: BehaviorTree.Node):
             node.blackboard.pop(state_key, None)
 
@@ -2162,82 +2157,24 @@ class BTItems:
                 return
             PySystem.Console.Log("BTNodes.Items.SalvageItem", message, msg_type)
 
-        def _resolve_preferred_kit(valid_model_ids: tuple[ModelID, ...]) -> int:
-            if preferred_kit_id is None or preferred_kit_id <= 0:
-                return 0
+        # Kits are matched by native capability flags, not ModelID, so variants such as
+        # infinite kits work without maintaining per-model allowlists.
+        def _resolve_kit(accepts: Callable[[SalvageKitInfo], bool]) -> SalvageKitInfo | None:
+            kits = [kit for kit in scan_salvage_kits(INVENTORY_BAGS) if accepts(kit)]
+            if preferred_kit_id is not None and preferred_kit_id > 0:
+                for kit in kits:
+                    if kit.item_id == preferred_kit_id:
+                        return kit
+            return min(kits, key=lambda kit: (kit.uses, kit.item_id)) if kits else None
 
-            preferred = ItemSnapshot.from_item_id(preferred_kit_id)
-            if preferred is None or not preferred.is_valid or not preferred.is_salvage_kit or preferred.uses <= 0:
-                return 0
+        def _is_lesser_kit(kit: SalvageKitInfo) -> bool:
+            return kit.is_lesser
 
-            try:
-                preferred_model_id = ModelID(preferred.model_id)
-            except ValueError:
-                return 0
+        def _is_expert_kit(kit: SalvageKitInfo) -> bool:
+            return kit.is_expert
 
-            return preferred.id if preferred_model_id in valid_model_ids else 0
-
-        def _get_expert_salvage_kit() -> int:
-            preferred = _resolve_preferred_kit((ModelID.Expert_Salvage_Kit, ModelID.Superior_Salvage_Kit))
-            if preferred > 0:
-                return preferred
-
-            inventory_snapshot = ItemSnapshot.get_inventory_snapshot(Bag.Backpack, Bag.Bag_2)
-            expert_kits = [
-                item
-                for bag in inventory_snapshot.values()
-                for item in bag.values()
-                if item is not None
-                and item.is_valid
-                and item.is_salvage_kit
-                and item.model_id in (ModelID.Expert_Salvage_Kit, ModelID.Superior_Salvage_Kit)
-            ]
-            if not expert_kits:
-                return 0
-            return min(expert_kits, key=lambda kit: kit.uses).id
-
-        def _get_lesser_salvage_kit() -> int:
-            preferred = _resolve_preferred_kit(lesser_kit_model_ids)
-            if preferred > 0:
-                return preferred
-
-            inventory_snapshot = ItemSnapshot.get_inventory_snapshot(Bag.Backpack, Bag.Bag_2)
-            lesser_kits = [
-                item
-                for bag in inventory_snapshot.values()
-                for item in bag.values()
-                if item is not None
-                and item.is_valid
-                and item.is_salvage_kit
-                and item.model_id in lesser_kit_model_ids
-            ]
-            if not lesser_kits:
-                return 0
-            return min(lesser_kits, key=lambda kit: kit.uses).id
-
-        def _get_upgrade_salvage_kit() -> int:
-            valid_model_ids = (
-                ModelID.Perfect_Salvage_Kit,
-                ModelID.Expert_Salvage_Kit,
-                ModelID.Superior_Salvage_Kit,
-            )
-            preferred = _resolve_preferred_kit(valid_model_ids)
-            if preferred > 0:
-                return preferred
-
-            inventory_snapshot = ItemSnapshot.get_inventory_snapshot(Bag.Backpack, Bag.Bag_2)
-            upgrade_kits = [
-                item
-                for bag in inventory_snapshot.values()
-                for item in bag.values()
-                if item is not None
-                and item.is_valid
-                and item.is_salvage_kit
-                and item.model_id in valid_model_ids
-            ]
-            if not upgrade_kits:
-                return 0
-            return min(upgrade_kits, key=lambda kit: kit.uses).id
+        def _is_upgrade_kit(kit: SalvageKitInfo) -> bool:
+            return kit.is_expert or kit.is_perfect
 
         def _is_mod_salvaged(item: ItemSnapshot, mode: SalvageMode) -> bool:
             match mode:
@@ -2306,19 +2243,17 @@ class BTItems:
 
             if not state.salvage_started_at:
                 if mode == SalvageMode.LesserCraftingMaterials:
-                    kit_id = _get_lesser_salvage_kit()
-                    if allow_expert_for_common_materials and kit_id == 0:
-                        kit_id = _get_expert_salvage_kit()
+                    kit = _resolve_kit(_is_lesser_kit)
+                    if allow_expert_for_common_materials and kit is None:
+                        kit = _resolve_kit(_is_expert_kit)
                 elif mode == SalvageMode.RareCraftingMaterials:
-                    kit_id = _get_expert_salvage_kit()
+                    kit = _resolve_kit(_is_expert_kit)
                 else:
-                    kit_id = _get_upgrade_salvage_kit()
+                    kit = _resolve_kit(_is_upgrade_kit)
 
-                kit = ItemSnapshot.from_item_id(kit_id)
-                if kit_id <= 0 or (
-                    kit is None
-                    or kit.model_id in lesser_kit_model_ids
-                    and (item.rarity > Rarity.White and not item.is_identified)
+                kit_id = kit.item_id if kit is not None else 0
+                if kit is None or (
+                    kit.is_lesser and item.rarity > Rarity.White and not item.is_identified
                 ):
                     _debug(
                         f"Failed to resolve valid salvage kit for item={item.id} mode={mode.name}. "
