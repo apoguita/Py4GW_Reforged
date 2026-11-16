@@ -30,6 +30,7 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
     CONSET_UPKEEPS,
     CONSUMABLE_UPKEEPS,
 )
+from Py4GWCoreLib.routines_src.Agents import Agents as RoutinesAgents
 from Py4GWCoreLib.routines_src.Checks import Checks
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
@@ -42,6 +43,9 @@ MODULE_TAGS = ['Bot', 'Vanquish', 'BehaviorTree']
 
 INI_PATH = 'Widgets/Automation/Bots/Vanquish/PyQuishAI_BT'
 INI_FILENAME = 'PyQuishAI_BT.ini'
+# Folder this widget lives in, derived from the INI path it already owns, so
+# the enemy log written at the end of a run lands next to the widget.
+WIDGET_DIR = os.path.dirname(INI_PATH)
 MAP_PACKAGE = 'Sources.aC_Scripts.PyQuishAI_maps'
 TEXTURE = os.path.join(
     PySystem.Console.get_projects_path(),
@@ -181,6 +185,7 @@ _KEY_RESTOCK_SCROLL_OF_RESURRECTION = 'RestockScrollOfResurrection'
 _KEY_RESTOCK_MULTI_ACCOUNT = 'RestockMultiAccount'
 _KEY_KEEP_GOLD_ON_ACCOUNTS = 'KeepGoldOnAccounts'
 _KEY_AUTOMATIC_ZQUEST = 'AutomaticZQuestHandling'
+_KEY_ENEMY_LOG = 'EnemyLog'
 
 MAP_ROOT = os.path.join(
     PySystem.Console.get_projects_path(),
@@ -188,6 +193,34 @@ MAP_ROOT = os.path.join(
     'aC_Scripts',
     'PyQuishAI_maps',
 )
+
+# Enemy log: what the party actually walked past, appended run by run next to the
+# widget. Only the leader runs this widget, so there is a single writer. The map
+# modules stay the source of truth for the route, so this file is the evidence
+# used to move or add points: an enemy logged during the sweeps is one the
+# forward pass never cleared, and where it stood says which point to fix.
+# It is a history, not a snapshot: every finished run appends its own block, so a
+# week of runs can be reviewed together.
+ENEMY_LOG_FILENAME = 'PyQuishAI_BT_enemy_log.txt'
+ENEMY_LOG_DOCUMENT_HEADER = (
+    '# PyQuishAI_BT enemy log\n'
+    '# One block per finished run, appended oldest first. Do not edit by hand.\n'
+)
+ENEMY_LOG_SAMPLE_MS = 250
+# Widest radius the game and the sweep configuration allow. The log is not a copy
+# of what a step was going to clear: it wants every enemy the client knows about,
+# so the map can be routed from where the foes actually stand.
+ENEMY_LOG_RADIUS = 10000.0
+# Cell used to tell a recycled agent id from the same enemy having moved. Nothing
+# stops a wandering foe from crossing a cell, so this has to be wide: at 1 km one
+# patrol produced three rows for the same agent.
+ENEMY_LOG_ID_CELL = 3000.0
+# A map holds a few hundred enemies and a sweep leaves a handful, so this is a
+# runaway guard, not a budget.
+ENEMY_LOG_MAX_RECORDS = 5000
+# Planner step name of the reverse passes; the phase of every other route step is
+# read from the map id its name carries.
+SWEEP_STEP_NAME = 'Cleanup sweeps'
 
 
 def _scan_map_catalog() -> dict[str, tuple[str, ...]]:
@@ -342,6 +375,9 @@ _pending_planner_swap = False
 forward_clear_radius = 3000
 reverse_clear_radius_1 = 10000
 reverse_clear_radius_2 = 10000
+# Route work needs the enemy log; a normal run does not, so it is off by default
+# and switched on from Config. Off means nothing is sampled and nothing is written.
+enemy_log_enabled = False
 
 # Consumable upkeep state (persisted per account, same keys as the other BTs).
 _settings = Settings(f'{INI_PATH}/{INI_FILENAME}', 'account')
@@ -361,6 +397,246 @@ pending_rebuild = False
 _stop_after_sweeps = False
 last_load_error = ''
 stats = SessionStats()
+
+
+class EnemyLogRecord(NamedTuple):
+    """One enemy the party came close to, as seen during a route step.
+
+    The row is the raw observation: who, where, and how close the party got,
+    plus the step it happened in and the party position. Note when reading it
+    that `player_x/player_y` describe the chase and not the route: the clear
+    loop targets enemies inside its own circle, so the party can be nearly 3 km
+    from the waypoint the step names. The route review measures against the map
+    points, not against those coordinates.
+    """
+
+    phase: str
+    step: str
+    map_id: int
+    agent_id: int
+    player_x: float
+    player_y: float
+    enemy_x: float
+    enemy_y: float
+    distance: float
+
+
+# Records are deduplicated per enemy, not per position: enemies wander, so a
+# grid key turned one patrolling foe into a row per 100 u cell. The kept sample
+# is the closest approach, which is the distance a new or moved route point
+# would have to beat. The coarse cell stays in the key only because the game
+# recycles agent ids: the same id seen a kilometre away is another agent.
+_enemy_log_records: dict[tuple[int, int, int, int, str], EnemyLogRecord] = {}
+_enemy_log_active = False
+_enemy_log_started_at = ''
+_enemy_log_finished_at = ''
+_enemy_log_last_sample_ms = 0.0
+_enemy_log_map_id = 0
+_enemy_log_label = ''
+_enemy_log_dropped = 0
+
+
+def _enemy_log_path() -> str:
+    """Path of the enemy log, next to this widget."""
+    return os.path.join(PySystem.Console.get_projects_path(), WIDGET_DIR, ENEMY_LOG_FILENAME)
+
+
+def _enemy_log_begin(definition: VanquishDefinition) -> None:
+    """Start collecting for one run, discarding what the previous run left."""
+    global _enemy_log_records
+    global _enemy_log_active
+    global _enemy_log_started_at
+    global _enemy_log_finished_at
+    global _enemy_log_last_sample_ms
+    global _enemy_log_map_id
+    global _enemy_log_label
+    global _enemy_log_dropped
+
+    _enemy_log_records = {}
+    if not enemy_log_enabled:
+        # Config has the log switched off: nothing is collected this run, so the
+        # flush at the end has nothing to write.
+        _enemy_log_active = False
+        return
+    _enemy_log_active = True
+    _enemy_log_started_at = time.strftime('%Y-%m-%d %H:%M:%S')
+    _enemy_log_finished_at = ''
+    _enemy_log_last_sample_ms = 0.0
+    _enemy_log_map_id = _vanquish_route_map_id(definition)
+    _enemy_log_label = f'{definition.region}/{definition.map_name}'
+    _enemy_log_dropped = 0
+
+
+def _step_name_map_id(step_name: str) -> int:
+    """Map id carried by a `Point N (map M)` / `Action N: label (map M)` name."""
+    start = step_name.rfind('(map ')
+    if start < 0 or not step_name.endswith(')'):
+        return 0
+    raw = step_name[start + 5:-1].strip()
+    return int(raw) if raw.isdigit() else 0
+
+
+def _enemy_log_phase(step_name: str) -> str:
+    """`forward` or `sweep` for a route step, empty for everything else.
+
+    The current step name is all the planner publishes, and it already carries
+    the map the step walks in. Only the two phases that clear the vanquish map
+    are logged: a route step in another map is a transit leg, and party forming,
+    preparation and completion are not route work at all.
+    """
+    if step_name == SWEEP_STEP_NAME:
+        return 'sweep'
+    map_id = _step_name_map_id(step_name)
+    if map_id <= 0:
+        return ''
+    if _enemy_log_map_id and map_id != _enemy_log_map_id:
+        return ''
+    return 'forward'
+
+
+def _sample_enemy_log(tree: BottingTree) -> None:
+    """Record the living enemies around the leader for the step in progress."""
+    global _enemy_log_last_sample_ms
+    global _enemy_log_dropped
+
+    if not _enemy_log_active or not enemy_log_enabled:
+        return
+
+    now = time.monotonic() * 1000.0
+    if _enemy_log_last_sample_ms > 0.0 and now - _enemy_log_last_sample_ms < ENEMY_LOG_SAMPLE_MS:
+        return
+    _enemy_log_last_sample_ms = now
+
+    # The planner marks the active step in the root blackboard before ticking it,
+    # so reading it right after the tick names the step that just ran.
+    try:
+        step_name = str(tree.GetBlackboardValue('current_step_name', '') or '')
+    except Exception:
+        return
+    phase = _enemy_log_phase(step_name)
+    if not phase:
+        return
+
+    try:
+        map_id = int(Map.GetMapID() or 0)
+        player_x, player_y = Player.GetXY()
+        enemies = RoutinesAgents.GetFilteredEnemyArray(player_x, player_y, ENEMY_LOG_RADIUS)
+    except Exception:
+        return
+
+    for raw_agent_id in list(enemies or []):
+        agent_id = int(raw_agent_id)
+        try:
+            enemy_x, enemy_y = Agent.GetXY(agent_id)
+        except Exception:
+            continue
+        distance = math.dist((player_x, player_y), (enemy_x, enemy_y))
+        key = (
+            map_id,
+            agent_id,
+            int(round(enemy_x / ENEMY_LOG_ID_CELL)),
+            int(round(enemy_y / ENEMY_LOG_ID_CELL)),
+            phase,
+        )
+        existing = _enemy_log_records.get(key)
+        if existing is not None:
+            if distance < existing.distance:
+                _enemy_log_records[key] = EnemyLogRecord(
+                    phase, step_name, map_id, agent_id,
+                    player_x, player_y, enemy_x, enemy_y, distance,
+                )
+            continue
+        if len(_enemy_log_records) >= ENEMY_LOG_MAX_RECORDS:
+            _enemy_log_dropped += 1
+            break
+        _enemy_log_records[key] = EnemyLogRecord(
+            phase, step_name, map_id, agent_id,
+            player_x, player_y, enemy_x, enemy_y, distance,
+        )
+
+
+def _flush_enemy_log(outcome: str) -> None:
+    """Write the collected records next to the widget and clear the buffer."""
+    global _enemy_log_active
+    global _enemy_log_finished_at
+    global _enemy_log_records
+    global _enemy_log_dropped
+
+    if not _enemy_log_active:
+        return
+    if not enemy_log_enabled:
+        # Switched off while the run was in progress: drop what was collected and
+        # leave the file that was already there untouched.
+        _enemy_log_active = False
+        _enemy_log_records = {}
+        PySystem.Console.Log(
+            MODULE_NAME,
+            'Enemy log disabled during the run. Nothing was written.',
+            PySystem.Console.MessageType.Info,
+        )
+        return
+    _enemy_log_active = False
+    _enemy_log_finished_at = time.strftime('%Y-%m-%d %H:%M:%S')
+
+    records = list(_enemy_log_records.values())
+    path = _enemy_log_path()
+    lines = [
+        f'# --- run {_enemy_log_started_at} -> {_enemy_log_finished_at} outcome={outcome}',
+        (
+            f'# map={_enemy_log_label} map_id={_enemy_log_map_id}'
+            f' radius={int(ENEMY_LOG_RADIUS)} id_cell={int(ENEMY_LOG_ID_CELL)}'
+            # The configured clear radii, so a review can tell what the pass was
+            # supposed to cover without reading the INI.
+            f' clear_forward={int(forward_clear_radius)}'
+            f' clear_reverse={int(max(reverse_clear_radius_1, reverse_clear_radius_2))}'
+            f' records={len(records)} dropped={_enemy_log_dropped}'
+        ),
+        '# columns: phase\tstep\tmap_id\tagent_id\tplayer_x\tplayer_y\tenemy_x\tenemy_y\tdistance',
+    ]
+    for record in records:
+        lines.append(
+            '\t'.join(
+                (
+                    record.phase,
+                    record.step,
+                    str(record.map_id),
+                    str(record.agent_id),
+                    f'{record.player_x:.1f}',
+                    f'{record.player_y:.1f}',
+                    f'{record.enemy_x:.1f}',
+                    f'{record.enemy_y:.1f}',
+                    f'{record.distance:.1f}',
+                )
+            )
+        )
+
+    # Appended, never overwritten: the file is the history of every run, so a week
+    # of vanquishes can be read together. The document header is written once, when
+    # the file is created, and the block is a single write so a crash cannot leave
+    # half a run behind.
+    block = '\n'.join(lines) + '\n\n'
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        new_file = not os.path.exists(path) or os.path.getsize(path) == 0
+        with open(path, 'a', encoding='utf-8', newline='\n') as handle:
+            if new_file:
+                handle.write(ENEMY_LOG_DOCUMENT_HEADER)
+            handle.write(block)
+    except OSError as error:
+        _enemy_log_records = {}
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f'Enemy log could not be written to {path}: {error}.',
+            PySystem.Console.MessageType.Error,
+        )
+        return
+
+    _enemy_log_records = {}
+    PySystem.Console.Log(
+        MODULE_NAME,
+        f'Enemy log written to {path} ({len(records)} records, outcome={outcome}).',
+        PySystem.Console.MessageType.Info,
+    )
 
 
 def _parse_model_id_list(raw: str, allowed: Sequence[int]) -> set[int]:
@@ -398,6 +674,7 @@ def _load_settings() -> None:
     global _selected_conset, _selected_pcons
     global automatic_zquest
     global take_zquest, loop_runs
+    global enemy_log_enabled
 
     if _settings_loaded:
         return
@@ -409,6 +686,7 @@ def _load_settings() -> None:
     _restock_multi_account = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_MULTI_ACCOUNT, True)
     _keep_gold_on_accounts = _settings.get_bool(_SETTINGS_SECTION, _KEY_KEEP_GOLD_ON_ACCOUNTS, True)
     automatic_zquest = _settings.get_bool(_SETTINGS_SECTION, _KEY_AUTOMATIC_ZQUEST, False)
+    enemy_log_enabled = _settings.get_bool(_SETTINGS_SECTION, _KEY_ENEMY_LOG, False)
     if automatic_zquest:
         # A stored combination from an older build has to respect the rule the UI
         # enforces: the signpost feeds the resolution and a loop would have
@@ -436,6 +714,7 @@ def _save_settings() -> None:
     _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_MULTI_ACCOUNT, _restock_multi_account)
     _settings.set(_SETTINGS_SECTION, _KEY_KEEP_GOLD_ON_ACCOUNTS, _keep_gold_on_accounts)
     _settings.set(_SETTINGS_SECTION, _KEY_AUTOMATIC_ZQUEST, automatic_zquest)
+    _settings.set(_SETTINGS_SECTION, _KEY_ENEMY_LOG, enemy_log_enabled)
     _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_CONSET, _serialize_model_id_list(_selected_conset))
     _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_PCONS, _serialize_model_id_list(_selected_pcons))
 
@@ -1371,8 +1650,11 @@ def _build_outpost_exit(definition: VanquishDefinition) -> BehaviorTree:
     )
 
 
-def _mark_run_started() -> BehaviorTree.NodeState:
+def _mark_run_started(definition: VanquishDefinition) -> BehaviorTree.NodeState:
     stats.start_run()
+    # The enemy log covers one run: a run that starts discards whatever the
+    # previous one collected, so the file always describes the run that ended.
+    _enemy_log_begin(definition)
     PySystem.Console.Log(
         MODULE_NAME,
         f'Starting vanquish: {_selected_region()}/{_selected_map()}.',
@@ -1383,6 +1665,7 @@ def _mark_run_started() -> BehaviorTree.NodeState:
 
 def _mark_run_completed() -> BehaviorTree.NodeState:
     duration = stats.complete_run()
+    _flush_enemy_log('completed')
     PySystem.Console.Log(
         MODULE_NAME,
         f'Vanquish completed in {_format_time(duration)}.',
@@ -1436,7 +1719,11 @@ def _build_run_preparation(definition: VanquishDefinition) -> BehaviorTree:
             children.append(_remote_restock_node())
 
     children.append(_keep_gold_node())
-    children.append(_action('RecordRunStart', _mark_run_started))
+    # No default parameter here: ActionNode inspects the signature and calls a
+    # one-parameter callable as action_fn(node), which is how the definition ended
+    # up holding the node instead of the map. A zero-parameter closure keeps the
+    # captured definition and gets called with no arguments.
+    children.append(_action('RecordRunStart', lambda: _mark_run_started(definition)))
 
     # The outpost exit belongs to the preparation; the intermediate travels are
     # their own named step and only exist when the map really has transit paths.
@@ -2185,7 +2472,7 @@ def get_execution_steps(definition: VanquishDefinition | None) -> list[tuple[str
     steps.extend(
         [
             (
-                'Cleanup sweeps',
+                SWEEP_STEP_NAME,
                 lambda definition=definition: _build_cleanup_sweeps(definition),
             ),
             (
@@ -2285,6 +2572,7 @@ def _apply_pending_stop() -> None:
     _stop_after_sweeps = False
     if botting_tree is None:
         return
+    _flush_enemy_log('incomplete')
     botting_tree.Stop()
     PySystem.Console.Log(
         MODULE_NAME,
@@ -3002,6 +3290,7 @@ def _draw_config() -> None:
     global forward_clear_radius
     global reverse_clear_radius_1
     global reverse_clear_radius_2
+    global enemy_log_enabled
 
     tree = botting_tree
     locked = bool(tree is not None and tree.IsStarted())
@@ -3063,7 +3352,7 @@ def _draw_config() -> None:
         _request_rebuild()
 
     PyImGui.begin_disabled(loop_runs or automatic_zquest)
-    new_take_zquest = PyImGui.checkbox('Take ZQuest', take_zquest)
+    new_take_zquest = PyImGui.checkbox('Take ZQuest and quest reward', take_zquest)
     if new_take_zquest != take_zquest:
         take_zquest = new_take_zquest
         _request_rebuild()
@@ -3095,6 +3384,21 @@ def _draw_config() -> None:
         _request_rebuild()
 
     PyImGui.end_disabled()
+
+    PyImGui.separator()
+    PyImGui.text('Enemy log')
+    new_enemy_log = PyImGui.checkbox('Write enemy log to a txt file', enemy_log_enabled)
+    if new_enemy_log != enemy_log_enabled:
+        enemy_log_enabled = new_enemy_log
+        # Nothing in the plan depends on it: the log is sampled from the widget
+        # loop, so there is no tree to rebuild.
+        _save_settings()
+    PyImGui.text_colored(
+        'A log.txt file is generated when the run ends in the widget folder.'
+        ' Share the file in Discord to improve vanquish files.',
+        (160, 160, 160, 255),
+    )
+
 
 def _apply_consumable_upkeep_change() -> None:
     """Re-push the upkeep service so toggles apply without a tree rebuild.
@@ -3349,6 +3653,9 @@ def _freeze_stopped_run(tree: BottingTree) -> None:
     if stats.current_run_started_at <= 0.0 or tree.IsStarted():
         return
     stats.fail_run()
+    # Manual stop or a tree reset: the run ended without reaching completion, so
+    # what it collected is still worth writing.
+    _flush_enemy_log('stopped')
 
 
 def main() -> None:
@@ -3378,6 +3685,7 @@ def main() -> None:
     _apply_pending_rebuild()
     tree = ensure_botting_tree()
     tree.tick()
+    _sample_enemy_log(tree)
     _apply_pending_planner_swap()
     _reset_auto_resolution_on_stop(tree)
     _freeze_stopped_run(tree)
