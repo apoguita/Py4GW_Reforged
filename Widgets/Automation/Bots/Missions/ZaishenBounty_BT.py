@@ -2771,7 +2771,7 @@ def _draw_config() -> None:
         _request_rebuild()
 
     PyImGui.begin_disabled(loop_runs or automatic_quest)
-    new_take_bounty = PyImGui.checkbox('Take ZBounty', take_bounty)
+    new_take_bounty = PyImGui.checkbox('Take ZBounty and quest reward', take_bounty)
     if new_take_bounty != take_bounty:
         take_bounty = new_take_bounty
         _request_rebuild()
