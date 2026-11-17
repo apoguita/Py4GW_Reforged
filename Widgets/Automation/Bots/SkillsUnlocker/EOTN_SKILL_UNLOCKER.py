@@ -454,6 +454,57 @@ SUGSS_LONGEYE_EXIT_ROUTE_XY = (
 SUGSS_LONGEYE_PORTAL_ROUTE_XY = (
     (-21630.0, 12565.0), (-21287.94, 12272.60),
 )
+IATS_GUNNAR_XY = (24164.0, -7541.0)
+IATS_OLGANA_XY = (-1892.0, -4505.0)
+IATS_HOGNI_XY = (-13328.0, -20691.0)
+IATS_GUNNAR_ROUTE_XY = (
+    (18435.29, -7075.93), (18936.74, -7022.15), (19438.81, -6974.95),
+    (19936.80, -6921.72), (20435.06, -6867.97), (20931.13, -6803.50),
+    (21427.81, -6736.99), (21927.36, -6670.11), (22424.89, -6723.49),
+    (22882.47, -6936.77), (23338.34, -7151.71), (23791.61, -7365.42),
+)
+IATS_OLAFSTEAD_VARAJAR_PORTAL_ROUTE_XY = (
+    (-1352.26, 1175.83), (-1802.17, 1166.80),
+)
+IATS_TO_OLGANA_ROUTE_XY = (
+    (-2252.00, 831.00), (-2490.93, 386.90), (-2765.68, -31.60),
+    (-2989.43, -481.74), (-3193.17, -940.00), (-3352.14, -1419.97),
+    (-3311.86, -1923.96), (-3129.65, -2391.08), (-2946.52, -2860.57),
+    (-2766.46, -3335.99), (-2887.62, -3823.33), (-3221.04, -4200.32),
+    (-3499.13, -4616.91), (-3124.25, -4953.24), (-2629.36, -4864.60),
+    (-2173.92, -4640.80),
+)
+IATS_OLGANA_TO_DRAKKAR_EXIT_ROUTE_XY = (
+    (-2948.98, -4770.08), (-3451.91, -4818.31), (-3847.67, -4501.25),
+    (-3959.66, -4011.74), (-4057.64, -3511.67), (-4138.84, -3013.79),
+    (-4224.61, -2487.93), (-4309.48, -1990.82), (-4368.29, -1487.91),
+    (-4316.79, -987.63), (-4281.43, -488.13), (-4225.63, 15.18),
+    (-4160.13, 511.12), (-4084.83, 1010.08), (-4002.69, 1506.02),
+    (-3951.32, 2010.94), (-3918.70, 2510.28), (-3843.75, 3041.74),
+    (-3794.50, 3547.56), (-3624.32, 4023.81), (-3471.00, 4507.16),
+    (-3421.15, 5015.38), (-3503.62, 5510.98), (-3609.18, 6008.19),
+    (-3632.62, 6513.72), (-3616.95, 7017.09), (-3743.27, 7502.00),
+    (-3953.25, 7960.20), (-3662.87, 7538.28), (-3473.17, 8003.26),
+    (-3184.98, 8424.99), (-3025.25, 8900.36), (-2773.97, 9345.84),
+    (-2413.28, 9703.32), (-2013.18, 10008.89), (-1588.44, 10285.21),
+    (-1295.05, 10698.75), (-1124.09, 11178.21), (-1040.42, 11673.14),
+    (-1003.35, 12193.20), (-980.25, 12697.38), (-1009.87, 13200.11),
+    (-1067.29, 13703.27), (-1102.04, 14205.30), (-1193.19, 14699.02),
+    (-1316.10, 15184.03), (-1461.93, 15662.50), (-1584.47, 16148.14),
+)
+IATS_VARAJAR_DRAKKAR_PORTAL_ROUTE_XY = (
+    (-1665.48, 16646.48), (-1737.68, 17090.65),
+)
+IATS_DRAKKAR_TO_HOGNI_ROUTE_XY = (
+    (-10866.00, -25657.00), (-10868.36, -25146.03),
+    (-10930.94, -24643.35), (-11041.01, -24150.72),
+    (-11137.43, -23658.67), (-11233.51, -23167.73),
+    (-11335.76, -22674.23), (-11462.71, -22188.79),
+    (-11600.26, -21674.04), (-11750.41, -21191.37),
+    (-11908.71, -20713.29), (-12071.18, -20235.75),
+    (-12223.39, -19756.79), (-12722.36, -19795.39),
+    (-13047.49, -20185.37),
+)
 
 
 def draw_window_light(
@@ -849,6 +900,42 @@ def Unlock_weakness_trap(bot: Botting) -> None:
         list(SUGSS_LONGEYE_PORTAL_ROUTE_XY), target_map_id=649
     )
     bot.Move.XYAndDialog(-21069.0, 12353.0, 0x837307)
+    bot.UI.CancelSkillRewardWindow()
+    bot.States.JumpToStepName("MENU_IDLE")
+
+
+def Unlock_i_am_the_strongest(bot: Botting) -> None:
+    bot.States.AddHeader("[Unlock] I Am the Strongest — Truthseeker")
+    bot.Templates.Aggressive(
+        halt_on_death=True,
+        movement_timeout=15000,
+        auto_loot=False,
+    )
+
+    # Accept Truthseeker from Gunnar Poundfist in Gunnar's Hold.
+    bot.Map.Travel(target_map_name="Gunnar's Hold")
+    bot.Wait.ForMapLoad(target_map_name="Gunnar's Hold")
+    bot.Move.FollowAutoPath(list(IATS_GUNNAR_ROUTE_XY))
+    bot.Move.XYAndDialog(*IATS_GUNNAR_XY, 0x834601)
+
+    # Start from Olafstead, cross Varajar Fells, and take Olgana's blessing.
+    bot.Map.Travel(target_map_name="Olafstead")
+    bot.Wait.ForMapLoad(target_map_name="Olafstead")
+    bot.Move.FollowPathAndExitMap(
+        list(IATS_OLAFSTEAD_VARAJAR_PORTAL_ROUTE_XY),
+        target_map_name="Varajar Fells",
+    )
+    bot.Move.FollowAutoPath(list(IATS_TO_OLGANA_ROUTE_XY))
+    bot.Move.XYAndDialog(*IATS_OLGANA_XY, 0x84)
+
+    # Continue through Drakkar Lake and claim both rewards from Hogni.
+    bot.Move.FollowAutoPath(list(IATS_OLGANA_TO_DRAKKAR_EXIT_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(IATS_VARAJAR_DRAKKAR_PORTAL_ROUTE_XY),
+        target_map_name="Drakkar Lake",
+    )
+    bot.Move.FollowAutoPath(list(IATS_DRAKKAR_TO_HOGNI_ROUTE_XY))
+    bot.Move.XYAndDialog(*IATS_HOGNI_XY, 0x834607)
     bot.UI.CancelSkillRewardWindow()
     bot.States.JumpToStepName("MENU_IDLE")
 
@@ -1707,10 +1794,6 @@ def Unlock_pain_inverter(bot: Botting) -> None:
     bot.Map.Travel(target_map_name="Tarnished Haven")
     bot.Move.XYAndDialog(25203, -10694, 0x837A07)  # Reward
     bot.UI.CancelSkillRewardWindow()
-    bot.States.JumpToStepName("MENU_IDLE")
-
-def Unlock_i_am_the_strongest(bot: Botting) -> None:
-    #en cours !!!
     bot.States.JumpToStepName("MENU_IDLE")
 
 def Unlock_previous_skills(bot: Botting) -> None:
