@@ -26,6 +26,43 @@ def function_source(name: str) -> str:
 
 
 class SkillsUnlockerRouteTests(unittest.TestCase):
+    def test_tryptophan_orders_dialogs_wait_supplies_and_reward(self):
+        route = function_source("Unlock_tryptophan_signet")
+        accept = route.index("0x837F01")
+        briefing = route.index("0x837F04")
+        wait = route.index("bot.Wait.ForTime(12000)")
+        first_supply = route.index(
+            "bot.Interact.WithGadgetAtXY(*FF_FOOD_SUPPLY_XY[0])"
+        )
+        reward = route.index("0x837F07")
+        self.assertLess(accept, briefing)
+        self.assertLess(briefing, wait)
+        self.assertLess(wait, first_supply)
+        self.assertLess(first_supply, reward)
+        self.assertEqual(route.count("bot.Interact.WithGadgetAtXY"), 5)
+
+    def test_tryptophan_reuses_existing_fsm_interaction_owners(self):
+        route = function_source("Unlock_tryptophan_signet")
+        self.assertIn("bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)", route)
+        self.assertIn("bot.Move.XYAndDialog(*FF_SACNOTH_BLESSING_XY, 0x84)", route)
+        self.assertEqual(route.count("bot.Move.XYAndDialog"), 5)
+        self.assertNotIn("BT.TakeBlessing", route)
+        self.assertNotIn("ReliableInteractionController", route)
+        self.assertNotIn("Player.Interact", route)
+        self.assertNotIn("Quest", route)
+
+    def test_tryptophan_preserves_extended_portals_and_stealth_boundary(self):
+        route = function_source("Unlock_tryptophan_signet")
+        self.assertIn("(-21293.41, 12266.32)", SOURCE)
+        self.assertIn("(23482.80, -13088.52)", SOURCE)
+        disable = route.index('bot.Properties.Disable("hero_ai")')
+        wait = route.index("bot.Wait.ForTime(12000)")
+        reward = route.index("0x837F07")
+        restore = route.index('bot.Properties.Enable("hero_ai")')
+        self.assertLess(disable, wait)
+        self.assertLess(wait, reward)
+        self.assertLess(reward, restore)
+
     def test_sneak_attack_orders_plan_a_dialogs_wait_bundle_and_reward(self):
         route = function_source("Unlock_sneak_attack")
         accept = route.index("0x836201")
