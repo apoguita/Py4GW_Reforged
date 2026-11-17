@@ -26,8 +26,49 @@ def function_source(name: str) -> str:
 
 
 class SkillsUnlockerRouteTests(unittest.TestCase):
+    def test_weakness_trap_chains_forbidden_fruit_and_orders_quest_steps(self):
+        route = function_source("Unlock_weakness_trap")
+        chain = route.index("_build_forbidden_fruit_flow(bot, return_to_menu=False)")
+        accept = route.index("0x837301")
+        wait = route.index("bot.Wait.ForTime(40000)")
+        boss = route.index("bot.Move.XY(*SUGSS_VYRRGIS_XY)")
+        combat_end = route.index("bot.Wait.UntilOutOfCombat()")
+        reward = route.index("0x837307")
+        self.assertLess(chain, accept)
+        self.assertLess(accept, wait)
+        self.assertLess(wait, boss)
+        self.assertLess(boss, combat_end)
+        self.assertLess(combat_end, reward)
+
+    def test_weakness_trap_uses_interaction_only_completion_semantics(self):
+        route = function_source("Unlock_weakness_trap")
+        self.assertNotIn("Quest", route)
+        self.assertNotIn("IsQuestCompleted", route)
+        self.assertNotIn("Agent.GetModelID", route)
+        self.assertNotIn("ReliableInteractionController", route)
+        self.assertNotIn("Player.Interact", route)
+        self.assertEqual(route.count("bot.Move.XYAndDialog"), 2)
+
+    def test_weakness_trap_preserves_captured_route_and_extended_portal(self):
+        route = function_source("Unlock_weakness_trap")
+        self.assertIn("SUGSS_VAEL_TO_WAIT_ROUTE_XY", route)
+        self.assertIn("SUGSS_WAIT_TO_VYRRGIS_ROUTE_XY", route)
+        self.assertIn("SUGSS_LONGEYE_EXIT_ROUTE_XY", route)
+        self.assertIn("(-21287.94, 12272.60)", SOURCE)
+        self.assertIn("(-6889.0, 10096.0)", SOURCE)
+
+    def test_tryptophan_wrapper_and_chain_share_one_forbidden_fruit_flow(self):
+        self.assertIn(
+            "_build_forbidden_fruit_flow(bot, return_to_menu=True)",
+            function_source("Unlock_tryptophan_signet"),
+        )
+        self.assertIn(
+            "_build_forbidden_fruit_flow(bot, return_to_menu=False)",
+            function_source("Unlock_weakness_trap"),
+        )
+
     def test_tryptophan_orders_dialogs_wait_supplies_and_reward(self):
-        route = function_source("Unlock_tryptophan_signet")
+        route = function_source("_build_forbidden_fruit_flow")
         accept = route.index("0x837F01")
         briefing = route.index("0x837F04")
         wait = route.index("bot.Wait.ForTime(12000)")
@@ -42,7 +83,7 @@ class SkillsUnlockerRouteTests(unittest.TestCase):
         self.assertEqual(route.count("bot.Interact.WithGadgetAtXY"), 5)
 
     def test_tryptophan_reuses_existing_fsm_interaction_owners(self):
-        route = function_source("Unlock_tryptophan_signet")
+        route = function_source("_build_forbidden_fruit_flow")
         self.assertIn("bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)", route)
         self.assertIn("bot.Move.XYAndDialog(*FF_SACNOTH_BLESSING_XY, 0x84)", route)
         self.assertEqual(route.count("bot.Move.XYAndDialog"), 5)
@@ -52,7 +93,7 @@ class SkillsUnlockerRouteTests(unittest.TestCase):
         self.assertNotIn("Quest", route)
 
     def test_tryptophan_preserves_extended_portals_and_stealth_boundary(self):
-        route = function_source("Unlock_tryptophan_signet")
+        route = function_source("_build_forbidden_fruit_flow")
         self.assertIn("(-21293.41, 12266.32)", SOURCE)
         self.assertIn("(23482.80, -13088.52)", SOURCE)
         disable = route.index('bot.Properties.Disable("hero_ai")')
