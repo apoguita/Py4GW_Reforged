@@ -505,6 +505,79 @@ IATS_DRAKKAR_TO_HOGNI_ROUTE_XY = (
     (-12223.39, -19756.79), (-12722.36, -19795.39),
     (-13047.49, -20185.37),
 )
+ITSOR_OROZAR_XY = (-3416.0, 17460.0)
+ITSOR_DUNDAN_XY = (7367.0, 23752.0)
+ITSOR_CTC_APPROACH_ROUTE_XY = (
+    (249.28, 1436.89), (657.91, 1728.72), (1038.32, 2055.82),
+    (1357.06, 2443.36), (1598.01, 2882.71), (1624.60, 3382.24),
+    (1626.21, 3884.99), (1159.55, 4075.66), (660.20, 4118.06),
+)
+ITSOR_CTC_PORTAL_ROUTE_XY = (
+    (187.11, 4285.73), (1.24, 4606.50), (-224.37, 4995.86),
+)
+ITSOR_TO_OROZAR_ROUTE_XY = (
+    (-2150.00, 12266.00), (-1952.28, 12733.58), (-1982.72, 13238.78),
+    (-2081.66, 13738.50), (-2250.54, 14216.90), (-2421.02, 14691.28),
+    (-2591.36, 15165.29), (-2762.23, 15640.76), (-2932.47, 16114.49),
+    (-3103.41, 16590.15), (-3272.68, 17061.18),
+)
+ITSOR_SIFHALLA_APPROACH_ROUTE_XY = (
+    (14370.19, 23763.81), (13891.25, 23601.22), (13389.37, 23594.35),
+    (12885.16, 23629.50), (12378.93, 23664.79), (11876.15, 23699.85),
+    (11372.16, 23734.04), (10870.75, 23768.03),
+)
+ITSOR_SIFHALLA_DRAKKAR_PORTAL_ROUTE_XY = (
+    (10367.33, 23802.16), (9867.46, 23818.66), (9417.70, 23833.51),
+)
+ITSOR_TO_DUNDAN_ROUTE_XY = (
+    (8872.00, 23295.00), (8324.96, 23322.78), (7842.29, 23465.62),
+)
+ITSOR_CAMP_CLEAR_ROUTE_XY = (
+    (6891.66, 23501.93), (6415.12, 23346.03), (5932.73, 23197.35),
+    (5447.86, 23030.18), (4976.95, 22855.56), (4496.36, 22689.31),
+    (4010.84, 22516.13), (3555.94, 22290.35), (3154.18, 21982.25),
+    (2938.39, 21524.54), (2828.26, 21032.49), (2713.82, 20540.51),
+    (2643.67, 20040.19), (2595.04, 19532.01), (2576.01, 19023.73),
+    (2587.21, 18515.28), (2655.51, 18015.49), (2777.83, 17522.63),
+    (3085.54, 17121.21), (3123.68, 16616.05), (2742.71, 16291.59),
+    (2304.87, 16044.01), (1838.16, 15863.42), (1343.56, 15762.18),
+    (889.46, 15540.41), (445.71, 15293.12), (13.37, 15038.10),
+    (-434.94, 14805.18), (-906.08, 14613.94), (-1374.73, 14435.55),
+    (-1836.69, 14225.56), (-2277.05, 13979.79), (-2701.40, 13713.66),
+    (-2962.84, 13283.58), (-3214.48, 12841.16), (-3405.09, 12372.81),
+    (-3553.85, 11891.19), (-3721.29, 11411.15), (-3937.33, 10957.76),
+    (-4191.56, 10527.11), (-4570.66, 10197.47), (-4999.79, 9928.63),
+    (-5434.72, 9677.97), (-5868.95, 9428.42), (-6263.40, 9107.96),
+    (-6503.29, 8659.48), (-6548.63, 8153.77), (-6557.51, 7645.78),
+    (-7027.29, 7461.38), (-7504.07, 7629.09), (-7998.42, 7721.30),
+    (-8481.60, 7860.26), (-8986.46, 7883.13), (-9357.47, 7536.34),
+    (-9165.92, 7074.05), (-9140.55, 6569.68), (-9238.39, 6078.58),
+    (-9347.97, 5590.48), (-9452.30, 5087.65), (-9450.92, 4586.51),
+    (-9470.99, 4085.92), (-9458.65, 3533.13), (-9287.61, 3063.21),
+    (-9006.69, 2638.05), (-8691.15, 2244.81), (-8313.11, 1916.90),
+    (-8435.26, 2404.47), (-8932.83, 2491.02), (-9429.26, 2415.47),
+    (-9924.03, 2339.10), (-10354.85, 2076.92), (-10796.67, 1817.43),
+    (-11187.08, 1494.34), (-11551.48, 1140.84), (-11873.62, 755.78),
+    (-12276.29, 450.94), (-12712.98, 191.40), (-12451.01, 617.85),
+    (-12305.39, 1107.40), (-12290.70, 1610.07), (-12327.72, 2112.71),
+    (-12358.02, 2613.09), (-12419.96, 3111.19), (-12521.80, 3610.74),
+    (-12601.16, 4108.21),
+)
+ITSOR_RETURN_CTC_APPROACH_ROUTE_XY = (
+    (1463.88, 715.33), (1101.07, 1067.59), (841.01, 1495.63),
+    (1109.66, 1921.56), (1359.19, 2361.25), (1620.86, 2789.94),
+    (1686.26, 3290.01), (1663.57, 3792.81), (1271.40, 4114.67),
+    (770.38, 4148.25),
+)
+ITSOR_RETURN_CTC_PORTAL_ROUTE_XY = (
+    (247.90, 4170.51), (-8.07, 4602.86), (-237.32, 4990.08),
+)
+ITSOR_RETURN_TO_OROZAR_ROUTE_XY = (
+    (-2150.00, 12266.00), (-1915.33, 12732.82), (-1894.60, 13233.27),
+    (-2105.55, 13694.88), (-2284.01, 14198.37), (-2449.04, 14673.86),
+    (-2614.29, 15149.99), (-2779.94, 15627.29), (-2945.72, 16104.96),
+    (-3111.75, 16580.58), (-3277.32, 17056.68),
+)
 
 
 def draw_window_light(
@@ -938,6 +1011,57 @@ def Unlock_i_am_the_strongest(bot: Botting) -> None:
     bot.Move.XYAndDialog(*IATS_HOGNI_XY, 0x834607)
     bot.UI.CancelSkillRewardWindow()
     bot.States.JumpToStepName("MENU_IDLE")
+
+
+def _build_in_the_service_of_revenge_flow(bot: Botting) -> None:
+    bot.States.AddHeader("[Unlock] In the Service of Revenge")
+    bot.Templates.Aggressive(
+        halt_on_death=True,
+        movement_timeout=15000,
+        auto_loot=False,
+    )
+
+    # Use the Mission Runner-derived CTC portal boundary to reach Orozar.
+    bot.Map.Travel(target_map_id=652)
+    bot.Wait.ForMapLoad(target_map_id=652)
+    bot.Move.FollowAutoPath(list(ITSOR_CTC_APPROACH_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(list(ITSOR_CTC_PORTAL_ROUTE_XY), target_map_id=625)
+    bot.Move.FollowAutoPath(list(ITSOR_TO_OROZAR_ROUTE_XY))
+    bot.Move.XYAndDialog(*ITSOR_OROZAR_XY, 0x834501)
+
+    # Enter Drakkar Lake from Sifhalla and take Dundan's Norn blessing.
+    bot.Map.Travel(target_map_id=643)
+    bot.Wait.ForMapLoad(target_map_id=643)
+    bot.Move.FollowAutoPath(list(ITSOR_SIFHALLA_APPROACH_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(ITSOR_SIFHALLA_DRAKKAR_PORTAL_ROUTE_XY), target_map_id=513
+    )
+    bot.Move.FollowAutoPath(list(ITSOR_TO_DUNDAN_ROUTE_XY))
+    bot.Move.XYAndDialog(*ITSOR_DUNDAN_XY, 0x84)
+
+    # Traverse the complete camp route and leave only after combat settles.
+    bot.Move.FollowAutoPath(list(ITSOR_CAMP_CLEAR_ROUTE_XY))
+    bot.Wait.UntilOutOfCombat()
+
+    # Return through the same proven CTC boundary and claim both rewards.
+    bot.Map.Travel(target_map_id=652)
+    bot.Wait.ForMapLoad(target_map_id=652)
+    bot.Move.FollowAutoPath(list(ITSOR_RETURN_CTC_APPROACH_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(ITSOR_RETURN_CTC_PORTAL_ROUTE_XY), target_map_id=625
+    )
+    bot.Move.FollowAutoPath(list(ITSOR_RETURN_TO_OROZAR_ROUTE_XY))
+    bot.Move.XYAndDialog(*ITSOR_OROZAR_XY, 0x834507)
+    bot.UI.CancelSkillRewardWindow()
+    bot.States.JumpToStepName("MENU_IDLE")
+
+
+def Unlock_black_powder_mine(bot: Botting) -> None:
+    _build_in_the_service_of_revenge_flow(bot)
+
+
+def Unlock_great_dwarf_armor(bot: Botting) -> None:
+    _build_in_the_service_of_revenge_flow(bot)
 
 
 def Unlock_ebon_battle_standard_of_honor(bot: Botting) -> None:

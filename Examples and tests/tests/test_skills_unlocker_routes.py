@@ -26,6 +26,49 @@ def function_source(name: str) -> str:
 
 
 class SkillsUnlockerRouteTests(unittest.TestCase):
+    def test_itsor_orders_accept_blessing_clear_and_reward(self):
+        route = function_source("_build_in_the_service_of_revenge_flow")
+        accept = route.index("0x834501")
+        blessing = route.index("bot.Move.XYAndDialog(*ITSOR_DUNDAN_XY, 0x84)")
+        clear = route.index("ITSOR_CAMP_CLEAR_ROUTE_XY")
+        combat_end = route.index("bot.Wait.UntilOutOfCombat()")
+        reward = route.index("0x834507")
+        self.assertLess(accept, blessing)
+        self.assertLess(blessing, clear)
+        self.assertLess(clear, combat_end)
+        self.assertLess(combat_end, reward)
+
+    def test_itsor_preserves_paired_skill_selectors(self):
+        self.assertIn(
+            "_build_in_the_service_of_revenge_flow(bot)",
+            function_source("Unlock_black_powder_mine"),
+        )
+        self.assertIn(
+            "_build_in_the_service_of_revenge_flow(bot)",
+            function_source("Unlock_great_dwarf_armor"),
+        )
+
+    def test_itsor_uses_interaction_only_fsm_semantics(self):
+        route = function_source("_build_in_the_service_of_revenge_flow")
+        self.assertEqual(route.count("bot.Move.XYAndDialog"), 3)
+        self.assertNotIn("Quest", route)
+        self.assertNotIn("ReliableInteractionController", route)
+        self.assertNotIn("Player.Interact", route)
+        self.assertNotIn("BT.TakeBlessing", route)
+
+    def test_itsor_uses_proven_ctc_boundaries_and_full_camp_route(self):
+        route = function_source("_build_in_the_service_of_revenge_flow")
+        for route_name in (
+            "ITSOR_CTC_APPROACH_ROUTE_XY",
+            "ITSOR_CTC_PORTAL_ROUTE_XY",
+            "ITSOR_CAMP_CLEAR_ROUTE_XY",
+            "ITSOR_RETURN_CTC_APPROACH_ROUTE_XY",
+            "ITSOR_RETURN_CTC_PORTAL_ROUTE_XY",
+        ):
+            self.assertIn(route_name, route)
+        self.assertIn("(-224.37, 4995.86)", SOURCE)
+        self.assertIn("(-237.32, 4990.08)", SOURCE)
+
     def test_iats_orders_truthseeker_dialogs_blessing_and_reward(self):
         route = function_source("Unlock_i_am_the_strongest")
         accept = route.index("0x834601")
