@@ -26,6 +26,34 @@ def function_source(name: str) -> str:
 
 
 class SkillsUnlockerRouteTests(unittest.TestCase):
+    def test_sneak_attack_orders_plan_a_dialogs_wait_bundle_and_reward(self):
+        route = function_source("Unlock_sneak_attack")
+        accept = route.index("0x836201")
+        vael = route.index("0x836204")
+        wait = route.index("bot.Wait.ForTime(70000)")
+        pickup = route.index("bot.Interact.WithItemAtXY(*PLAN_A_BATTLE_PLANS_XY)")
+        reward = route.index("0x836207")
+        self.assertLess(accept, vael)
+        self.assertLess(vael, wait)
+        self.assertLess(wait, pickup)
+        self.assertLess(pickup, reward)
+
+    def test_sneak_attack_reuses_existing_fsm_interaction_owners(self):
+        route = function_source("Unlock_sneak_attack")
+        self.assertIn("bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)", route)
+        self.assertIn("bot.Move.XYAndInteractNPC(*PLAN_A_RETURN_BLESSING_XY)", route)
+        self.assertIn("bot.Interact.WithItemAtXY", route)
+        self.assertNotIn("BT.TakeBlessing", route)
+        self.assertNotIn("ReliableInteractionController", route)
+        self.assertNotIn("Player.Interact", route)
+
+    def test_sneak_attack_preserves_captured_carry_route_endpoints(self):
+        route = function_source("Unlock_sneak_attack")
+        self.assertIn("PLAN_A_CARRY_TO_RETURN_BLESSING_ROUTE_XY", route)
+        self.assertIn("PLAN_A_CARRY_FROM_RETURN_BLESSING_ROUTE_XY", route)
+        self.assertIn("(-3235.89, -1021.53)", SOURCE)
+        self.assertIn("(-20912.11, 12164.77)", SOURCE)
+
     def test_courage_rezones_before_accepting_quest_and_uses_explicit_dialogs(self):
         route = function_source("Unlock_ebon_battle_standard_of_courage")
         first_appearance = route.index("EBOSC_FIRST_APPEARANCE_ROUTE_XY")
