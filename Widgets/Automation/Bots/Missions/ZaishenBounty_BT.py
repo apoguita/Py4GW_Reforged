@@ -1,0 +1,3076 @@
+from __future__ import annotations
+
+import importlib
+import math
+import os
+import random
+import time
+from collections.abc import Callable
+from collections.abc import Mapping
+from collections.abc import Sequence
+from typing import NamedTuple
+from typing import TypeAlias
+
+import PyImGui
+import PySystem
+
+from Py4GWCoreLib import GLOBAL_CACHE
+from Py4GWCoreLib.Agent import Agent
+from Py4GWCoreLib.AgentArray import AgentArray
+from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.Map import Map
+from Py4GWCoreLib.Player import Player
+from Py4GWCoreLib.enums import Range
+from Py4GWCoreLib.enums import SharedCommandType
+from Py4GWCoreLib.enums_src.Model_enums import ModelID
+from Py4GWCoreLib.enums_src.Region_enums import District
+from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
+    CONSET_UPKEEPS,
+    CONSUMABLE_UPKEEPS,
+)
+from Py4GWCoreLib.routines_src.Checks import Checks
+from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
+from Sources.ApoSource.ApoBottingLib import wrappers as BT
+
+
+MODULE_NAME = 'Zaishen Bounty BT'
+MODULE_ICON = 'Assets/Textures/Module_Icons/ZaishenBounty.png'
+MODULE_CATEGORY = 'Automation'
+MODULE_TAGS = ['Bot', 'Bounty', 'BehaviorTree']
+
+INI_PATH = 'Widgets/Automation/Bots/Missions/ZaishenBounty_BT'
+INI_FILENAME = 'ZaishenBounty_BT.ini'
+BOUNTY_PACKAGE = 'Sources.ZaishenBounty'
+TEXTURE = os.path.join(
+    PySystem.Console.get_projects_path(),
+    'Assets',
+    'Textures',
+    'Module_Icons',
+    'ZaishenBounty.png',
+)
+
+# Bounty staging: Embark Beach is where the Zaishen signposts live. In an outpost
+# the followers do not walk after the leader, so the dialog fan-out is what moves
+# them. Travel itself stays local: a formed party travels with its leader.
+EMBARK_BEACH_MAP_ID = 857
+GREAT_TEMPLE_MAP_ID = 248
+# Anchor for the bounty signpost in Embark Beach. It ranks the named signposts and
+# doubles as the fallback point when the name cannot be resolved.
+BOUNTY_SIGNPOST: tuple[float, float] = (-557.0, -3333.0)
+# Embark Beach holds one signpost per activity, so the target is resolved by the
+# activity name instead of a fixed agent id.
+BOUNTY_SIGNPOST_NAME = 'bounty'
+# The reward NPC in the Great Temple of Balthazar is "Zehnchu [Zaishen
+# Challenge]", shared with the vanquish hand-in. Its agent id changes between maps
+# and sessions and it stands among other NPCs, so it is resolved by that unique
+# name; the coordinate is kept only as the fallback point.
+REWARD_NPC: tuple[float, float] = (-5019.0, -5496.0)
+REWARD_NPC_NAME = 'zehnchu'
+# Staging district. Pick one at random per travel so the party is spread over
+# the low-traffic channels instead of piling into a single one. Only the district
+# channel is used; the instance number stays at 0.
+STAGING_DISTRICTS: tuple[int, ...] = (
+    District.EuropeItalian.value,
+    District.EuropeSpanish.value,
+    District.EuropePolish.value,
+    District.EuropeRussian.value,
+)
+# 0-based button pressed on the signpost dialog; the bounty selector may need
+# another entry once the real list is known.
+BOUNTY_DIALOG_BUTTON = 0
+# Acknowledgement budget for the shared-message commands; a healthy client
+# answers in well under a second.
+BOUNTY_MESSAGE_TIMEOUT_MS = 10_000
+# Time allowed for the signpost to show up in the agent array before falling
+# back to the leader-first approach.
+BOUNTY_AGENT_WAIT_MS = 5_000
+# Every account walks to the signpost on its own; this only bounds a wedged one.
+BOUNTY_DIALOG_TIMEOUT_MS = 100_000
+# Settle after the dialog before the next step travels: a map change cancels an
+# open dialog, and the handler marks its message finished as soon as it presses.
+BOUNTY_DIALOG_SETTLE_MS = 500
+
+# Consumable upkeep. The core list already separates the conset trio from the
+# plain pcons, so the same split the Reputation Farmer uses is reused here
+# rather than hard-coding model IDs a second time.
+PCON_UPKEEPS: tuple[int, ...] = tuple(
+    int(model_id) for model_id in CONSUMABLE_UPKEEPS if int(model_id) not in CONSET_UPKEEPS
+)
+
+CONSET_MODEL_IDS: tuple[int, ...] = tuple(int(model_id) for model_id in CONSET_UPKEEPS)
+
+# Built once: `_display_name` runs for every consumable row on every frame, and
+# a linear scan over the ~2.4k ModelID members per call is real UI cost.
+_MODEL_DISPLAY_NAMES: dict[int, str] = {
+    int(member.value): member.name.replace('_', ' ').replace(' Of ', ' of ')
+    for member in ModelID
+}
+
+
+def _display_name(model_id: int) -> str:
+    """Human label for a consumable model.
+
+    The enum member name is the single owner of a readable identifier here.
+    `CONSUMABLE_UPKEEP_PRESETS` is keyed by preset slug rather than model ID, so
+    it cannot answer a reverse lookup without rebuilding an index the core
+    already declines to expose.
+    """
+    return _MODEL_DISPLAY_NAMES.get(int(model_id), f'Model {model_id}')
+
+
+# Selection state, populated by `_load_settings`. Defaults mirror the previous
+# all-on behaviour so an existing INI keeps working unchanged.
+_selected_conset: set[int] = set(CONSET_MODEL_IDS)
+_selected_pcons: set[int] = set(PCON_UPKEEPS)
+
+# Models whose upkeep is a party-morale rule rather than an effect upkeep: the
+# service drinks them on a morale threshold, so they are worth flagging in the
+# UI instead of presenting every row as interchangeable.
+PARTY_MORALE_MODEL_IDS: frozenset[int] = frozenset(
+    {
+        int(ModelID.Honeycomb.value),
+    }
+)
+
+# Storage restock targets pulled into bags before each run. `allow_missing` is
+# on at the tree level, so an item the player simply does not own is skipped
+# instead of failing the run.
+CONSUMABLE_RESTOCK_QUANTITY = 10
+SCROLL_OF_RESURRECTION_RESTOCK_QUANTITY = 25
+RESTOCK_SETTLE_MS = 750
+REMOTE_RESTOCK_TIMEOUT_MS = 15000
+# Party forming at the start of a run: disband, summon the group to the leader's
+# map and invite. Summon and invite share this budget per account batch.
+REMOTE_PARTY_TIMEOUT_MS = 15_000
+# Character gold kept on every account during the Prepare step. The shared
+# command reused here equalizes in both directions: it deposits the excess and
+# pulls from storage when the character is short.
+KEEP_GOLD_AMOUNT = 10_000
+REMOTE_KEEP_GOLD_TIMEOUT_MS = 15_000
+# Outpost exit and intermediate travels share the same budget.
+TRANSIT_TIMEOUT_MS = 45_000
+# A bounty ends with a fight, so the route is followed by an out-of-combat wait.
+BOUNTY_FIGHT_TIMEOUT_MS = 180_000
+# Extra settle before the run is marked complete: loot, the death animation and
+# the client's own state need a beat after the last foe drops.
+BOUNTY_COMPLETION_SETTLE_MS = 10_000
+# `BT.Resign` raises `party_wipe_recovery_suppressed` while it works, and the
+# core recovery service that the planner installs unconditionally reads it. This
+# widget keeps that flag raised for the whole session (so the core service never
+# acts) and uses its own key to mark the resign, which is what its own recovery
+# honours. The cap clears the key left behind by a reset in the middle of a resign.
+RECOVERY_SUPPRESS_TIMEOUT_MS = 90_000
+_RESIGNING_KEY = 'zbounty_resigning'
+# Automatic quest handling names the bounty from the quest the signpost just
+# gave the party, so its text has to be requested and polled for.
+BOUNTY_QUEST_RESOLVE_TIMEOUT_MS = 20_000
+BOUNTY_QUEST_TEXT_POLL_MS = 500
+CONSUMABLE_RESTOCK_ITEMS: tuple[tuple[int, int], ...] = tuple(
+    (int(model_id), CONSUMABLE_RESTOCK_QUANTITY)
+    for model_id in CONSUMABLE_UPKEEPS
+) + (
+    (int(ModelID.Scroll_Of_Resurrection.value), SCROLL_OF_RESURRECTION_RESTOCK_QUANTITY),
+)
+
+_SETTINGS_SECTION = 'Settings'
+_KEY_RESTOCK_CONSET = 'RestockConset'
+_KEY_ACTIVATE_CONSET = 'ActivateConset'
+_KEY_RESTOCK_PCONS = 'RestockPcons'
+_KEY_ACTIVATE_PCONS = 'ActivatePcons'
+_KEY_SELECTED_CONSET = 'SelectedConsets'
+_KEY_SELECTED_PCONS = 'SelectedPcons'
+_KEY_RESTOCK_SCROLL_OF_RESURRECTION = 'RestockScrollOfResurrection'
+_KEY_RESTOCK_MULTI_ACCOUNT = 'RestockMultiAccount'
+_KEY_KEEP_GOLD_ON_ACCOUNTS = 'KeepGoldOnAccounts'
+_KEY_AUTOMATIC_QUEST = 'AutomaticZQuestHandling'
+
+BOUNTY_ROOT = os.path.join(
+    PySystem.Console.get_projects_path(),
+    'Sources',
+    'ZaishenBounty',
+)
+
+
+def _scan_bounty_catalog() -> tuple[str, ...]:
+    """Build the bounty catalog from the data package on disk.
+
+    Runs once per widget load, so adding or removing a bounty file only needs a
+    widget reload. Bounties are the `.py` files of `Sources/ZaishenBounty`;
+    private files and `__pycache__` are skipped.
+    """
+    try:
+        with os.scandir(BOUNTY_ROOT) as entries:
+            files = sorted(entries, key=lambda entry: entry.name)
+    except OSError:
+        return ()
+
+    return tuple(
+        os.path.splitext(entry.name)[0]
+        for entry in files
+        if entry.is_file()
+        and entry.name.endswith('.py')
+        and not entry.name.startswith('_')
+    )
+
+
+# The bounty modules stay the source of truth for paths and identifiers; this index
+# is only the discovery layer the UI walks.
+BOUNTY_CATALOG: tuple[str, ...] = _scan_bounty_catalog()
+
+Coordinate: TypeAlias = tuple[float, float]
+
+
+class BountyDefinition:
+    """Immutable-by-convention data loaded from one Zaishen bounty module.
+
+    Py4GW loads widgets through a dynamic module loader which does not always
+    register the module in ``sys.modules`` before executing it.  Python 3.13's
+    ``@dataclass`` implementation expects that registration while resolving
+    postponed annotations, and otherwise crashes during widget import with
+    ``AttributeError: 'NoneType' object has no attribute '__dict__'``.
+
+    A small explicit container avoids that loader dependency entirely.
+    """
+
+    __slots__ = (
+        'bounty_name',
+        'outpost_id',
+        'explorable_id',
+        'outpost_path',
+        'bounty_path',
+        'transit_ids',
+        'transit_paths',
+    )
+
+    def __init__(
+        self,
+        bounty_name: str,
+        outpost_id: int,
+        explorable_id: int,
+        outpost_path: Sequence[Coordinate],
+        bounty_path: Sequence[object],
+        transit_ids: Sequence[int],
+        transit_paths: Sequence[Sequence[object]],
+    ) -> None:
+        self.bounty_name = bounty_name
+        self.outpost_id = outpost_id
+        self.explorable_id = explorable_id
+        self.outpost_path: list[Coordinate] = list(outpost_path)
+        self.bounty_path: list[object] = list(bounty_path)
+        self.transit_ids: tuple[int, ...] = tuple(transit_ids)
+        self.transit_paths: tuple[list[object], ...] = tuple(list(path) for path in transit_paths)
+
+    @property
+    def display_name(self) -> str:
+        return self.bounty_name.replace('_', ' ')
+
+    @property
+    def runs_in_outpost_map(self) -> bool:
+        """True when the bounty target lives in the outpost map itself."""
+        return self.explorable_id <= 0 or self.explorable_id == self.outpost_id
+
+
+class SessionStats:
+    def __init__(self) -> None:
+        self.started_at = 0.0
+        self.current_run_started_at = 0.0
+        self.runs_attempted = 0
+        self.runs_completed = 0
+        self.runs_failed = 0
+        self.run_times: list[float] = []
+
+    def start_run(self) -> None:
+        if self.current_run_started_at > 0.0:
+            return
+        now = time.monotonic()
+        if self.started_at <= 0.0:
+            self.started_at = now
+        self.current_run_started_at = now
+        self.runs_attempted += 1
+
+    def complete_run(self) -> float:
+        duration = self.current_run_time()
+        if self.current_run_started_at > 0.0:
+            self.runs_completed += 1
+            self.run_times.append(duration)
+        self.current_run_started_at = 0.0
+        return duration
+
+    def fail_run(self) -> float:
+        duration = self.current_run_time()
+        if self.current_run_started_at > 0.0:
+            self.runs_failed += 1
+        self.current_run_started_at = 0.0
+        return duration
+
+    def current_run_time(self) -> float:
+        if self.current_run_started_at <= 0.0:
+            return 0.0
+        return time.monotonic() - self.current_run_started_at
+
+    def total_time(self) -> float:
+        if self.started_at <= 0.0:
+            return 0.0
+        return time.monotonic() - self.started_at
+
+
+BOUNTIES = BOUNTY_CATALOG
+bounty_index = 0
+loaded_bounty_index = 0
+loop_runs = False
+auto_loot = True
+take_bounty = True
+# Automatic quest handling: the bounty is the one the signpost gave the party,
+# so the plan is built from the quest text read after the dialog instead of from
+# the combo. `_auto_definition` holds the definition resolved this run and
+# `_pending_planner_swap` asks the widget loop to replace the discovery steps.
+automatic_quest = False
+_auto_definition: BountyDefinition | None = None
+_pending_planner_swap = False
+
+# Consumable upkeep state (persisted per account, same keys as the other BTs).
+_settings = Settings(f'{INI_PATH}/{INI_FILENAME}', 'account')
+_settings_loaded = False
+_restock_conset = True
+_activate_conset = True
+_restock_pcons = True
+_activate_pcons = True
+_restock_scroll_of_resurrection = True
+_restock_multi_account = True
+_keep_gold_on_accounts = True
+
+initialized = False
+ini_key = ''
+botting_tree: BottingTree | None = None
+pending_rebuild = False
+last_load_error = ''
+stats = SessionStats()
+
+
+def _parse_model_id_list(raw: str, allowed: Sequence[int]) -> set[int]:
+    """Parse a comma-separated model ID string, keeping only known models.
+
+    Unknown or malformed entries are dropped rather than raising: the INI is
+    user-editable and a stray value should not break widget init.
+    """
+    allowed_set = {int(model_id) for model_id in allowed}
+    parsed: set[int] = set()
+    for chunk in str(raw or '').split(','):
+        text = chunk.strip()
+        if not text:
+            continue
+        try:
+            value = int(text)
+        except ValueError:
+            continue
+        if value in allowed_set:
+            parsed.add(value)
+    return parsed
+
+
+def _serialize_model_id_list(model_ids: set[int]) -> str:
+    return ','.join(str(model_id) for model_id in sorted(int(value) for value in model_ids))
+
+
+def _load_settings() -> None:
+    global _settings_loaded
+    global _restock_conset, _activate_conset
+    global _restock_pcons, _activate_pcons
+    global _restock_scroll_of_resurrection
+    global _restock_multi_account
+    global _keep_gold_on_accounts
+    global _selected_conset, _selected_pcons
+    global automatic_quest
+    global take_bounty, loop_runs
+
+    if _settings_loaded:
+        return
+    _restock_conset = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_CONSET, True)
+    _activate_conset = _settings.get_bool(_SETTINGS_SECTION, _KEY_ACTIVATE_CONSET, True)
+    _restock_pcons = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_PCONS, True)
+    _activate_pcons = _settings.get_bool(_SETTINGS_SECTION, _KEY_ACTIVATE_PCONS, True)
+    _restock_scroll_of_resurrection = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_SCROLL_OF_RESURRECTION, True)
+    _restock_multi_account = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_MULTI_ACCOUNT, True)
+    _keep_gold_on_accounts = _settings.get_bool(_SETTINGS_SECTION, _KEY_KEEP_GOLD_ON_ACCOUNTS, True)
+    automatic_quest = _settings.get_bool(_SETTINGS_SECTION, _KEY_AUTOMATIC_QUEST, False)
+    if automatic_quest:
+        # A stored combination from an older build has to respect the rule the
+        # UI enforces: the signpost feeds the resolution and a loop would have
+        # nothing left to accept on its second pass.
+        take_bounty = True
+        loop_runs = False
+
+    stored_conset = _settings.get_str(_SETTINGS_SECTION, _KEY_SELECTED_CONSET, '')
+    if stored_conset.strip():
+        _selected_conset = _parse_model_id_list(stored_conset, CONSET_MODEL_IDS)
+
+    stored_pcons = _settings.get_str(_SETTINGS_SECTION, _KEY_SELECTED_PCONS, '')
+    if stored_pcons.strip():
+        _selected_pcons = _parse_model_id_list(stored_pcons, PCON_UPKEEPS)
+
+    _settings_loaded = True
+
+
+def _save_settings() -> None:
+    _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_CONSET, _restock_conset)
+    _settings.set(_SETTINGS_SECTION, _KEY_ACTIVATE_CONSET, _activate_conset)
+    _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_PCONS, _restock_pcons)
+    _settings.set(_SETTINGS_SECTION, _KEY_ACTIVATE_PCONS, _activate_pcons)
+    _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_SCROLL_OF_RESURRECTION, _restock_scroll_of_resurrection)
+    _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_MULTI_ACCOUNT, _restock_multi_account)
+    _settings.set(_SETTINGS_SECTION, _KEY_KEEP_GOLD_ON_ACCOUNTS, _keep_gold_on_accounts)
+    _settings.set(_SETTINGS_SECTION, _KEY_AUTOMATIC_QUEST, automatic_quest)
+    _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_CONSET, _serialize_model_id_list(_selected_conset))
+    _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_PCONS, _serialize_model_id_list(_selected_pcons))
+
+
+def _enabled_consumable_upkeeps() -> tuple[int, ...]:
+    """Upkeep model IDs for the currently enabled and individually selected items.
+
+    Ordering follows the core lists (consets then pcons); duplicates are
+    collapsed because `ConfigureUpkeep` would otherwise register two services
+    for one model.
+    """
+    enabled: list[int] = []
+    if _activate_conset:
+        enabled.extend(model_id for model_id in CONSET_MODEL_IDS if model_id in _selected_conset)
+    if _activate_pcons:
+        enabled.extend(model_id for model_id in PCON_UPKEEPS if model_id in _selected_pcons)
+    return tuple(dict.fromkeys(enabled))
+
+
+def _consumable_restock_items() -> tuple[tuple[int, int], ...]:
+    """Restock targets for the enabled groups only."""
+    wanted: set[int] = set()
+    if _restock_conset:
+        wanted.update(model_id for model_id in CONSET_MODEL_IDS if model_id in _selected_conset)
+    if _restock_pcons:
+        wanted.update(model_id for model_id in PCON_UPKEEPS if model_id in _selected_pcons)
+    if _restock_scroll_of_resurrection:
+        wanted.add(int(ModelID.Scroll_Of_Resurrection.value))
+    return tuple(
+        (model_id, quantity)
+        for model_id, quantity in CONSUMABLE_RESTOCK_ITEMS
+        if model_id in wanted
+    )
+
+
+def _consumables_short_of_target() -> bool:
+    """True when any enabled model is still below its bag target."""
+    for model_id, quantity in _consumable_restock_items():
+        try:
+            if int(GLOBAL_CACHE.Inventory.GetModelCount(model_id) or 0) < int(quantity):
+                return True
+        except Exception:
+            return True
+    return False
+
+
+def _runtime_restock_node() -> BehaviorTree:
+    """Resolve the restock list when the step is ticked, not when it is built.
+
+    `get_execution_steps` builds the whole plan once at tree creation, so a
+    restock node baked in at build time would freeze the list that was enabled
+    at that moment. Building it inside a Subtree keeps the Consumables toggles
+    meaningful for the next run without a full plan rebuild.
+
+    `RoutinesBT.Items.RestockItems` samples the storage cache once per item and,
+    with `allow_missing=True`, treats a cold zero read as "nothing to do" and
+    advances. The first model in the list therefore risks being skipped on the
+    run's opening frames (observed live: Essence of Celerity, first in
+    CONSET_UPKEEPS, only landed on a second run). The remediation is a settle
+    wait plus a second pass -- but the wait is gated on the bags actually being
+    short, so a run whose consumables are already stocked pays no delay at all.
+    """
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        items = _consumable_restock_items()
+        if not items:
+            return BT.Succeeder('Restock Disabled')
+        return BT.Sequence(
+            name='Restock Passes',
+            children=[
+                BT.RestockItemsFromList(tuple(items), allow_missing=True),
+                _restock_retry_guard(),
+            ],
+        )
+
+    return BT.Subtree(name='Restock Selected Consumables', subtree_fn=_build)
+
+
+def _restock_retry_guard() -> BehaviorTree:
+    """Settle, then re-run the restock only if something is still missing.
+
+    The selector semantics matter here: a first child that returns SUCCESS
+    short-circuits the whole guard (nothing missing, no delay), while returning
+    FAILURE hands control to the settle-and-retry branch. Returning RUNNING
+    would pin the selector to the first child permanently, so it is deliberately
+    not used.
+    """
+
+    def _nothing_missing(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if _consumables_short_of_target():
+            return BehaviorTree.NodeState.FAILURE
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BT.Subtree(
+        name='Restock Retry Guard',
+        subtree_fn=lambda _node: BehaviorTree(
+            BehaviorTree.SelectorNode(
+                name='Retry Restock If Short',
+                children=[
+                    BehaviorTree(
+                        BehaviorTree.ActionNode(
+                            name='Consumables Already Stocked',
+                            action_fn=_nothing_missing,
+                        )
+                    ),
+                    BehaviorTree(
+                        BehaviorTree.SequenceNode(
+                            name='Settle And Retry',
+                            children=[
+                                BT.Wait(duration_ms=RESTOCK_SETTLE_MS),
+                                BT.RestockItemsFromList(
+                                    _consumable_restock_items(),
+                                    allow_missing=True,
+                                ),
+                            ],
+                        )
+                    ),
+                ],
+            )
+        ),
+    )
+
+
+def _remote_account_emails() -> list[str]:
+    """Emails of the other clients in the shared-memory group, self excluded.
+
+    Each receiver resolves the command through its own Messaging widget. The
+    sender is skipped because its bags are already handled by the local nodes.
+    """
+    try:
+        sender_email = str(Player.GetAccountEmail() or '')
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData() or []
+    except Exception:
+        return []
+
+    recipients: list[str] = []
+    for account in accounts:
+        email = str(getattr(account, 'AccountEmail', '') or '').strip()
+        if not email or email == sender_email or email in recipients:
+            continue
+        recipients.append(email)
+    return recipients
+
+
+def _summon_map_tuple(account: object) -> tuple[int, int, int, int]:
+    """The four fields `SummonAllAccounts` compares between accounts.
+
+    Copied from `routines_src/behaviourtrees_src/shared.py:_account_map_tuple`
+    so the census reports exactly what the summon step decides on: map, region,
+    district and language. Region and language are part of that comparison even
+    though no travel can change them, which is why they are printed here.
+    """
+    map_obj = getattr(getattr(account, 'AgentData', None), 'Map', None)
+    return (
+        int(getattr(account, 'MapID', 0) or getattr(map_obj, 'MapID', 0) or 0),
+        int(getattr(account, 'MapRegion', 0) or getattr(map_obj, 'Region', 0) or 0),
+        int(getattr(account, 'MapDistrict', 0) or getattr(map_obj, 'District', 0) or 0),
+        int(getattr(account, 'MapLanguage', 0) or getattr(map_obj, 'Language', 0) or 0),
+    )
+
+
+def _live_map_tuple() -> tuple[int, int, int, int]:
+    """This client's map identity straight from the live API."""
+    try:
+        return (
+            int(Map.GetMapID() or 0),
+            int(Map.GetRegion()[0] or 0),
+            int(Map.GetDistrict() or 0),
+            int(Map.GetLanguage()[0] or 0),
+        )
+    except Exception:
+        return (0, 0, 0, 0)
+
+
+def _shared_memory_census(include_isolated: bool = True) -> list[str]:
+    """One line per account the account mirror shows right now.
+
+    The mirror is written by the native multibox module: one slot per client, a
+    full push every frame from each client's `DrawLoop`, and this side only
+    reads it. So an alt missing from this list is not being hidden by a stale
+    reader — it either is not publishing (client not injected, still logging in,
+    or stuck on a loading screen) or it lost a slot claim to another client.
+    Neither is something this widget can refresh; the census exists to tell the
+    two apart from "the alt is there but somewhere else".
+
+    `match` compares each account's map tuple against the leader's the same way
+    the summon step does, so a run log shows who that step would target and why.
+
+    `include_isolated` is on because isolation hides accounts from every normal
+    query, and a hidden alt looks exactly like a missing one in the logs.
+    """
+    try:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData(include_isolated=include_isolated) or [])
+    except Exception as error:
+        return [f'shared memory unavailable: {error}']
+
+    local_email = str(Player.GetAccountEmail() or '').strip()
+    local_account = None
+    for account in accounts:
+        if str(getattr(account, 'AccountEmail', '') or '').strip() == local_email:
+            local_account = account
+            break
+    if local_account is not None:
+        local_tuple = _summon_map_tuple(local_account)
+        local_source = 'mirror'
+    else:
+        local_tuple = _live_map_tuple()
+        local_source = 'live map'
+
+    now = int(PySystem.get_tick_count64())
+    lines = [
+        f'{len(accounts)} account slot(s) visible',
+        f'  local {local_email or "<no email>"} tuple={local_tuple} from {local_source}',
+    ]
+    for account in accounts:
+        email = str(getattr(account, 'AccountEmail', '') or '').strip() or '<no email>'
+        map_id, region, district, language = _summon_map_tuple(account)
+        is_account = 'yes' if bool(getattr(account, 'IsAccount', False)) else 'no'
+        isolated = ' isolated' if bool(getattr(account, 'IsIsolated', False)) else ''
+        matches_leader = 'yes' if (map_id, region, district, language) == local_tuple else 'no'
+        # LastUpdated is a 32-bit truncation of the frame clock. A value ahead of
+        # ours (publishers run a frame or two later) would otherwise read as a
+        # 49-day-old slot, so the top half of the range is treated as "just now".
+        age_ms = (now - int(getattr(account, 'LastUpdated', 0) or 0)) % (1 << 32)
+        if age_ms > 0x80000000:
+            age_ms = 0
+        lines.append(
+            f'  slot {int(getattr(account, "SlotNumber", 0) or 0)} {email} '
+            f'map={map_id} region={region} district={district} language={language} '
+            f'account={is_account} match={matches_leader} age={age_ms}ms{isolated}'
+        )
+    return lines
+
+
+def _log_shared_memory_census() -> BehaviorTree.NodeState:
+    """Write the census to the console before anyone is gathered."""
+    for line in _shared_memory_census():
+        PySystem.Console.Log(MODULE_NAME, line, PySystem.Console.MessageType.Info)
+    return BehaviorTree.NodeState.SUCCESS
+
+
+def _remote_restock_commands() -> tuple[tuple[SharedCommandType, int], ...]:
+    """Shared restock commands for the enabled groups, one quantity each.
+
+    The shared command surface is aggregate: `RestockConset` and
+    `RestockAllPcons` restock a fixed model list with a single quantity, so the
+    per-item checklist cannot travel over the bus. Quantities, however, mirror
+    the local target: `RestockAllPcons` runs at the pcon quantity and the scroll,
+    which that handler also moves, is topped up to its own target afterwards.
+    """
+    items = _consumable_restock_items()
+    if not items:
+        return ()
+
+    conset_ids = {int(model_id) for model_id in CONSET_MODEL_IDS}
+    pcon_ids = {int(model_id) for model_id in PCON_UPKEEPS}
+    scroll_id = int(ModelID.Scroll_Of_Resurrection.value)
+
+    def _highest_quantity(model_ids: set[int]) -> int:
+        quantities = [int(quantity) for model_id, quantity in items if int(model_id) in model_ids]
+        return max(quantities) if quantities else 0
+
+    commands: list[tuple[SharedCommandType, int]] = []
+
+    conset_quantity = _highest_quantity(conset_ids)
+    if conset_quantity > 0:
+        commands.append((SharedCommandType.RestockConset, conset_quantity))
+
+    pcon_quantity = _highest_quantity(pcon_ids)
+    if pcon_quantity > 0:
+        commands.append((SharedCommandType.RestockAllPcons, pcon_quantity))
+
+    scroll_quantity = _highest_quantity({scroll_id})
+    if scroll_quantity > 0:
+        # RestockAllPcons already pulled the scroll up to the pcon quantity; this
+        # pass raises it to its own, higher target.
+        commands.append((SharedCommandType.RestockResurrectionScroll, scroll_quantity))
+
+    return tuple(commands)
+
+
+def _remote_restock_node() -> BehaviorTree:
+    """Restock the other accounts in the group through the shared command bus.
+
+    Requires the `Messaging` widget on every receiver: without it the message is
+    never consumed and the dispatch wait runs into its timeout. Recipients and
+    commands are resolved when the step ticks, so toggles and party changes apply
+    to the next run without a plan rebuild.
+    """
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not _restock_multi_account:
+            return BT.Succeeder('Remote Restock Disabled')
+        recipients = _remote_account_emails()
+        if not recipients:
+            return BT.Succeeder('Remote Restock No Recipients')
+        commands = _remote_restock_commands()
+        if not commands:
+            return BT.Succeeder('Remote Restock Disabled')
+        return BT.Sequence(
+            name='Restock Other Accounts',
+            children=[
+                RoutinesBT.Shared.SendAndWait(
+                    command=command,
+                    params=(float(quantity), 0.0, 0.0, 0.0),
+                    recipients=recipients,
+                    refs_blackboard_key=f'__remote_restock_refs_{int(command)}',
+                    timeout_ms=REMOTE_RESTOCK_TIMEOUT_MS,
+                    poll_interval_ms=100,
+                    log=True,
+                    aftercast_ms=100,
+                )
+                for command, quantity in commands
+            ],
+        )
+
+    return BT.Subtree(name='Restock Other Accounts', subtree_fn=_build)
+
+
+def _keep_gold_node() -> BehaviorTree:
+    """Leave `KEEP_GOLD_AMOUNT` on every account during the preparation.
+
+    Reuses the existing `WithdrawGold` shared command, which equalizes in both
+    directions: it deposits the excess over the target and withdraws from storage
+    when the character is short. Recipients resolve it through their own
+    `Messaging` widget, so that widget has to be running on every client.
+    """
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not _keep_gold_on_accounts:
+            return BT.Succeeder('Keep Gold Disabled')
+
+        children: list[BehaviorTree] = [
+            BT.EqualizeGold(target_gold=KEEP_GOLD_AMOUNT),
+        ]
+
+        recipients = _remote_account_emails()
+        if recipients:
+            children.append(
+                RoutinesBT.Shared.SendAndWait(
+                    command=SharedCommandType.WithdrawGold,
+                    params=(float(KEEP_GOLD_AMOUNT), 1.0, 0.0, 0.0),
+                    recipients=recipients,
+                    refs_blackboard_key='__keep_gold_refs',
+                    timeout_ms=REMOTE_KEEP_GOLD_TIMEOUT_MS,
+                    poll_interval_ms=100,
+                    log=True,
+                    aftercast_ms=100,
+                )
+            )
+
+        return BT.Sequence(name='Keep Gold On Accounts', children=children)
+
+    return BT.Subtree(name='Keep Gold On Accounts', subtree_fn=_build)
+
+
+def _selected_bounty() -> str:
+    if not BOUNTIES:
+        return ''
+    return BOUNTIES[max(0, min(bounty_index, len(BOUNTIES) - 1))]
+
+
+def _bounty_attribute(module: object, bounty_name: str, suffix: str = '') -> object:
+    """Module attribute for a bounty, tolerating a mismatched name.
+
+    The attribute does not always match the file name: `SlaversExileSelvetarm.py`
+    defines `SlaversExileSelveTarm`. An exact miss falls back to a
+    case-insensitive scan, which keeps the bounty usable instead of loading an
+    empty path.
+    """
+    wanted = f'{bounty_name}{suffix}'
+    value = getattr(module, wanted, None)
+    if value is not None:
+        return value
+
+    lowered = wanted.lower()
+    for name in dir(module):
+        if name.lower() == lowered:
+            return getattr(module, name)
+    return None
+
+
+def _load_transit_data(module: object, bounty_name: str) -> tuple[tuple[int, ...], tuple[list[object], ...]]:
+    ids = _bounty_attribute(module, bounty_name, '_ids')
+    if not isinstance(ids, Mapping):
+        ids = {}
+
+    transit_ids: list[int] = []
+    transit_paths: list[list[object]] = []
+
+    index = 1
+    while True:
+        id_key = 'transit_id' if index == 1 else f'transit_id{index}'
+        path_suffix = '_transit_path' if index == 1 else f'_transit_path{index}'
+        transit_id = int(ids.get(id_key, 0) or 0)
+        transit_path = _bounty_attribute(module, bounty_name, path_suffix)
+
+        if transit_id <= 0 and transit_path is None:
+            break
+
+        transit_ids.append(transit_id)
+        transit_paths.append(list(transit_path or ()))
+        index += 1
+
+    return tuple(transit_ids), tuple(transit_paths)
+
+
+def load_selected_definition() -> BountyDefinition:
+    bounty_name = _selected_bounty()
+    if not bounty_name:
+        raise ValueError(
+            f'No Zaishen bounty found under {BOUNTY_ROOT}. Drop a bounty file there and reload the widget.'
+        )
+
+    return load_definition(bounty_name)
+
+
+def load_definition(bounty_name: str) -> BountyDefinition:
+    """Load one bounty module by name, whoever picked it.
+
+    Split out of `load_selected_definition` so the automatic quest handling can
+    load the bounty it read from the quest text without touching the combo.
+    """
+    module_name = f'{BOUNTY_PACKAGE}.{bounty_name}'
+    # The bounty pack is data, so drop the cached copy and re-read the file: a
+    # live edit is picked up on the next tree build after a widget reload.
+    importlib.invalidate_caches()
+    try:
+        module = importlib.import_module(module_name)
+    except ModuleNotFoundError as error:
+        missing_name = str(error.name or '')
+        if missing_name and (
+            missing_name == module_name
+            or module_name.startswith(f'{missing_name}.')
+        ):
+            raise ValueError(
+                f'Missing Zaishen bounty module: {bounty_name}.py in '
+                f'{BOUNTY_PACKAGE.replace(".", "/")}.'
+            ) from error
+        raise
+    module = importlib.reload(module)
+
+    ids = _bounty_attribute(module, bounty_name, '_ids')
+    if not isinstance(ids, Mapping):
+        raise ValueError(f'No _ids dictionary found for bounty {bounty_name}.')
+
+    outpost_id = int(ids.get('outpost_id', 0) or 0)
+    explorable_id = int(ids.get('map_id', 0) or 0)
+    outpost_path = list(_bounty_attribute(module, bounty_name, '_outpost_path') or ())
+    bounty_path = list(_bounty_attribute(module, bounty_name) or ())
+    transit_ids, transit_paths = _load_transit_data(module, bounty_name)
+
+    if outpost_id <= 0:
+        raise ValueError(f'Invalid outpost ID for bounty {bounty_name}.')
+    if not bounty_path:
+        raise ValueError(f'No bounty path found for {bounty_name}.')
+
+    return BountyDefinition(
+        bounty_name=bounty_name,
+        outpost_id=outpost_id,
+        explorable_id=explorable_id,
+        outpost_path=outpost_path,
+        bounty_path=bounty_path,
+        transit_ids=transit_ids,
+        transit_paths=transit_paths,
+    )
+
+
+def _active_bounty_name() -> str:
+    """Bounty the UI reports: the resolved one in automatic mode."""
+    if automatic_quest and _auto_definition is not None:
+        return _auto_definition.bounty_name
+    return _selected_bounty()
+
+
+def _strip_quest_markup(text: str) -> str:
+    """Quest text without the client's markup and control characters.
+
+    Two kinds of noise show up in the strings the client returns: colour tags like
+    `<c=@Quest>` and unresolved substitution markers like the `{s}` a vanquish
+    objective can carry at the very start. Both are dropped, otherwise the text
+    never begins with the verb the parser looks for.
+    """
+    plain: list[str] = []
+    angle = 0
+    brace = 0
+    for character in text:
+        if character == '<':
+            angle += 1
+            continue
+        if character == '>' and angle:
+            angle -= 1
+            continue
+        if character == '{':
+            brace += 1
+            continue
+        if character == '}' and brace:
+            brace -= 1
+            continue
+        if angle or brace:
+            continue
+        plain.append(character if character.isprintable() else ' ')
+    return ' '.join(''.join(plain).split())
+
+
+def _quest_target_text(description: str) -> str:
+    """The target named after `Kill` in a bounty quest description.
+
+    Descriptions read `Kill <target>.`, sometimes followed by a location clause.
+    The target ends at the first sentence break, so `Kill Selvetarm in Slavers'
+    Exile` yields `Selvetarm`. Returns '' when the text does not carry that verb,
+    which is the caller's signal to try the quest title instead.
+    """
+    text = _strip_quest_markup(description or '')
+    lowered = text.lower()
+    verb = 'kill '
+    start = lowered.find(verb)
+    if start < 0:
+        return ''
+    rest = text[start + len(verb):]
+    rest_lowered = lowered[start + len(verb):]
+    end = len(rest)
+    for marker in ('.', '!', '?', ',', '\n', ' in ', ' within ', ' at ', ' inside '):
+        position = rest_lowered.find(marker)
+        if position >= 0:
+            end = min(end, position)
+    return rest[:end].strip()
+
+
+# Bounty files named after the dungeon instead of its boss. The quest text names
+# the target, so the area in the file name never matches and the boss has to be
+# translated first. Each boss is the dungeon own end boss, taken from the wiki
+# dungeon pages and its Zaishen quest entry. Two of them carry a title after a
+# comma, and the target parser stops at the first comma, so both spellings are
+# listed instead of depending on which text the client hands over.
+_BOUNTY_FILE_ALIASES: dict[str, str] = {
+    'eldritchettin': 'BloodstoneCaves',
+    'ilsundur': 'CatacombsOfKathandrax',
+    'ilsundurlordoffire': 'CatacombsOfKathandrax',
+    'murakai': 'CathedralOfFlames',
+    'murakailadythenight': 'CathedralOfFlames',
+}
+
+
+def _bounty_key(text: str) -> str:
+    """Comparison key: lowercase letters and digits only.
+
+    Bounty files are named without spaces (`ChungtheAttuned`) while the quest
+    text has them, and the punctuation in names like `Myish, Lady of the Lake`
+    is not stable enough to compare.
+    """
+    return ''.join(character for character in text.lower() if character.isalnum())
+
+
+def _match_bounty_key(target_key: str) -> str:
+    """Bounty whose module name contains the target, most specific tier first.
+
+    Tiers: equality, module name ending with the target (`selvetarm` ->
+    `SlaversExileSelvetarm`), target ending with the module name, containment.
+    A tier that names more than one bounty is treated as no match: the run would
+    otherwise guess between two routes, and a wrong route is worse than a stop.
+    """
+    if not target_key:
+        return ''
+    # Three files are named after their dungeon, not after the boss the quest
+    # names, so the boss has to be translated before any name matching runs.
+    alias = _BOUNTY_FILE_ALIASES.get(target_key)
+    if alias:
+        return alias
+    keys = [(bounty, _bounty_key(bounty)) for bounty in BOUNTIES]
+    tiers: tuple[Callable[[str], bool], ...] = (
+        lambda key: key == target_key,
+        lambda key: key.endswith(target_key),
+        lambda key: target_key.endswith(key),
+        lambda key: target_key in key or key in target_key,
+    )
+    for matches in tiers:
+        found = [bounty for bounty, key in keys if key and matches(key)]
+        if len(found) == 1:
+            return found[0]
+        if len(found) > 1:
+            return ''
+    return ''
+
+
+def _resolve_bounty_from_description(description: str) -> str:
+    """Bounty named by a quest description, or '' when it does not match."""
+    return _match_bounty_key(_bounty_key(_quest_target_text(description)))
+
+
+def _resolve_bounty_from_quest_name(name: str) -> str:
+    """Bounty named by a quest title, the fallback source.
+
+    Zaishen titles carry the target after a colon (`Zaishen Bounty: Verata`), so
+    the part after the last colon is used when there is one.
+    """
+    text = _strip_quest_markup(name or '')
+    if ':' in text:
+        text = text.rsplit(':', 1)[-1]
+    return _match_bounty_key(_bounty_key(text))
+
+
+def _condition(name: str, condition_fn: Callable[[], bool]) -> BehaviorTree:
+    return BehaviorTree(
+        BehaviorTree.ConditionNode(
+            name=name,
+            condition_fn=condition_fn,
+        )
+    )
+
+
+def _action(name: str, action_fn: Callable[[], BehaviorTree.NodeState]) -> BehaviorTree:
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=action_fn,
+        )
+    )
+
+
+def _coordinate(value: object, field_name: str) -> Coordinate:
+    if not isinstance(value, (tuple, list)) or len(value) < 2:
+        raise ValueError(f'{field_name} must be a coordinate, got {value!r}.')
+
+    x = value[0]
+    y = value[1]
+    if not isinstance(x, (int, float)) or not isinstance(y, (int, float)):
+        raise ValueError(f'{field_name} must contain numeric coordinates, got {value!r}.')
+    return float(x), float(y)
+
+
+def _coordinate_path(value: object, field_name: str) -> list[Coordinate]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise ValueError(f'{field_name} must be a coordinate path, got {value!r}.')
+    return [_coordinate(point, f'{field_name}[{index}]') for index, point in enumerate(value)]
+
+
+def _integer(value: object, field_name: str) -> int:
+    if not isinstance(value, (int, float, str)):
+        raise ValueError(f'{field_name} must be an integer-compatible value, got {value!r}.')
+    try:
+        return int(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f'{field_name} must be an integer-compatible value, got {value!r}.') from error
+
+
+def _dialog_id(value: object) -> int | str:
+    if isinstance(value, (int, str)):
+        return value
+    raise ValueError(f'dialog must be an int or string, got {value!r}.')
+
+
+def _follow_model_parameters(value: object) -> tuple[int | str, float, int]:
+    if not isinstance(value, (tuple, list)) or len(value) != 3:
+        raise ValueError(f'followmodel must contain model, range and timeout, got {value!r}.')
+
+    model_id = value[0]
+    follow_range = value[1]
+    timeout_ms = value[2]
+    if not isinstance(model_id, (int, str)):
+        raise ValueError(f'followmodel model must be an int or string, got {model_id!r}.')
+    if not isinstance(follow_range, (int, float)):
+        raise ValueError(f'followmodel range must be numeric, got {follow_range!r}.')
+    return model_id, float(follow_range), _integer(timeout_ms, 'followmodel timeout')
+
+
+def _build_keyword_action(key: str, value: object) -> list[BehaviorTree]:
+    children: list[BehaviorTree] = []
+
+    if key == 'path':
+        path = _coordinate_path(value, 'path')
+        if path:
+            # No clear radius and no sweeps: the party walks the route and the
+            # aggressive tree handles whatever it meets on the way.
+            children.append(BT.Move(path, pause_on_combat=True, tolerance=150.0, log=True))
+        return children
+
+    if key == 'bless':
+        pos = _coordinate(value, 'bless')
+        # The shrine answers to a dialog id, not to a button index: 0x84 is the
+        # EotN blessing, 0x85 the Nightfall one and 0x86 the Factions one. Sending
+        # them through TargetNearestAndAutoDialog made every client press
+        # "button 132", and Player.SendAutomaticDialog drops a button that is not
+        # on screen, so the dialog opened and nothing was ever pressed.
+        # Bounty data carries no faction, so the three ids are tried in turn, as
+        # the legacy widget fanned them out to the group.
+        child = BT.Sequence(
+            name='BlessShrine',
+            children=[
+                BT.Move(pos, tolerance=150.0, log=True),
+                BT.TargetNearestAndSendDialog(pos, dialog_id=0x84, multi_account=True, log=True),
+                BT.TargetNearestAndSendDialog(pos, dialog_id=0x85, multi_account=True, log=True),
+                BT.TargetNearestAndSendDialog(pos, dialog_id=0x86, multi_account=True, log=True),
+            ],
+        )
+    elif key == 'gadget':
+        child = BT.MoveAndInteractWithGadget(
+            pos=_coordinate(value, 'gadget'),
+            interaction_count=1,
+            multi_account=True,
+            log=True,
+        )
+    elif key == 'npc':
+        child = BT.MoveAndInteract(
+            pos=_coordinate(value, 'npc'),
+            target_distance=Range.Nearby.value,
+            log=True,
+        )
+    elif key == 'dialog':
+        child = BT.SendDialog(dialog_id=_dialog_id(value), multi_account=True, log=True)
+    elif key == 'wait':
+        child = BT.Wait(duration_ms=_integer(value, 'wait'), log=False)
+    elif key == 'map':
+        child = BT.WaitForMapLoad(map_id=_integer(value, 'map'), timeout_ms=TRANSIT_TIMEOUT_MS)
+    elif key == 'dropbundle':
+        child = BT.DropBundle(log=True)
+    elif key == 'followmodel':
+        model_id, follow_range, timeout_ms = _follow_model_parameters(value)
+        child = BT.FollowModel(
+            modelID_or_encStr=model_id,
+            follow_range=follow_range,
+            timeout_ms=timeout_ms,
+            log=True,
+        )
+    else:
+        raise ValueError(f'Unsupported Zaishen bounty keyword: {key!r}.')
+
+    children.append(child)
+    return children
+
+
+def _iter_segment_items(segment: object) -> list[tuple[str, object]]:
+    if isinstance(segment, Mapping):
+        return [(str(key), value) for key, value in segment.items()]
+    if isinstance(segment, list):
+        items: list[tuple[str, object]] = []
+        for entry in segment:
+            if not isinstance(entry, tuple) or len(entry) != 2:
+                raise ValueError(f'Invalid tuple-list map segment: {entry!r}.')
+            items.append((str(entry[0]), entry[1]))
+        return items
+    raise ValueError(f'Invalid structured map segment: {segment!r}.')
+
+
+def _is_coordinate(value: object) -> bool:
+    return (
+        isinstance(value, (tuple, list))
+        and len(value) >= 2
+        and isinstance(value[0], (int, float))
+        and isinstance(value[1], (int, float))
+    )
+
+
+def _is_plain_path(path: Sequence[object]) -> bool:
+    return bool(path) and all(_is_coordinate(point) for point in path)
+
+
+def _build_outpost_exit(definition: BountyDefinition) -> BehaviorTree:
+    """Walk out of the outpost towards the first map of the bounty.
+
+    A bounty whose target lives in the outpost map itself has no exit: the
+    recorded path is walked inside the same map instead of waiting for a map
+    load that would never happen.
+    """
+    if not definition.outpost_path:
+        return BT.Succeeder(name='NoOutpostPath')
+
+    if definition.runs_in_outpost_map:
+        return BT.Move(
+            definition.outpost_path,
+            pause_on_combat=True,
+            tolerance=150.0,
+            log=True,
+        )
+
+    first_target = definition.explorable_id
+    if definition.transit_ids and definition.transit_ids[0] > 0:
+        first_target = definition.transit_ids[0]
+    if first_target <= 0:
+        raise ValueError(f'No target map ID for the outpost exit of {definition.display_name}.')
+
+    return BT.MoveAndExitMap(
+        definition.outpost_path,
+        target_map_id=first_target,
+        timeout_ms=TRANSIT_TIMEOUT_MS,
+        log=True,
+    )
+
+
+class RouteItem(NamedTuple):
+    """One planner step of a walking leg.
+
+    The map is carried with the point, and in the step name, because transit legs
+    and the bounty route use their own coordinate spaces: a resume that mixed a
+    point from one map with a position from another would path into a wall.
+    """
+
+    kind: str  # 'point' | 'exit' | 'action' | 'wait_map'
+    step_name: str
+    map_id: int
+    point: Coordinate | None = None
+    key: str = ''
+    value: object = None
+
+
+def _iter_path_items(path: Sequence[object]) -> list[tuple[str, object]]:
+    """Flatten a route path into (keyword, value) items in walking order."""
+
+    if _is_plain_path(path):
+        return [('path', path)]
+
+    items: list[tuple[str, object]] = []
+    for segment in path:
+        items.extend(_iter_segment_items(segment))
+    return items
+
+
+def _transit_leg_map_id(definition: BountyDefinition, index: int) -> int:
+    """Map one transit leg walks in: its own target, not the final map.
+
+    A bounty whose target lives in the outpost map carries no explorable id, so
+    the leg falls back to the outpost before giving up: a point without a map can
+    never be a valid resume target.
+    """
+
+    if 0 <= index < len(definition.transit_ids) and definition.transit_ids[index] > 0:
+        return int(definition.transit_ids[index])
+    return int(definition.explorable_id or definition.outpost_id)
+
+
+def _transit_next_map_id(definition: BountyDefinition, index: int) -> int:
+    if index + 1 < len(definition.transit_ids) and definition.transit_ids[index + 1] > 0:
+        return int(definition.transit_ids[index + 1])
+    return int(definition.explorable_id)
+
+
+def _bounty_route_map_id(definition: BountyDefinition) -> int:
+    return int(definition.explorable_id or definition.outpost_id)
+
+
+def _route_items(definition: BountyDefinition) -> list[RouteItem]:
+    """Every walking step in planner order, split by point and by keyword.
+
+    Transit legs and the bounty route are expanded by the same code, so a wipe on
+    a transit resumes there as well. `get_execution_steps` builds the plan from
+    this list and the wipe recovery resolves its resume step from it, which keeps
+    the step names and the coordinates from drifting apart.
+    """
+
+    items: list[RouteItem] = []
+    point_number = 0
+    action_number = 0
+
+    def _add_point(map_id: int, point: Coordinate, *, exit_target: int = 0) -> None:
+        nonlocal point_number
+        point_number += 1
+        items.append(
+            RouteItem(
+                kind='exit' if exit_target > 0 else 'point',
+                step_name=f'Point {point_number} (map {map_id})',
+                map_id=map_id,
+                point=point,
+                value=exit_target if exit_target > 0 else None,
+            )
+        )
+
+    def _add_action(map_id: int, label: str, key: str, value: object, *, kind: str = 'action') -> None:
+        nonlocal action_number
+        action_number += 1
+        items.append(
+            RouteItem(
+                kind=kind,
+                step_name=f'Action {action_number}: {label}',
+                map_id=map_id,
+                key=key,
+                value=value,
+            )
+        )
+
+    for index, transit_path in enumerate(definition.transit_paths):
+        map_id = _transit_leg_map_id(definition, index)
+        next_map_id = _transit_next_map_id(definition, index)
+
+        if _is_plain_path(transit_path) and next_map_id > 0:
+            # A plain transit leg used to be one MoveAndExitMap: walked in order and
+            # exited at the portal. Split by point, the exit stays on the last one.
+            points = _coordinate_path(transit_path, f'transit path {index + 1}')
+            for position, point in enumerate(points):
+                is_last = position == len(points) - 1
+                _add_point(map_id, point, exit_target=next_map_id if is_last else 0)
+            if not points:
+                _add_action(map_id, f'map {next_map_id}', 'wait_map', next_map_id, kind='wait_map')
+            continue
+
+        for key, value in _iter_path_items(transit_path):
+            if key == 'path':
+                for point in _coordinate_path(value, f'transit path {index + 1}'):
+                    _add_point(map_id, point)
+                continue
+            _add_action(map_id, key, key, value)
+
+        # The same explicit wait the leg builder appends: only bounties with a known
+        # explorable map get it, the rest rely on their own `map` keyword.
+        if next_map_id > 0 and definition.explorable_id > 0:
+            _add_action(map_id, f'map {next_map_id}', 'wait_map', next_map_id, kind='wait_map')
+
+    route_map_id = _bounty_route_map_id(definition)
+    for key, value in _iter_path_items(definition.bounty_path):
+        if key == 'path':
+            for point in _coordinate_path(value, 'bounty path'):
+                _add_point(route_map_id, point)
+            continue
+        _add_action(route_map_id, key, key, value)
+
+    return items
+
+
+def _build_route_point(point: Coordinate) -> BehaviorTree:
+    """One waypoint walked inside a map.
+
+    A bounty is a target at a known spot, not a map to clear, so the point is
+    walked with combat pausing and nothing sweeps the area.
+    """
+
+    return BT.Move(
+        [point],
+        pause_on_combat=True,
+        tolerance=150.0,
+        log=True,
+    )
+
+
+def _build_route_exit(point: Coordinate, target_map_id: int) -> BehaviorTree:
+    """Last point of a transit leg: walk to the portal and wait for the map."""
+
+    return BT.MoveAndExitMap(
+        [point],
+        target_map_id=target_map_id,
+        timeout_ms=TRANSIT_TIMEOUT_MS,
+        log=True,
+    )
+
+
+def _build_route_item(item: RouteItem) -> BehaviorTree:
+    """Build the tree for one route item, labelled with its step name."""
+
+    if item.kind == 'action':
+        children = _build_keyword_action(str(item.key), item.value)
+        if not children:
+            return BT.Succeeder(name=f'{item.step_name}:Empty')
+        return BT.Sequence(name=item.step_name, children=children)
+
+    if item.kind == 'wait_map':
+        return BT.WaitForMapLoad(
+            map_id=int(item.value or 0),
+            timeout_ms=TRANSIT_TIMEOUT_MS,
+        )
+
+    point = item.point
+    if point is None:
+        return BT.Succeeder(name=f'{item.step_name}:Empty')
+
+    if item.kind == 'exit':
+        return _build_route_exit(point, int(item.value or 0))
+
+    return _build_route_point(point)
+
+
+def _now_ms() -> float:
+    """Monotonic clock in milliseconds for the recovery deadlines."""
+
+    return time.monotonic() * 1000.0
+
+
+def _recovery_suppression(
+    suppressed: bool,
+    since_ms: float,
+    now_ms: float,
+) -> tuple[bool, float, bool]:
+    """Decide whether a resign still blocks recovery.
+
+    Returns `(blocked, suppressed_since_ms, timed_out)`.
+
+    The widget marks its own resign around `BT.Resign`, because the core service
+    that ships with the planner reads `party_wipe_recovery_suppressed` and this
+    widget keeps that flag raised for its whole life. The timeout exists because
+    a tree reset during the resign can leave the marker set, and a stuck marker
+    would silently disable recovery for the rest of the session.
+    """
+
+    if not suppressed:
+        return False, 0.0, False
+    if since_ms <= 0.0:
+        return True, now_ms, False
+    if now_ms - since_ms >= RECOVERY_SUPPRESS_TIMEOUT_MS:
+        return False, 0.0, True
+    return True, since_ms, False
+
+
+def _route_resume_step(
+    definition: BountyDefinition,
+    map_id: int,
+    position: Coordinate,
+    failed_step_name: str,
+    planner_names: Sequence[str],
+) -> str:
+    """Nearest waypoint to the shrine, ahead or behind, in the map the party is in.
+
+    The rule is geometric: whichever point is closest to the resurrection shrine
+    wins, whether the party had already walked it or not, so the resume walk is
+    as short as the map allows.
+
+    One guard remains: the search stops at the next non-point step, so a resume
+    can never land past a blessing, a gadget or a map change that has not run yet.
+    """
+
+    items = _route_items(definition)
+    names = list(planner_names)
+
+    points = [
+        item
+        for item in items
+        if item.point is not None and item.map_id == map_id and item.step_name in names
+    ]
+    if not points:
+        return ''
+
+    failed_index = names.index(failed_step_name) if failed_step_name in names else -1
+
+    limit = len(names)
+    for item in items:
+        if item.point is not None or item.step_name not in names:
+            continue
+        index = names.index(item.step_name)
+        if index > failed_index:
+            limit = index
+            break
+
+    eligible = [item for item in points if names.index(item.step_name) < limit]
+    if not eligible:
+        return ''
+
+    def _distance_sq(item: RouteItem) -> float:
+        point = item.point
+        if point is None:
+            return float('inf')
+        return (float(point[0]) - position[0]) ** 2 + (float(point[1]) - position[1]) ** 2
+
+    return min(eligible, key=_distance_sq).step_name
+
+
+def ZBountyPartyWipeRecoveryService() -> BehaviorTree:
+    """Resume a party wipe from the nearest waypoint the party had not reached.
+
+    The core service restarts the step that was running. This one goes further:
+    after a shrine revival it resolves the waypoint nearest to the shrine, ahead or
+    behind the failed step, on the current map, so the party walks the shortest
+    distance back into its route. A party defeat restarts from Prepare, which is
+    the step that knows how to travel back.
+    """
+
+    state: dict[str, object] = {
+        "active": False,
+        "mode": "",
+        "failed_step_name": "",
+        "last_return_ms": 0.0,
+        "player_was_dead": False,
+        "player_dead_pos": None,
+        "suppressed_since_ms": 0.0,
+    }
+
+    def _log(message: str, message_type: int = PySystem.Console.MessageType.Info) -> None:
+        PySystem.Console.Log("ZBountyWipeRecovery", message, message_type)
+
+    def _current_step(node: BehaviorTree.Node) -> str:
+        step_name = str(node.blackboard.get("current_step_name", "") or "")
+        if step_name:
+            return step_name
+        return str(node.blackboard.get("last_active_planner_step_name", "") or "")
+
+    def _planner_step_names() -> list[str]:
+        if botting_tree is None:
+            return []
+        try:
+            return list(botting_tree.GetNamedPlannerStepNames() or [])
+        except Exception:
+            return []
+
+    def _detect_revive_teleport() -> bool:
+        """Report a move from the death spot to a distant shrine."""
+
+        try:
+            player_id = Player.GetAgentID()
+            if not Agent.IsValid(player_id):
+                return False
+            current_pos = Agent.GetXY(player_id)
+            is_dead = bool(Agent.IsDead(player_id))
+        except Exception:
+            return False
+
+        def _far(death_pos) -> bool:
+            return math.hypot(death_pos[0] - current_pos[0], death_pos[1] - current_pos[1]) > 1200.0
+
+        if is_dead:
+            if not state["player_was_dead"]:
+                state["player_was_dead"] = True
+                state["player_dead_pos"] = current_pos
+                return False
+            death_pos = state["player_dead_pos"]
+            if death_pos and _far(death_pos):
+                # Some revive flows teleport the dead agent before it becomes alive.
+                state["player_was_dead"] = False
+                state["player_dead_pos"] = None
+                return True
+            return False
+
+        if not state["player_was_dead"]:
+            return False
+
+        state["player_was_dead"] = False
+        death_pos = state["player_dead_pos"]
+        state["player_dead_pos"] = None
+        return bool(death_pos) and _far(death_pos)
+
+    def _player_is_alive() -> bool:
+        try:
+            player_id = Player.GetAgentID()
+            return bool(Agent.IsValid(player_id) and not Agent.IsDead(player_id))
+        except Exception:
+            return False
+
+    def _can_resume_in_explorable() -> bool:
+        try:
+            return bool(Map.IsMapReady() and Map.IsExplorable() and _player_is_alive())
+        except Exception:
+            return False
+
+    def _can_resume_from_outpost() -> bool:
+        try:
+            return bool(Map.IsMapReady() and Map.IsOutpost())
+        except Exception:
+            return False
+
+    def _reset_state(node: BehaviorTree.Node) -> None:
+        state["active"] = False
+        state["mode"] = ""
+        state["failed_step_name"] = ""
+        state["last_return_ms"] = 0.0
+        state["player_was_dead"] = False
+        state["player_dead_pos"] = None
+        node.blackboard["party_wipe_recovery_active"] = False
+        node.blackboard["party_wipe_recovery_mode"] = ""
+        node.blackboard["party_wipe_recovery_step_name"] = ""
+
+    def _begin_recovery(node: BehaviorTree.Node, mode: str) -> None:
+        # Whatever was queued when the party died would otherwise run after the
+        # revive and fight the step the recovery just resumed at. The core service
+        # flushes here for the same reason.
+        from Py4GWCoreLib.py4gwcorelib_src.ActionQueue import ActionQueueManager
+
+        state["active"] = True
+        state["mode"] = mode
+        state["failed_step_name"] = _current_step(node)
+        state["last_return_ms"] = 0.0
+        node.blackboard["party_wipe_recovery_active"] = True
+        node.blackboard["party_wipe_recovery_mode"] = mode
+        node.blackboard["party_wipe_recovery_step_name"] = state["failed_step_name"]
+        ActionQueueManager().ResetAllQueues()
+        detail = (
+            "Returning to the outpost to restart from Prepare."
+            if mode == "defeated"
+            else "Waiting for the shrine revival."
+        )
+        _log(
+            f"Party wipe on '{state['failed_step_name']}'. {detail}",
+            PySystem.Console.MessageType.Warning,
+        )
+
+    def _resolve_restart_step(mode: str) -> str:
+        failed_step_name = str(state["failed_step_name"] or "")
+        names = _planner_step_names()
+
+        if mode == "defeated":
+            # From an outpost the route coordinates belong to another map, so the
+            # only step that can get the party back there is the preparation.
+            for step_name in names:
+                if step_name.startswith("Prepare "):
+                    return step_name
+            return failed_step_name
+
+        try:
+            # Automatic mode resolved a map the combos never selected, so the plan
+            # that is running belongs to `_auto_definition`. Loading the combo here
+            # built step names the planner does not have, the name filter dropped
+            # every point and the resume fell back to the failed step.
+            if automatic_quest and _auto_definition is not None:
+                definition = _auto_definition
+            else:
+                definition = load_selected_definition()
+            player_id = Player.GetAgentID()
+            position = Agent.GetXY(player_id)
+            map_id = int(Map.GetMapID() or 0)
+        except Exception as error:
+            _log(f"Could not resolve the shrine resume point: {error}", PySystem.Console.MessageType.Warning)
+            return failed_step_name
+
+        step_name = _route_resume_step(definition, map_id, position, failed_step_name, names)
+        if step_name:
+            _log(
+                f"Shrine at ({position[0]:.0f}, {position[1]:.0f}) on map {map_id}: "
+                f"resuming at '{step_name}'.",
+                PySystem.Console.MessageType.Success,
+            )
+            return step_name
+
+        _log(
+            f"No waypoint on map {map_id}; restarting '{failed_step_name}' instead.",
+            PySystem.Console.MessageType.Warning,
+        )
+        return failed_step_name
+
+    def _request_restart(node: BehaviorTree.Node, mode: str) -> bool:
+        step_name = _resolve_restart_step(mode)
+        if not step_name:
+            _log("Recovery finished but no planner step could be resolved.", PySystem.Console.MessageType.Warning)
+            return False
+
+        node.blackboard["party_wipe_recovery_step_name"] = step_name
+        node.blackboard["current_step_name"] = step_name
+        node.blackboard["last_active_planner_step_name"] = step_name
+        node.blackboard["restart_step_name_request"] = step_name
+        return True
+
+    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        # The planner installs the core recovery service unconditionally, so the
+        # only way to keep it quiet is to hold its flag raised. The widget's own
+        # resign marker is what this service honours.
+        node.blackboard["party_wipe_recovery_suppressed"] = True
+
+        now = _now_ms()
+        blocked, state["suppressed_since_ms"], timed_out = _recovery_suppression(
+            bool(node.blackboard.get(_RESIGNING_KEY, False)),
+            float(state["suppressed_since_ms"]),
+            now,
+        )
+        if timed_out:
+            node.blackboard[_RESIGNING_KEY] = False
+            _log(
+                "The resign marker never cleared; recovery re-armed.",
+                PySystem.Console.MessageType.Warning,
+            )
+        if blocked:
+            # The party dying here is a resign we asked for, not a wipe.
+            _reset_state(node)
+            return BehaviorTree.NodeState.RUNNING
+
+        revived_at_shrine = _detect_revive_teleport()
+        try:
+            party_wiped = bool(Checks.Party.IsPartyWiped())
+            party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
+        except Exception:
+            party_wiped = False
+            party_defeated = False
+
+        if not bool(state["active"]):
+            if not (party_wiped or party_defeated or revived_at_shrine):
+                node.blackboard["party_wipe_recovery_active"] = False
+                return BehaviorTree.NodeState.RUNNING
+
+            mode = "defeated" if party_defeated else "shrine"
+            _begin_recovery(node, mode)
+
+            if mode == "shrine" and revived_at_shrine and _can_resume_in_explorable():
+                restarted = _request_restart(node, mode)
+                _reset_state(node)
+                return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+            return BehaviorTree.NodeState.RUNNING
+
+        if party_defeated and state["mode"] != "defeated":
+            state["mode"] = "defeated"
+            _log("The shrine recovery became a party defeat; switching to outpost recovery.")
+
+        node.blackboard["party_wipe_recovery_active"] = True
+        node.blackboard["party_wipe_recovery_mode"] = state["mode"]
+
+        if state["mode"] == "shrine":
+            if _can_resume_from_outpost():
+                state["mode"] = "defeated"
+                _log("The party returned to an outpost during shrine recovery; switching to outpost recovery.")
+            else:
+                if revived_at_shrine or (not party_wiped and _can_resume_in_explorable()):
+                    restarted = _request_restart(node, "shrine")
+                    _reset_state(node)
+                    return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+                return BehaviorTree.NodeState.RUNNING
+
+        if _can_resume_from_outpost():
+            restarted = _request_restart(node, "defeated")
+            _reset_state(node)
+            return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+
+        if now - float(state["last_return_ms"]) >= 1000.0:
+            state["last_return_ms"] = now
+            try:
+                GLOBAL_CACHE.Party.ReturnToOutpost()
+            except Exception as error:
+                _log(f"ReturnToOutpost failed: {error}", PySystem.Console.MessageType.Warning)
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='ZBountyPartyWipeRecovery',
+            action_fn=_tick,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _build_bounty_fight() -> BehaviorTree:
+    """Wait until the fight the route walked into is over.
+
+    This used to be the tail of the single route step. Split out, a wipe during
+    the fight restarts the wait rather than a waypoint, and a fight that outlasts
+    the cap fails this step alone, so the planner restarts the wait instead of
+    walking the route again.
+    """
+
+    return BT.WaitUntilOutOfCombat(timeout_ms=BOUNTY_FIGHT_TIMEOUT_MS)
+
+
+def _mark_run_started() -> BehaviorTree.NodeState:
+    stats.start_run()
+    PySystem.Console.Log(
+        MODULE_NAME,
+        f'Starting bounty: {_selected_bounty()}.',
+        PySystem.Console.MessageType.Info,
+    )
+    return BehaviorTree.NodeState.SUCCESS
+
+
+def _mark_run_completed() -> BehaviorTree.NodeState:
+    duration = stats.complete_run()
+    PySystem.Console.Log(
+        MODULE_NAME,
+        f'Bounty completed in {_format_time(duration)}.',
+        PySystem.Console.MessageType.Success,
+    )
+    return BehaviorTree.NodeState.SUCCESS
+
+
+def _build_run_preparation(definition: BountyDefinition) -> BehaviorTree:
+    children: list[BehaviorTree] = [
+        # Travel first, with the same helper the staging and reward steps use, so
+        # the outpost approach also picks a randomised low-traffic district. The
+        # hard-mode switch that `BT.Sequence(map_id_or_name=...)` used to apply
+        # after its own travel now rides along explicitly.
+        _build_travel_to_map(definition.outpost_id, 'Outpost'),
+        # The shared travel helper only waits for the map, while the outpost
+        # approach also has to wait for the party to finish loading before the
+        # restock and the exit start touching the outpost.
+        RoutinesBT.Party.WaitForPartyLoaded(
+            timeout_ms=REMOTE_PARTY_TIMEOUT_MS,
+            log=True,
+        ),
+        BT.SetHardMode(hard_mode=True),
+        ensure_botting_tree().Config.Aggressive(
+            multi_account=True,
+            auto_loot=auto_loot,
+            resurrection_scroll=True,
+        ),
+    ]
+
+    if _restock_conset or _restock_pcons or _restock_scroll_of_resurrection:
+        children.append(_runtime_restock_node())
+        if _restock_multi_account:
+            children.append(_remote_restock_node())
+
+    children.append(_keep_gold_node())
+    children.append(_action('RecordRunStart', _mark_run_started))
+
+    # The outpost exit belongs to the preparation; the intermediate travels are
+    # their own named step and only exist when the map really has transit paths.
+    if definition.outpost_path:
+        children.append(_build_outpost_exit(definition))
+
+    return BT.Sequence(
+        name=f'Prepare:{definition.bounty_name}',
+        children=children,
+    )
+
+
+def _mark_recovery_suppression(value: bool) -> BehaviorTree:
+    """Set or clear the widget's own resign marker.
+
+    Kept separate from `party_wipe_recovery_suppressed`, which this widget holds
+    raised so the core recovery service never acts.
+    """
+
+    def _set(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        node.blackboard[_RESIGNING_KEY] = bool(value)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return _action(
+        'MarkZbountyResigning' if value else 'ClearZbountyResigning',
+        _set,
+    )
+
+
+def _build_run_completion(definition: BountyDefinition) -> BehaviorTree:
+    children: list[BehaviorTree] = [
+        # The route step already waited for combat to clear; this pause covers the
+        # loot drop and the client state before the run is counted as done.
+        BT.Wait(duration_ms=BOUNTY_COMPLETION_SETTLE_MS, log=True),
+        _action('RecordRunCompletion', _mark_run_completed),
+    ]
+
+    # The trip back is needed by the repeat loop, which starts from an outpost,
+    # and by the staging flow, which ends in Embark Beach so the next run starts
+    # from a staged position.
+    if loop_runs or take_bounty:
+        children.append(_mark_recovery_suppression(True))
+        children.append(
+            BT.Resign(
+                wait_for_map_load=True,
+                target_map_id=definition.outpost_id,
+                multi_account=True,
+                log=True,
+            )
+        )
+        children.append(_mark_recovery_suppression(False))
+
+    return BT.Sequence(
+        name=f'Complete:{definition.bounty_name}',
+        children=children,
+    )
+
+
+def _isolation_enabled() -> bool:
+    """Whether the botting tree isolates this account from the wider group.
+
+    Mirrors the `Account Isolation` checkbox of the botting tree UI. While it is
+    on, the shared-memory gate only delivers messages between accounts that share
+    a party or an isolation group, so a party that does not exist yet cannot be
+    formed over the bus.
+    """
+    tree = botting_tree
+    if tree is None:
+        return False
+    try:
+        return bool(tree.IsIsolationEnabled())
+    except Exception:
+        return False
+
+
+def _build_form_party() -> BehaviorTree:
+    """Disband, gather and invite every account back, where the leader stands.
+
+    The party is formed in whatever map the leader is in, with no hub travel: the
+    accounts share the same server region, so a leader in the guild hall finds the
+    others in that same guild hall and `SummonAllAccounts` has nobody to move.
+
+    `BT.CreateParty(multibox_invite=True)` is the owning wrapper for the rest:
+    `LeaveParty` first, then `SummonAllAccounts` for the accounts that are on a
+    different map (it travels them to the leader's outpost, or to the guild hall
+    when the leader is in one), and finally `InviteAllAccounts`. Running it as the
+    first step means every run starts from a known party state instead of
+    inheriting whatever the previous run left behind.
+
+    The shared-memory census runs first, so the log records who this client could
+    see at the moment it asked for a party.
+
+    Skipped when `Account Isolation` is enabled: the shared-memory gate refuses
+    messages between accounts that are not in the same party or isolation group,
+    so with no party yet the summon and invite would be dropped (each refusal
+    logs a warning and returns -1, so the step would silently do nothing) while
+    the local `LeaveParty` still disbanded whatever was left. `Prepare` already
+    travels to the bounty outpost on its own.
+    """
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        # The census runs even when the step is skipped: it is the record of who
+        # this client could see when the run asked for a party, and that is what
+        # tells a missing account apart from a hidden or misplaced one.
+        census = _action('LogSharedMemoryCensus', _log_shared_memory_census)
+        children: list[BehaviorTree] = [census]
+        if _isolation_enabled():
+            children.append(BT.Succeeder('Form Party Skipped: Account Isolation'))
+            return BT.Sequence(name='FormPartyIsolated', children=children)
+
+        children.append(
+            BT.CreateParty(
+                multibox_invite=True,
+                timeout_ms=REMOTE_PARTY_TIMEOUT_MS,
+                poll_interval_ms=100,
+                log=True,
+            )
+        )
+        return BT.Sequence(name='FormParty', children=children)
+
+    return BT.Subtree(name='Form Party', subtree_fn=_build)
+
+
+def get_execution_steps(definition: BountyDefinition | None) -> list[tuple[str, Callable[[], BehaviorTree]]]:
+    """Named planner steps for a run.
+
+    `definition=None` is the automatic quest handling before the bounty is
+    known: the plan stops after the signpost, with a resolver step that reads the
+    accepted quest and asks the widget for the real plan.
+    """
+    steps: list[tuple[str, Callable[[], BehaviorTree]]] = [
+        # Party first: staging and preparation both assume the group is formed.
+        ('Form Party', _build_form_party),
+    ]
+
+    # Staging is its own named step so Navigation shows it and it can be
+    # restarted on its own.
+    if take_bounty:
+        steps.append(
+            (
+                'Take ZBounty',
+                lambda: _build_bounty_staging(),
+            )
+        )
+
+    if definition is None:
+        steps.append(('Resolve ZBounty', _build_auto_bounty_resolver))
+        return steps
+
+    steps.append(
+        (
+            f'Prepare {definition.bounty_name}',
+            lambda definition=definition: _build_run_preparation(definition),
+        )
+    )
+
+    # Transit legs and the bounty route are the same kind of step now: one per
+    # waypoint and one per keyword, each named with the map it walks in. The wipe
+    # recovery resolves its resume step from this same list.
+    for item in _route_items(definition):
+        steps.append((item.step_name, lambda item=item: _build_route_item(item)))
+
+    steps.append(('Bounty fight', _build_bounty_fight))
+
+    steps.append(
+        (
+            'Complete and return',
+            lambda definition=definition: _build_run_completion(definition),
+        )
+    )
+
+    # Looting flow ends by claiming the reward and dissolving the party, so the
+    # run finishes in the guild hall instead of the temple.
+    if take_bounty:
+        steps.append(
+            (
+                'Take ZBounty Reward',
+                lambda: _build_bounty_reward(),
+            )
+        )
+    return steps
+
+
+def _configure_upkeep(tree: BottingTree) -> None:
+    """Push the run configuration and the consumable upkeep service.
+
+    Called once at creation and again whenever a consumables toggle changes;
+    `ConfigureUpkeep` only replaces the upkeep trees, so it does not disturb a
+    running planner (the same runtime-reconfigure pattern the Reputation Farmer
+    and Shards Of Orr BTs use).
+    """
+    tree.Config.ConfigureUpkeep(
+        looting_enabled=auto_loot,
+        resurrection_scroll=True,
+        # The widget installs its own recovery service below: it resumes at the
+        # nearest waypoint ahead instead of restarting the failed step, and a party
+        # defeat goes back through Prepare, which is the step that can travel.
+        enable_party_wipe_recovery=False,
+        heroai_state_logging=True,
+        heroai_state_log_interval_ms=5000,
+        consumable_upkeeps=_enabled_consumable_upkeeps(),
+    )
+    # ConfigureUpkeep replaces every service tree, so this has to be re-added on
+    # each call, not only at creation.
+    tree.AddServiceTree('ZBountyPartyWipeRecoveryService', ZBountyPartyWipeRecoveryService)
+
+
+def ensure_botting_tree() -> BottingTree:
+    global botting_tree
+    global last_load_error
+    global loaded_bounty_index
+
+    if botting_tree is None:
+        # Automatic mode starts from the discovery plan: the bounty is unknown
+        # until the signpost quest has been accepted and read.
+        definition = None if automatic_quest else load_selected_definition()
+        last_load_error = ''
+        botting_tree = BottingTree.Create(
+            MODULE_NAME,
+            main_routine=get_execution_steps(definition),
+            routine_name='ZaishenBountySequence',
+            repeat=loop_runs,
+            reset=False,
+            multi_account=True,
+            auto_loot=auto_loot,
+            configure_fn=_configure_upkeep,
+        )
+        botting_tree.UI.override_draw_help(_draw_help)
+        loaded_bounty_index = bounty_index
+
+    return botting_tree
+
+
+def _request_rebuild() -> None:
+    global pending_rebuild
+    pending_rebuild = True
+
+
+def _apply_pending_rebuild() -> None:
+    global botting_tree
+    global pending_rebuild
+    global last_load_error
+    global bounty_index
+    global _auto_definition
+
+    if not pending_rebuild:
+        return
+    if botting_tree is not None and botting_tree.IsStarted():
+        return
+
+    previous_tree = botting_tree
+    attempted_bounty = _selected_bounty()
+    if previous_tree is not None:
+        previous_tree.Stop()
+    botting_tree = None
+    pending_rebuild = False
+    # A fresh tree in automatic mode goes back to the discovery plan, so the
+    # bounty resolved by the previous run must not survive it.
+    _auto_definition = None
+
+    try:
+        ensure_botting_tree()
+    except Exception as error:
+        botting_tree = previous_tree
+        bounty_index = loaded_bounty_index
+        last_load_error = f'{attempted_bounty}: {error}'
+        PySystem.Console.Log(
+            MODULE_NAME,
+            (
+                f'Failed to load {attempted_bounty}: {error}. '
+                'The previous bounty selection was restored.'
+            ),
+            PySystem.Console.MessageType.Error,
+        )
+
+
+def _apply_pending_planner_swap() -> None:
+    """Replace the discovery steps with the plan for the resolved bounty.
+
+    Runs from the widget loop, after the tick that resolved the bounty: the
+    running planner must not be mutated from inside one of its own nodes. The
+    new steps are installed with `start_from` at the preparation step, so the
+    run continues where the quest was accepted instead of travelling back to the
+    temple for a second `Form Party`.
+    """
+    global _pending_planner_swap
+    global _auto_definition
+
+    if not _pending_planner_swap:
+        return
+
+    tree = botting_tree
+    definition = _auto_definition
+    if tree is None or definition is None or not tree.IsStarted():
+        _pending_planner_swap = False
+        return
+
+    try:
+        tree.SetNamedPlannerSteps(
+            get_execution_steps(definition),
+            start_from=f'Prepare {definition.bounty_name}',
+            name='ZaishenBountySequence',
+            repeat=loop_runs,
+        )
+    except Exception as error:
+        _pending_planner_swap = False
+        _auto_definition = None
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f'Automatic ZQuest: could not build the plan for {definition.bounty_name}: {error}',
+            PySystem.Console.MessageType.Error,
+        )
+        tree.Stop()
+        return
+
+    _pending_planner_swap = False
+    PySystem.Console.Log(
+        MODULE_NAME,
+        (
+            f'Automatic ZQuest: plan for {definition.bounty_name} installed, '
+            f'continuing at Prepare {definition.bounty_name}.'
+        ),
+        PySystem.Console.MessageType.Info,
+    )
+
+
+def _reset_auto_resolution_on_stop(tree: BottingTree) -> None:
+    """Put the discovery plan back once an automatic run is over.
+
+    The completed run replaced the planner steps with the resolved route, so a
+    new start would skip the signpost and walk a bounty the party may no longer
+    hold. Rebuilding the tree restores the discovery steps and clears the
+    resolved bounty.
+    """
+    if not automatic_quest or _auto_definition is None or tree.IsStarted():
+        return
+    _request_rebuild()
+
+
+def _staging_district() -> int:
+    """Random low-traffic district channel for a staging travel."""
+    return int(random.choice(STAGING_DISTRICTS))
+
+
+def _build_travel_to_map(map_id: int, label: str) -> BehaviorTree:
+    """Travel to a map unless the party is already there.
+
+    Shared by the staging travel, the reward travel and the approach to the
+    bounty outpost, so all three land in the same randomised low-traffic
+    district instead of the default one. Travel is local: a formed party travels
+    with its leader, and broadcasting a TravelToMap command per follower would
+    fight the party travel.
+    """
+
+    if map_id <= 0:
+        return BT.Succeeder(name=f'No{label}Travel')
+
+    def _is_current_map() -> bool:
+        return int(Map.GetMapID() or 0) == map_id
+
+    def _request_travel() -> BehaviorTree.NodeState:
+        Map.TravelToDistrict(map_id, _staging_district())
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BT.Selector(
+        name=f'Ensure{label}',
+        children=[
+            _condition(f'AlreadyIn{label}', _is_current_map),
+            BT.Sequence(
+                name=f'TravelTo{label}',
+                children=[
+                    _action(f'Request{label}Travel', _request_travel),
+                    BT.WaitForMapLoad(map_id=map_id),
+                ],
+            ),
+        ],
+    )
+
+
+def _nearest_living_agent(
+    position: tuple[float, float],
+    *,
+    name_filter: str = '',
+    max_distance: float = 0.0,
+) -> tuple[int, tuple[float, float]]:
+    """Nearest living, non-player agent to a point, as (agent_id, xy).
+
+    Players are excluded so a party member standing on the spot cannot be picked
+    instead of the NPC. Names come from `Agent.GetNameByID`, which returns an
+    empty string until the client has decoded the name, hence the retry gate the
+    callers wrap around this.
+    """
+    player_id = int(Player.GetAgentID() or 0)
+    best_id = 0
+    best_position = (0.0, 0.0)
+    best_distance = 0.0
+
+    for agent_id in AgentArray.GetAgentArray():
+        if agent_id == player_id or not Agent.IsLiving(agent_id):
+            continue
+        if Agent.IsPlayer(agent_id):
+            continue
+        if name_filter:
+            name = str(Agent.GetNameByID(agent_id) or '')
+            if name_filter not in name.lower():
+                continue
+        x, y = Agent.GetXY(agent_id)
+        distance = math.hypot(x - position[0], y - position[1])
+        if max_distance > 0.0 and distance > max_distance:
+            continue
+        if best_id == 0 or distance < best_distance:
+            best_id = int(agent_id)
+            best_position = (float(x), float(y))
+            best_distance = distance
+    return best_id, best_position
+
+
+def _leader_anchor() -> Coordinate:
+    """Leader position, falling back to the staging anchor when it cannot be read.
+
+    `Player.GetXY` is the only source that reflects where the party actually is;
+    the staging anchor is the last resort for the frames where the map data is not
+    ready yet, so the resolver always has a usable reference.
+    """
+    try:
+        position = Player.GetXY()
+        if position:
+            return float(position[0]), float(position[1])
+    except Exception:
+        pass
+    return BOUNTY_SIGNPOST
+
+
+def _resolve_bounty_signpost() -> tuple[int, tuple[float, float]]:
+    """Nearest 'Zaishen Bounty' signpost to the leader.
+
+    Embark Beach holds several signposts, so the name alone does not pick one. The
+    closest to the leader is the one the party is actually going to walk to,
+    whichever side of the outpost it spawned on; a fixed anchor assumed one side.
+    The anchor stays as the reference for the frames where the position cannot be
+    read yet.
+    """
+    return _nearest_living_agent(_leader_anchor(), name_filter=BOUNTY_SIGNPOST_NAME)
+
+
+def _resolve_reward_npc() -> tuple[int, tuple[float, float]]:
+    """Reward NPC in the Great Temple of Balthazar, resolved by its name.
+
+    "Zehnchu [Zaishen Challenge]" is a single NPC standing among others, so the
+    name is the identity and no distance filter is needed; `Agent.GetNameByID`
+    may return an empty string until the client decodes it, which is what the
+    caller's retry gate is for.
+    """
+    return _nearest_living_agent(REWARD_NPC, name_filter=REWARD_NPC_NAME)
+
+
+class MultiboxDialogSpec(NamedTuple):
+    """Everything one multibox autodialog step needs."""
+
+    button: int
+    fallback_point: tuple[float, float]
+    agent_key: str
+    refs_key: str
+    resolve: Callable[[], tuple[int, tuple[float, float]]]
+    label: str
+
+
+_SIGNPOST_DIALOG = MultiboxDialogSpec(
+    button=BOUNTY_DIALOG_BUTTON,
+    fallback_point=BOUNTY_SIGNPOST,
+    agent_key='bounty_signpost_agent_id',
+    refs_key='bounty_dialog_refs',
+    resolve=_resolve_bounty_signpost,
+    label='Signpost',
+)
+
+_REWARD_DIALOG = MultiboxDialogSpec(
+    button=BOUNTY_DIALOG_BUTTON,
+    fallback_point=REWARD_NPC,
+    agent_key='bounty_reward_agent_id',
+    refs_key='bounty_reward_refs',
+    resolve=_resolve_reward_npc,
+    label='Reward',
+)
+
+
+def _remote_accounts_on_leader_map() -> tuple[bool, list[str]]:
+    """Whether every other account reports the leader's map and district.
+
+    Each account publishes its map in shared memory only after its own client is
+    fully loaded, so a leader that finishes loading first sees the others still
+    pointed at the previous map. The dialog fan-out resolves its agent on the
+    leader and messages the rest: sending it now means the followers receive an
+    order for a map they are not in yet, acknowledge it, do nothing, and the party
+    ends up with only some accounts holding the quest.
+    """
+
+    sender_email = ''
+    pending: list[str] = []
+    try:
+        sender_email = str(Player.GetAccountEmail() or '')
+        map_id = int(Map.GetMapID() or 0)
+        district = int(Map.GetDistrict() or 0)
+    except Exception:
+        return False, pending
+
+    if map_id <= 0:
+        return False, pending
+
+    try:
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData() or []
+    except Exception:
+        return False, pending
+
+    for account in accounts:
+        if not bool(getattr(account, 'IsAccount', False)):
+            continue
+        email = str(getattr(account, 'AccountEmail', '') or '')
+        if not email or email == sender_email:
+            continue
+        map_struct = getattr(getattr(account, 'AgentData', None), 'Map', None)
+        reported_map = int(getattr(map_struct, 'MapID', 0) or 0)
+        reported_district = int(getattr(map_struct, 'District', 0) or 0)
+        if reported_map != map_id:
+            pending.append(email)
+        elif district > 0 and reported_district > 0 and reported_district != district:
+            pending.append(email)
+
+    return not pending, pending
+
+
+def _wait_remote_accounts_ready(label: str) -> BehaviorTree:
+    """Hold a multibox dialog until the other accounts are in the same instance.
+
+    Bounded on purpose: an account that is legitimately elsewhere must not stall
+    the step forever, so the wait gives up after the remote party timeout and
+    leaves a warning naming the accounts that were not ready.
+    """
+
+    state = {'started_ms': 0.0, 'reported': False}
+
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        ready, pending = _remote_accounts_on_leader_map()
+        if ready:
+            return BehaviorTree.NodeState.SUCCESS
+
+        now = _now_ms()
+        if state['started_ms'] <= 0.0:
+            state['started_ms'] = now
+        if now - state['started_ms'] < REMOTE_PARTY_TIMEOUT_MS:
+            return BehaviorTree.NodeState.RUNNING
+
+        if not state['reported']:
+            state['reported'] = True
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f'{label}: {len(pending)} account(s) still not on this map after '
+                f'{REMOTE_PARTY_TIMEOUT_MS // 1000}s ({", ".join(pending)}); '
+                'sending the dialog anyway.',
+                PySystem.Console.MessageType.Warning,
+            )
+            # The census right after the warning is what separates "the alt is
+            # in another district" from "the alt is not publishing at all".
+            for line in _shared_memory_census():
+                PySystem.Console.Log(MODULE_NAME, line, PySystem.Console.MessageType.Warning)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return _action(f'Wait{label}AccountsReady', _tick)
+
+
+def _wait_dialog_agent(spec: MultiboxDialogSpec) -> BehaviorTree:
+    """Resolve the dialog agent, waiting until the client has decoded its name.
+
+    `BehaviorTree.WaitUntilNode` is not usable for this: a `False` from its
+    condition is a terminal FAILURE, not "keep waiting", so a predicate that
+    answers "not yet" burns the whole retry budget on its first evaluation. After
+    a party map load the agent array exists but `Agent.GetNameByID` still returns
+    empty while names decode, so the resolver answers "not yet" for a second or
+    two — and the step dropped straight into the fallback branch. That branch
+    interacts locally and only messages the group once the local dialog is
+    accepted, so the leader ends up at the signpost with the followers still
+    standing at the portal and the whole step fails on the local dialog timeout.
+    """
+
+    state = {'deadline_ms': 0.0}
+
+    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        agent_id = int(spec.resolve()[0] or 0)
+        if agent_id > 0:
+            node.blackboard[spec.agent_key] = agent_id
+            return BehaviorTree.NodeState.SUCCESS
+
+        now = _now_ms()
+        if state['deadline_ms'] <= 0.0:
+            state['deadline_ms'] = now + BOUNTY_AGENT_WAIT_MS
+        if now < state['deadline_ms']:
+            return BehaviorTree.NodeState.RUNNING
+
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f'{spec.label}: no dialog agent resolved within {BOUNTY_AGENT_WAIT_MS // 1000}s; '
+            'falling back to the point-based dialog.',
+            PySystem.Console.MessageType.Warning,
+        )
+        return BehaviorTree.NodeState.FAILURE
+
+    return _action(f'Resolve{spec.label}DialogAgent', _tick)
+
+
+def _build_multibox_dialog(spec: MultiboxDialogSpec) -> BehaviorTree:
+    """Resolve an agent, fan the dialog out and wait for every account.
+
+    The command goes to every account, this client included, so one handler does
+    all the work: it walks to the agent, interacts by id and presses the button.
+    Nothing runs locally in parallel, which is why the leader behaves exactly
+    like the rest. When the agent cannot be resolved the point-based node takes
+    over and fans out the same dialog after walking there. Confirmation is a
+    message-dispatch wait, so it only proves each handler finished, not that the
+    game accepted the dialog.
+
+    It waits for the other accounts to report this map first: a leader that
+    finishes loading before its followers would otherwise dispatch an order for
+    an agent the followers cannot see yet, and only some of them would end up
+    with the quest.
+    """
+
+    def _resolved_branch(node: BehaviorTree.Node) -> BehaviorTree:
+        agent_id = int(node.blackboard.get(spec.agent_key, 0) or 0)
+        if agent_id <= 0:
+            return _condition('DialogAgentMissing', lambda: False)
+        return BT.Sequence(
+            name='DispatchAndWaitDialog',
+            children=[
+                BT.Subtree(name='DispatchDialog', subtree_fn=_dispatch),
+                BT.Subtree(name='WaitDialogs', subtree_fn=_wait),
+            ],
+        )
+
+    def _fallback_branch(node: BehaviorTree.Node) -> BehaviorTree:
+        agent_id = int(node.blackboard.get(spec.agent_key, 0) or 0)
+        if agent_id > 0:
+            return _condition('DialogAgentAlreadyResolved', lambda: False)
+        return BT.TargetNearestAndAutoDialog(
+            spec.fallback_point,
+            buttons=spec.button,
+            multi_account=True,
+            log=True,
+        )
+
+    def _dispatch(node: BehaviorTree.Node) -> BehaviorTree:
+        agent_id = int(node.blackboard.get(spec.agent_key, 0) or 0)
+        if agent_id <= 0:
+            return BT.Succeeder('DialogDispatchSkipped')
+        return RoutinesBT.Shared.SendCommand(
+            command=SharedCommandType.TakeDialogWithTarget,
+            params=(float(agent_id), float(spec.button), 0.0, 0.0),
+            include_self=True,
+            refs_blackboard_key=spec.refs_key,
+            log=True,
+        )
+
+    def _wait(_node: BehaviorTree.Node) -> BehaviorTree:
+        return RoutinesBT.Shared.WaitCommandDispatch(
+            command=SharedCommandType.TakeDialogWithTarget,
+            refs_blackboard_key=spec.refs_key,
+            timeout_ms=BOUNTY_DIALOG_TIMEOUT_MS,
+            poll_interval_ms=250,
+            log=True,
+        )
+
+    return BT.Sequence(
+        name='MultiboxDialog',
+        children=[
+            _wait_remote_accounts_ready(spec.label),
+            BT.Selector(
+                name='FindDialogAgent',
+                children=[
+                    _wait_dialog_agent(spec),
+                    BT.Succeeder('DialogAgentNotVisibleYet'),
+                ],
+            ),
+            BT.Selector(
+                name='DialogPath',
+                children=[
+                    BT.Subtree(name='ResolvedDialog', subtree_fn=_resolved_branch),
+                    BT.Subtree(name='FallbackDialog', subtree_fn=_fallback_branch),
+                ],
+            ),
+            BT.Wait(duration_ms=BOUNTY_DIALOG_SETTLE_MS),
+        ],
+    )
+
+
+def _build_bounty_staging() -> BehaviorTree:
+    """Travel to Embark Beach and take the bounty quest from the signpost.
+
+    Runs before Prepare travels to the bounty outpost. The step is only
+    included when `take_bounty` is on, and the UI keeps that toggle off while the
+    repeat loop is enabled.
+    """
+    return BT.Sequence(
+        name='TakeZBounty',
+        children=[
+            _build_travel_to_map(EMBARK_BEACH_MAP_ID, 'EmbarkBeach'),
+            _build_multibox_dialog(_SIGNPOST_DIALOG),
+        ],
+    )
+
+
+def _active_quest_id() -> int:
+    """The active quest id, or 0.
+
+    Only the active quest is read, never the log. `RequestQuestInfo` is what the
+    client uses to select a quest, so asking for the text of every logged quest
+    walks the quest tracker through unrelated entries: the run ends up resolving a
+    bounty, and switching the client, for a quest the party is not doing.
+    """
+    try:
+        return int(GLOBAL_CACHE.Quest.GetActiveQuest() or 0)
+    except Exception:
+        return 0
+
+
+def _quest_text_value(raw: object) -> str:
+    """Client quest string, minus the decoder's failure sentinel.
+
+    The async decoders answer `Timeout` when the text has not arrived yet; the
+    rest of the repo treats it as a retry signal (`quest_data_src.py`), never as
+    text. Returning '' keeps the poll going instead of trying to match a bounty
+    called "Timeout".
+    """
+    text = str(raw or '')
+    return '' if text.strip().lower() == 'timeout' else text
+
+
+def _read_quest_texts(quest_id: int, request: bool, request_info: bool = False) -> tuple[str, str]:
+    """(description, name) for a quest, empty while the client is not ready.
+
+    `request_info` asks the client for the quest record itself, once per quest:
+    the per-field decoders answer with the `Timeout` sentinel when the record was
+    never requested, which is what the account quest cache does before it reads a
+    field.
+    """
+    if request_info:
+        GLOBAL_CACHE.Quest.RequestQuestInfo(quest_id)
+    if request:
+        GLOBAL_CACHE.Quest.RequestQuestDescription(quest_id)
+        GLOBAL_CACHE.Quest.RequestQuestName(quest_id)
+    description = ''
+    if GLOBAL_CACHE.Quest.IsQuestDescriptionReady(quest_id):
+        description = _quest_text_value(GLOBAL_CACHE.Quest.GetQuestDescription(quest_id))
+    name = ''
+    if GLOBAL_CACHE.Quest.IsQuestNameReady(quest_id):
+        name = _quest_text_value(GLOBAL_CACHE.Quest.GetQuestName(quest_id))
+    return description, name
+
+
+def _build_auto_bounty_resolver() -> BehaviorTree:
+    """Name the bounty from the quest the signpost just gave the party.
+
+    The plan cannot be built before this runs: the route belongs to the bounty
+    and the signpost picks the bounty, so the only thing known up front is that
+    the party is about to hold a Zaishen quest. The step reads the quest text,
+    resolves the bounty against the catalog and stores the definition, then asks
+    the widget to swap the remaining steps for the resolved run.
+
+    It never reports success while it is waiting: a completed pass stops the
+    tree, and the swap has to happen with the tree still running, so the step
+    stays RUNNING until the new plan replaces it. The clock is capped, and when
+    it runs out the step logs the text it saw and reports success so the run ends
+    instead of retrying a quest that will not resolve.
+    """
+    state: dict[str, float | str | bool] = {
+        'deadline_ms': 0.0,
+        'last_request_ms': 0.0,
+        'last_text': '',
+        'info_requested': False,
+    }
+
+    def _stop(message: str) -> BehaviorTree.NodeState:
+        PySystem.Console.Log(MODULE_NAME, message, PySystem.Console.MessageType.Error)
+        return BehaviorTree.NodeState.SUCCESS
+
+    def _resolve(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        global _auto_definition
+        global _pending_planner_swap
+
+        if _auto_definition is not None and not _pending_planner_swap:
+            # The swap clears the request; seeing the definition without it means
+            # the planner was not replaced and this step would run forever.
+            return _stop(
+                'Automatic ZQuest: the bounty was resolved but the planner swap '
+                'did not apply. Stopping instead of walking the wrong plan.'
+            )
+
+        now = _now_ms()
+        if not state['deadline_ms']:
+            state['deadline_ms'] = now + BOUNTY_QUEST_RESOLVE_TIMEOUT_MS
+
+        request = now - float(state['last_request_ms']) >= BOUNTY_QUEST_TEXT_POLL_MS
+        if request:
+            state['last_request_ms'] = now
+
+        quest_id = _active_quest_id()
+        if quest_id > 0:
+            # The quest record is asked for once; the per-field decoders answer
+            # with the `Timeout` sentinel until it has been requested.
+            request_info = not bool(state['info_requested'])
+            if request_info:
+                state['info_requested'] = True
+            description, name = _read_quest_texts(quest_id, request, request_info)
+            if description or name:
+                state['last_text'] = description or name
+            bounty_name = (
+                _resolve_bounty_from_description(description)
+                or _resolve_bounty_from_quest_name(name)
+            )
+            if bounty_name:
+                definition = load_definition(bounty_name)
+                _auto_definition = definition
+                _pending_planner_swap = True
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f'Automatic ZQuest: quest {quest_id} names {bounty_name} '
+                        f'("{state["last_text"]}"). Continuing at Prepare.'
+                    ),
+                    PySystem.Console.MessageType.Success,
+                )
+                return BehaviorTree.NodeState.RUNNING
+
+        if now >= float(state['deadline_ms']):
+            return _stop(
+                'Automatic ZQuest: no bounty matched the active quest after '
+                f'{BOUNTY_QUEST_RESOLVE_TIMEOUT_MS // 1000}s (active quest {quest_id}, '
+                f'last read: "{state["last_text"] or "nothing"}"). '
+                'Stop the bot, check the quest is in the log and that its target '
+                'has a file in Sources/ZaishenBounty.'
+            )
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return _action('ResolveZBounty', _resolve)
+
+
+def _build_leave_party_and_travel_gh() -> BehaviorTree:
+    """Dissolve the party on every account and send them to the guild hall.
+
+    Mirrors HeroAI's "Leave & Travel to GH" command: every account, this client
+    included, receives LeaveParty and then TravelToGuildHall through its own
+    Messaging widget. That means the leader needs the widget enabled as well; if
+    it is off the leave is never acknowledged and the step fails after
+    `BOUNTY_MESSAGE_TIMEOUT_MS`.
+
+    The leave is awaited so every client is out of the party before the guild
+    hall travel is dispatched. The travel itself is fire-and-forget: a map load
+    takes longer than a message ack, and this is the last step of the plan.
+    """
+
+    def _remote_leave(_node: BehaviorTree.Node) -> BehaviorTree:
+        return RoutinesBT.Shared.SendAndWait(
+            command=SharedCommandType.LeaveParty,
+            include_self=True,
+            refs_blackboard_key='bounty_leave_refs',
+            timeout_ms=BOUNTY_MESSAGE_TIMEOUT_MS,
+            poll_interval_ms=250,
+            log=True,
+        )
+
+    def _remote_travel(_node: BehaviorTree.Node) -> BehaviorTree:
+        return RoutinesBT.Shared.SendCommand(
+            command=SharedCommandType.TravelToGuildHall,
+            include_self=True,
+            refs_blackboard_key='bounty_gh_refs',
+            log=True,
+        )
+
+    return BT.Sequence(
+        name='LeavePartyAndTravelGH',
+        children=[
+            BT.Subtree(name='RemoteLeaveParty', subtree_fn=_remote_leave),
+            BT.Subtree(name='RemoteTravelGH', subtree_fn=_remote_travel),
+        ],
+    )
+
+
+def _build_bounty_reward() -> BehaviorTree:
+    """Claim the quest reward in the Great Temple of Balthazar.
+
+    Runs after the run completed and resigned, so the party travels from the
+    bounty outpost to the temple and claims the reward there. The dialog is
+    fanned out like the signpost one: every account walks to the reward NPC, and
+    the step only ends once all of them finished.
+    """
+    return BT.Sequence(
+        name='ZBountyReward',
+        children=[
+            _build_travel_to_map(GREAT_TEMPLE_MAP_ID, 'GreatTempleOfBalthazar'),
+            _build_multibox_dialog(_REWARD_DIALOG),
+            _build_leave_party_and_travel_gh(),
+        ],
+    )
+
+
+def _draw_config() -> None:
+    global bounty_index
+    global loop_runs
+    global auto_loot
+    global take_bounty
+    global automatic_quest
+    global _auto_definition
+
+    tree = botting_tree
+    locked = bool(tree is not None and tree.IsStarted())
+    PyImGui.text('Zaishen bounty')
+    PyImGui.separator()
+    if locked:
+        PyImGui.text_colored('Stop the bot before changing the bounty.', (255, 190, 80, 255))
+
+    PyImGui.begin_disabled(locked)
+    new_automatic = PyImGui.checkbox('Automatic ZQuest handling', automatic_quest)
+    if new_automatic != automatic_quest:
+        automatic_quest = new_automatic
+        if automatic_quest:
+            # The bounty comes from the quest the signpost hands over, so the
+            # staging step has to run, and a repeated pass would have nothing
+            # left to accept.
+            take_bounty = True
+            loop_runs = False
+        _auto_definition = None
+        _save_settings()
+        _request_rebuild()
+
+    PyImGui.begin_disabled(automatic_quest)
+    if BOUNTIES:
+        new_bounty_index = PyImGui.combo('Bounty', bounty_index, list(BOUNTIES))
+        if new_bounty_index != bounty_index:
+            bounty_index = new_bounty_index
+            _request_rebuild()
+    else:
+        PyImGui.text_colored(
+            f'No bounty files found under {BOUNTY_ROOT}.',
+            (255, 120, 120, 255),
+        )
+    PyImGui.end_disabled()
+    if automatic_quest:
+        PyImGui.text_colored(
+            'The bounty is read from the quest the signpost gives the party.',
+            (160, 160, 160, 255),
+        )
+
+    PyImGui.separator()
+    PyImGui.begin_disabled(automatic_quest)
+    new_loop_runs = PyImGui.checkbox('Loop bounty', loop_runs)
+    if new_loop_runs != loop_runs:
+        loop_runs = new_loop_runs
+        if loop_runs:
+            # A repeated full pass starts from the first step again, so staging
+            # would run on every cycle. Keeping both on makes no sense, and the
+            # pair is resolved here instead of guessing from the map at runtime.
+            take_bounty = False
+        _request_rebuild()
+    PyImGui.end_disabled()
+
+    new_auto_loot = PyImGui.checkbox('Automatic looting', auto_loot)
+    if new_auto_loot != auto_loot:
+        auto_loot = new_auto_loot
+        _request_rebuild()
+
+    PyImGui.begin_disabled(loop_runs or automatic_quest)
+    new_take_bounty = PyImGui.checkbox('Take ZBounty and quest reward', take_bounty)
+    if new_take_bounty != take_bounty:
+        take_bounty = new_take_bounty
+        _request_rebuild()
+    PyImGui.end_disabled()
+    if automatic_quest:
+        PyImGui.text_colored(
+            'Take ZBounty is always on with Automatic ZQuest handling.',
+            (160, 160, 160, 255),
+        )
+    elif loop_runs:
+        PyImGui.text_colored(
+            'Take ZBounty is off while Loop bounty is enabled.',
+            (160, 160, 160, 255),
+        )
+
+    PyImGui.end_disabled()
+
+def _apply_consumable_upkeep_change() -> None:
+    """Re-push the upkeep service so toggles apply without a tree rebuild.
+
+    `ConfigureUpkeep` replaces only the upkeep trees, so this is safe while the
+    bot is running; the restock toggles take effect on the next run preparation.
+    """
+    if botting_tree is None:
+        return
+    _configure_upkeep(botting_tree)
+
+
+def _draw_consumable_group(
+    label: str,
+    model_ids: tuple[int, ...],
+    selected: set[int],
+    activate: bool,
+    restock: bool,
+    on_change,
+) -> tuple[bool, bool, set[int]]:
+    """Draw one conset/pcon group: master toggles plus a per-item checklist.
+
+    Returns the (possibly updated) activate flag, restock flag and selection so
+    the caller can persist them and re-push the upkeep service.
+    """
+    new_selection = set(selected)
+
+    # The collapsing header's identity is its label, so the volatile "n/m
+    # selected" count must not live in the portion ImGui hashes. Everything
+    # before "###" is display-only; the part after it is the stable identity.
+    # Without this split the label changes on every toggle, which ImGui reads as
+    # a brand-new item defaulting to closed -- collapsing the list on each click.
+    if PyImGui.collapsing_header(
+        f'{label} ({len(new_selection)}/{len(model_ids)} selected)###{label}_group_header'
+    ):
+        PyImGui.text_colored(
+            'Only ticked items are used and restocked.' if activate else 'Group is off; selection is remembered.',
+            (200, 200, 200, 255) if activate else (255, 190, 80, 255),
+        )
+
+        if PyImGui.button(f'Select all##{label}'):
+            new_selection = set(model_ids)
+            on_change()
+        PyImGui.same_line(0.0, 6.0)
+        if PyImGui.button(f'Select none##{label}'):
+            new_selection = set()
+            on_change()
+
+        for model_id in model_ids:
+            checked = model_id in new_selection
+            new_checked = PyImGui.checkbox(f'{_display_name(model_id)}##{label}_{model_id}', checked)
+            if new_checked != checked:
+                if new_checked:
+                    new_selection.add(model_id)
+                else:
+                    new_selection.discard(model_id)
+                on_change()
+            if model_id in PARTY_MORALE_MODEL_IDS:
+                PyImGui.same_line(0.0, 6.0)
+                PyImGui.text_colored(
+                    '(party morale rule)',
+                    (150, 190, 255, 255),
+                )
+
+    return activate, restock, new_selection
+
+
+def _draw_consumables() -> None:
+    global _restock_conset, _activate_conset
+    global _restock_pcons, _activate_pcons
+    global _restock_scroll_of_resurrection
+    global _restock_multi_account
+    global _keep_gold_on_accounts
+    global _selected_conset, _selected_pcons
+
+    def _persist() -> None:
+        _save_settings()
+
+    def _persist_and_apply() -> None:
+        _save_settings()
+        _apply_consumable_upkeep_change()
+
+    PyImGui.text('Consumable Upkeep')
+    PyImGui.separator()
+    PyImGui.text_wrapped(
+        'Upkeep consumes from bags. Restock pulls the item from storage into '
+        'bags during the Prepare step, so run preparation needs enough free slots '
+        'and a storage window the bot can reach.'
+    )
+    PyImGui.text_wrapped(
+        'Each group has a master switch for whether the bot uses/restocks it at '
+        'all, and a per-item checklist for which consumables are included.'
+    )
+    PyImGui.separator()
+
+    PyImGui.text('ConSets')
+    new_activate_conset = PyImGui.checkbox('Use Consets##group', _activate_conset)
+    if new_activate_conset != _activate_conset:
+        _activate_conset = new_activate_conset
+        _persist_and_apply()
+    PyImGui.same_line(0.0, 12.0)
+    new_restock_conset = PyImGui.checkbox('Restock Consets from storage##group', _restock_conset)
+    if new_restock_conset != _restock_conset:
+        _restock_conset = new_restock_conset
+        _persist()
+
+    _, _, updated_conset = _draw_consumable_group(
+        'Conset items',
+        CONSET_MODEL_IDS,
+        _selected_conset,
+        _activate_conset,
+        _restock_conset,
+        _persist_and_apply,
+    )
+    if updated_conset != _selected_conset:
+        _selected_conset = updated_conset
+
+    PyImGui.separator()
+
+    PyImGui.text('PCons')
+    new_activate_pcons = PyImGui.checkbox('Use Pcons##group', _activate_pcons)
+    if new_activate_pcons != _activate_pcons:
+        _activate_pcons = new_activate_pcons
+        _persist_and_apply()
+    PyImGui.same_line(0.0, 12.0)
+    new_restock_pcons = PyImGui.checkbox('Restock Pcons from storage##group', _restock_pcons)
+    if new_restock_pcons != _restock_pcons:
+        _restock_pcons = new_restock_pcons
+        _persist()
+
+    _, _, updated_pcons = _draw_consumable_group(
+        'Pcon items',
+        PCON_UPKEEPS,
+        _selected_pcons,
+        _activate_pcons,
+        _restock_pcons,
+        _persist_and_apply,
+    )
+    if updated_pcons != _selected_pcons:
+        _selected_pcons = updated_pcons
+
+    PyImGui.separator()
+
+    PyImGui.text('Scroll Of Resurrection')
+    new_restock_scroll_of_resurrection = PyImGui.checkbox('Restock Scroll Of Resurrection from storage##group', _restock_scroll_of_resurrection)
+    if new_restock_scroll_of_resurrection != _restock_scroll_of_resurrection:
+        _restock_scroll_of_resurrection = new_restock_scroll_of_resurrection
+        _persist()
+
+    PyImGui.separator()
+
+    PyImGui.text('Multibox restock')
+    new_restock_multi_account = PyImGui.checkbox('Also restock the other accounts##group', _restock_multi_account)
+    if new_restock_multi_account != _restock_multi_account:
+        _restock_multi_account = new_restock_multi_account
+        _persist()
+    PyImGui.text_wrapped(
+        'The other accounts are restocked through the shared command bus, so the '
+        'Messaging widget must be enabled on every client. Each group uses the '
+        'same quantity as this account, but the bus cannot carry the per-item '
+        'checklist: remote clients restock their whole conset or pcon group.'
+    )
+
+    PyImGui.separator()
+
+    PyImGui.text('Gold')
+    new_keep_gold_on_accounts = PyImGui.checkbox(
+        f'Keep {KEEP_GOLD_AMOUNT} gold on every account##group',
+        _keep_gold_on_accounts,
+    )
+    if new_keep_gold_on_accounts != _keep_gold_on_accounts:
+        _keep_gold_on_accounts = new_keep_gold_on_accounts
+        _persist()
+    PyImGui.text_wrapped(
+        'Runs during the Prepare step, right after the restock: character gold '
+        'above the keep amount goes into storage, on this account and on the other '
+        'accounts of the group through the shared command bus. Accounts below the '
+        'keep amount are topped up from storage, so every client ends the step '
+        'with the same amount.'
+    )
+
+    PyImGui.separator()
+    active = _enabled_consumable_upkeeps()
+    if active:
+        PyImGui.text(f'Upkeep active for {len(active)} consumable model(s).')
+    else:
+        PyImGui.text_colored('Consumable upkeep is disabled.', (255, 190, 80, 255))
+
+    scheduled = _consumable_restock_items()
+    if scheduled:
+        PyImGui.text(f'Restock list: {len(scheduled)} model(s) per run.')
+    else:
+        PyImGui.text('Restock list: empty.')
+
+
+def _draw_help() -> None:
+    PyImGui.text_wrapped('Zaishen Bounty rebuilt on BottingTree and BehaviorTree nodes only. No legacy FSM is used.')
+    PyImGui.separator()
+    PyImGui.text_wrapped('Select a bounty in Config, then start it from the Main tab.')
+    PyImGui.text_wrapped('With Automatic ZQuest handling on, the bounty combo is disabled: the plan is built from the quest the signpost gives the party, resolved from its "Kill <target>" description.')
+    PyImGui.text_wrapped('Steps: Form Party, Take ZBounty, Prepare, Point N (map M), Bounty fight, Complete and return, Take ZBounty Reward.')
+    PyImGui.text_wrapped('A bounty is a single target: the route is walked with combat pausing and no area is swept, so there is no clear radius.')
+    PyImGui.text_wrapped('Transit legs and the route are split into one step per waypoint, each named with the map it walks in, so a party wipe resumes at the point closest to the shrine on the map the party is standing on.')
+    PyImGui.text_wrapped('Choose the first step in Navigation to restart from staging; Prepare starts from the outpost.')
+    PyImGui.text_wrapped('Form Party disbands, summons the accounts that are elsewhere and invites everyone back in the leader current map; it is skipped while Account Isolation is enabled.')
+    PyImGui.text_wrapped('Take ZBounty travels to Embark Beach and takes the bounty quest from the signpost before each run.')
+    PyImGui.text_wrapped('Consumable upkeep is configured in the Consumables tab: consets and pcons are separated.')
+    PyImGui.text_wrapped('Enable Restock to pull consumables from storage into bags during each Prepare step.')
+
+
+def _format_time(seconds: float) -> str:
+    total_seconds = max(0, int(seconds))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f'{hours:02d}:{minutes:02d}:{seconds:02d}'
+
+
+def _draw_run_status() -> None:
+    if automatic_quest and _auto_definition is None:
+        PyImGui.text('Selected: (pending quest)')
+    elif automatic_quest:
+        PyImGui.text(f'Selected: {_active_bounty_name()} (from quest)')
+    else:
+        PyImGui.text(f'Selected: {_active_bounty_name()}')
+    if last_load_error:
+        PyImGui.text_colored(f'Load error: {last_load_error}', (255, 80, 80, 255))
+
+    PyImGui.text(f'Current run: {_format_time(stats.current_run_time())}')
+    PyImGui.text(f'Session: {_format_time(stats.total_time())}')
+    PyImGui.text(f'Runs: {stats.runs_completed} completed / {stats.runs_attempted} attempted')
+    if stats.runs_failed:
+        PyImGui.text(f'Incomplete paths: {stats.runs_failed}')
+    if stats.run_times:
+        average = sum(stats.run_times) / len(stats.run_times)
+        PyImGui.text(f'Best: {_format_time(min(stats.run_times))}')
+        PyImGui.text(f'Average: {_format_time(average)}')
+        PyImGui.text(f'Worst: {_format_time(max(stats.run_times))}')
+
+
+def _freeze_stopped_run(tree: BottingTree) -> None:
+    if stats.current_run_started_at <= 0.0 or tree.IsStarted():
+        return
+    stats.fail_run()
+
+
+def main() -> None:
+    global initialized
+    global ini_key
+    global last_load_error
+
+    if not initialized:
+        if not ini_key:
+            ini_key = Settings(f'{INI_PATH}/{INI_FILENAME}', 'account').name
+            if not ini_key:
+                return
+        _load_settings()
+        try:
+            ensure_botting_tree()
+        except Exception as error:
+            last_load_error = str(error)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f'Initialization failed: {error}',
+                PySystem.Console.MessageType.Error,
+            )
+            return
+        initialized = True
+
+    _apply_pending_rebuild()
+    tree = ensure_botting_tree()
+    tree.tick()
+    _apply_pending_planner_swap()
+    _reset_auto_resolution_on_stop(tree)
+    _freeze_stopped_run(tree)
+    tree.UI.draw_window(
+        icon_path=TEXTURE,
+        additional_ui=_draw_run_status,
+        extra_tabs=[
+            ('Config', _draw_config),
+            ('Consumables', _draw_consumables),
+        ],
+    )
+
+
+if __name__ == '__main__':
+    main()
