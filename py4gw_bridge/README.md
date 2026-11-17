@@ -527,6 +527,37 @@ These are explicitly implemented and useful for common tasks.
 - `map.skip_cinematic`
 - `ops.get_status`
 - `shmem.send_command`
+- `script.status`
+- `script.load`
+- `script.run`
+- `script.stop`
+
+`script.*` drives the client's console script slot through
+`PySystem.script_control`. The slot is single: `script.load` replaces whatever
+was loaded before it, and a module-level body runs on load while `run()` calls
+`main()`. The MCP server exposes them as `run_script` (path), `stop_script` and
+`get_script_status`.
+
+`script.run` accepts `args` (list) and `kwargs` (object). The runtime loads a
+script by path and has no parameter channel, so the bridge writes a generated
+wrapper that publishes them as the globals `ARGS` and `KWARGS` before executing
+the target's source, and sets `__name__` to `__main__` so a
+`if __name__ == "__main__"` guard still fires:
+
+```python
+print(ARGS)          # []
+print(KWARGS.get("bounty"))
+```
+
+**One shot versus per-frame.** The console treats `main()`, `update()` and
+`draw()` as per-frame callbacks and keeps calling them for as long as the script
+sits in the slot, re-running the module on every tick. A probe or a setup script
+that starts a bot must therefore be written as module-level code with no
+callbacks, or it will repeat its whole body every frame: a `tree.Start()` inside
+`main()` restarts the tree dozens of times per minute, and the console log fills
+with `Botting tree reset / started / stopped and reset`. When `script.run`
+answers `status: Running`, the caller owns the slot and has to close it with
+`script.stop`.
 
 `system.list_namespaces` now returns both:
 
