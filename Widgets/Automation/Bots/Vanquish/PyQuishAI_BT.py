@@ -1270,8 +1270,17 @@ def _selected_map() -> str:
     return maps[max(0, min(map_index, len(maps) - 1))]
 
 
-def _load_transit_data(module: object, map_name: str) -> tuple[tuple[int, ...], tuple[list[object], ...]]:
-    ids = getattr(module, f'{map_name}_ids', {})
+def _load_transit_data(
+    module: object, map_name: str, ids: Mapping
+) -> tuple[tuple[int, ...], tuple[list[object], ...]]:
+    """Transit legs in walking order: the map each one exits into, and its path.
+
+    `ids` is the dictionary the caller already resolved. Reading it by name again
+    here would lose the transit ids of a legacy map file whose ID dictionary has an
+    unrelated variable name, while still finding its `<map>_transit_path`: the legs
+    stay but point at the final map, and the outpost exit can never reach the first
+    transit map.
+    """
     transit_ids: list[int] = []
     transit_paths: list[list[object]] = []
 
@@ -1345,7 +1354,7 @@ def load_definition(region: str, map_name: str) -> VanquishDefinition:
     explorable_id = int(ids.get('map_id', 0) or 0)
     outpost_path = list(getattr(module, f'{map_name}_outpost_path', ()) or ())
     vanquish_path = list(getattr(module, map_name, ()) or ())
-    transit_ids, transit_paths = _load_transit_data(module, map_name)
+    transit_ids, transit_paths = _load_transit_data(module, map_name, ids)
 
     if outpost_id <= 0:
         raise ValueError(f'Invalid outpost ID for {region}/{map_name}.')
