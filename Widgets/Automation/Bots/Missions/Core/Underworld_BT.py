@@ -25,6 +25,7 @@ from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.native_src.internals.types import Vec2f
 from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
+from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.EnemyBlacklist import EnemyBlacklist
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -125,6 +126,8 @@ RESTOCK_DEFS = (
 )
 _restock_quantities = {mid:default for _,_,mid,_,default in RESTOCK_DEFS}
 _configured_upkeeps = None
+# Latched on Dhuum chest appearance: consumable/summon services stay off through loot.
+_dhuum_chest_detected = False
 
 # Exact Shards direct PCon upkeep mechanics, adapted to Underworld (map 72).
 # Core ConfigureUpkeep continues managing consets only.
@@ -1247,7 +1250,7 @@ def _tick_direct_pcon_upkeep() -> None:
     global _pcon_direct_index, _pcon_direct_last_dispatch_ms
     global _pcon_direct_runtime_logged, _pcon_direct_last_recipient_signature
 
-    if not _bot_is_started() or not (_activate_pcons or _activate_morale):
+    if _dhuum_chest_detected or not _bot_is_started() or not (_activate_pcons or _activate_morale):
         if _pcon_direct_runtime_logged or _pcon_direct_last_dispatch_ms:
             _reset_direct_pcon_runtime()
         return
@@ -1342,7 +1345,7 @@ def _tick_direct_pcon_upkeep() -> None:
 
 
 def _enabled_upkeeps() -> tuple[int,...]:
-    return tuple(int(mid) for mid in CONSET_UPKEEPS) if _activate_conset else ()
+    return tuple(int(mid) for mid in CONSET_UPKEEPS) if (_activate_conset and not _dhuum_chest_detected) else ()
 
 
 def _sync_upkeeps(*, force: bool=False) -> None:
@@ -2549,6 +2552,48 @@ def _imprisoned_clear_flags() -> None:
         PySystem.Console.MessageType.Info)
 
 
+def _imprisoned_dead_member_deflag_tick() -> None:
+    """Release Imprisoned defense flags outside the suspended Planner.
+
+    The shared party-member recovery service continues ticking on partial
+    deaths, but cannot pull native heroes away from their individual flags.
+    After the left defense interval, safely release those flags only when
+    the whole party is out of combat; normal recovery then owns regroup/rez.
+    """
+    global _imprisoned_runtime_active
+    if not _imprisoned_runtime_active or Map.GetMapID() != UW_MAP_ID:
+        return
+    if not (_imprisoned_target_flags or _imprisoned_hero_flags):
+        return
+    if _imprisoned_timer_started is None:
+        return
+    if time.monotonic() - _imprisoned_timer_started < 28.0:
+        return
+    try:
+        from Py4GWCoreLib import Routines
+        if not Routines.Checks.Party.IsPartyMemberDead():
+            return
+        from Py4GWCoreLib.botting_src.helpers_src.HeroAICombatRange import hero_ai_combat_detected
+        if hero_ai_combat_detected(include_party=True):
+            return
+    except Exception as exc:
+        # Fail closed: never break a defense formation if combat/death state
+        # could not be verified reliably.
+        PySystem.Console.Log(MODULE_NAME,
+            f'[Imprisoned] Death deflag check unavailable: {exc}',
+            PySystem.Console.MessageType.Warning)
+        return
+
+    # Prevent the per-frame policy from reapplying remote flags before the
+    # shared recovery service gets a chance to regroup the party.
+    _imprisoned_runtime_active = False
+    _imprisoned_clear_flags()
+    PySystem.Console.Log(MODULE_NAME,
+        '[Imprisoned] Fallen member after defense, party out of combat: '
+        'released hero and follower flags for global resurrection recovery.',
+        PySystem.Console.MessageType.Warning)
+
+
 def _imprisoned_restore_policy() -> None:
     global _imprisoned_runtime_active, _imprisoned_timer_started
     # Stop the per-frame Imprisoned policy before releasing the party.
@@ -2801,15 +2846,31 @@ def _uw_servants_tick() -> None:
 
 def _uw_clear_servants() -> None:
     global _servants_policy_active
+
+    # Stop persistent HeroAI flag policy first.
     _servants_policy_active = False
     _servants_flag_cache.clear()
+
+    # Release individually flagged native heroes.
+    # UnflagHero expects a 1-based hero position, not an agent ID.
+    hero_count = int(GLOBAL_CACHE.Party.GetHeroCount() or 0)
+
     GLOBAL_CACHE.Party.Heroes.UnflagAllHeroes()
+
+    for position in range(1, hero_count + 1):
+        GLOBAL_CACHE.Party.Heroes.UnflagHero(position)
+
+    # Release multibox HeroAI followers.
     for _account, opts in _horsemen_accounts():
         opts.IsFlagged = False
-        opts.FlagPos.x = opts.FlagPos.y = 0.0
-        opts.AllFlag.x = opts.AllFlag.y = 0.0
+        opts.FlagPos.x = 0.0
+        opts.FlagPos.y = 0.0
+        opts.AllFlag.x = 0.0
+        opts.AllFlag.y = 0.0
         opts.Following = True
         opts.Looting = True
+
+    _uw_log('[Servants] Native heroes and HeroAI followers unflagged.')
 
 
 def _dhuum_settings_load() -> None:
@@ -2959,7 +3020,8 @@ def _dhuum_flag_groups() -> None:
     _dhuum_flags_active = True
 
 def _dhuum_start_fight() -> None:
-    global _dhuum_ready, _dhuum_flags_active, _dhuum_combat_hold, _dhuum_rest_100_seen
+    global _dhuum_ready, _dhuum_flags_active, _dhuum_combat_hold, _dhuum_rest_100_seen, _dhuum_chest_detected
+    _dhuum_chest_detected = False
     _dhuum_rest_100_seen = False
     _dhuum_validate_party()
     _dhuum_flags_active = False
@@ -3102,6 +3164,26 @@ def _dhuum_chest_id() -> int:
     return 0
 
 
+def _dhuum_chest_stop_services_tick() -> None:
+    """Latch chest detection outside Planner (also works when Planner is suspended)."""
+    global _dhuum_chest_detected
+    if not Map.IsMapReady():
+        return
+    # Leaving UW ends the chest latch so the next run can restock/use consets.
+    if Map.IsOutpost():
+        _dhuum_chest_detected = False
+        return
+    if _dhuum_chest_detected or not _dhuum_ready:
+        return
+    if int(Map.GetMapID() or 0) != UW_MAP_ID:
+        return
+    if not _dhuum_chest_id():
+        return
+    _dhuum_chest_detected = True
+    _reset_direct_pcon_runtime()
+    _uw_log('[Dhuum] UW chest detected: consets, PCons/morale and summoning disabled until next run.')
+
+
 def _dhuum_finish() -> None:
     global _dhuum_ready, _dhuum_combat_hold, _dhuum_flags_active, _dhuum_rest_100_seen
     _dhuum_rest_100_seen = False
@@ -3125,16 +3207,35 @@ def _dhuum_finish() -> None:
     _uw_log('[Dhuum] All individual hero/follower flags cleared; follow/combat/loot ON.')
 
 def _dhuum_chest_interaction() -> BehaviorTree:
+    """Open UW chest using Shards' native multibox gadget interaction."""
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
-        chest = _dhuum_chest_id()
-        if not chest:
-            return BT.Sequence(name='Missing chest', children=[
-                _action('Missing UW Chest', lambda: (_ for _ in ()).throw(RuntimeError('UW chest missing')))])
-        return BTShared.SendAndWait(
-            command=SharedCommandType.InteractWithTarget,
-            params=(float(chest), 0., 0., 0.),
-            include_self=True, timeout_ms=30_000, poll_interval_ms=150, log=False)
-    return BT.Subtree(name='Loot chest on party accounts', subtree_fn=_build)
+        chest_agent_id = _dhuum_chest_id()
+        if not chest_agent_id:
+            return BT.Sequence(name='Missing UW chest', children=[
+                _action('Missing UW chest', lambda: (_ for _ in ()).throw(
+                    RuntimeError('UW chest not found near Dhuum')))])
+        # GetGadgetID is the gadget type ID, unlike the transient agent ID.
+        gadget_id = int(Agent.GetGadgetID(chest_agent_id) or 0)
+        if gadget_id <= 0:
+            return BT.Sequence(name='Unknown UW chest gadget', children=[
+                _action('Unknown UW chest gadget', lambda: (_ for _ in ()).throw(
+                    RuntimeError('UW chest gadget ID not available')))])
+        x, y = Agent.GetXY(chest_agent_id)
+        _uw_log(f'[Dhuum] Opening UW chest with Shards gadget interaction (gadget_id={gadget_id}).')
+        return BT.MoveAndInteractWithGadget(
+            gadget_id=gadget_id,
+            pos=Vec2f(float(x), float(y)),
+            search_distance=700.0,
+            interaction_distance=Range.Nearby.value,
+            interaction_count=2,
+            interaction_interval_ms=1000,
+            account_settle_ms=3000,
+            timeout_ms=90000,
+            multi_account=True,
+            include_self=True,
+            log=False,
+        )
+    return BT.Subtree(name='Open UW chest on all accounts (Shards)', subtree_fn=_build)
 
 
 def _dhuum_enable_helper() -> BehaviorTree:
@@ -3392,7 +3493,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                             allowed_alive_enemies=0,
                             stable_clear_ms=8000,
                             keep_player_near_center=True,
-                            center_tolerance=200.0,
+                            center_tolerance=500.0,
                             log=False)),
         _planner_action("The Four Horsemen", "18A - Wait for quest 106 completed",
                         lambda: _wait_quest_completed(QUEST_FOUR_HORSEMEN, timeout_ms=360_000)),
@@ -3612,8 +3713,8 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action('Unwanted Guests', '09B - Navigate Keeper 2 (-12953,750) NO combat pause',
                         lambda: BT.Move(Vec2f(-12953,750), pause_on_combat=False,
                                         avoid_obstacles=True, log=False)),
-        _planner_action('Unwanted Guests', '09C - Navigate Keeper 2 (-8371,4865) NO combat pause',
-                        lambda: BT.Move(Vec2f(-8371,4865), pause_on_combat=False,
+        _planner_action('Unwanted Guests', '09C - Navigate Keeper 2 (-7648.00, 6739.00) NO combat pause',
+                        lambda: BT.Move(Vec2f(-7648.00, 6739.00), pause_on_combat=False,
                                         avoid_obstacles=True, log=False)),
         _planner_action('Unwanted Guests', '09D - Keep leader passive while Keeper 2 alive',
                         lambda: _action('Verify Keeper 2 safety',
@@ -3642,10 +3743,9 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                         lambda: _blacklist('obsidian behemoth',False)),
         _planner_action('Unwanted Guests','16 - Record',lambda: _record('Unwanted Guests')),
 
-        *_uw_route('Restore Wastes', ((3891,7572),(4106,16031),(2486,21723),
-             (-1452,21202),(542,18310)), '01 - Travel'),
-        _planner_action('Restore Wastes','02 - Settle 3s',lambda: BT.Wait(3000)),
-        _planner_action('Restore Wastes','03 - Record',lambda: _record('Restore Wastes')),
+        *_uw_route('Restore Wastes', ((3891,7572),(6272,20899),(3451,16002),(4131,22310),(-1204,20975),(-361,18492),), '01 - Travel'),
+
+        _planner_action('Restore Wastes','02 - Record',lambda: _record('Restore Wastes')),
 
         # Servants of Grenth: spread 7 secondary members using their actual
         # roster positions, not BT.FlagHero's mixed hero/player numbering.
@@ -3659,9 +3759,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                         lambda: _quest_npc(NPC_REAPER,0x806601,UW_QUEST_SERVANTS,'Accept Servants of Grenth')),
         _planner_action('Servants of Grenth','05 - Return to defense (2700,19952)',
                         lambda: BT.Move(Vec2f(2700,19952),log=False)),
-        _planner_action('Servants of Grenth','06A - Unflag heroes and followers',
-                        lambda: BT.UnflagAllHeroes()),
-        _planner_action('Servants of Grenth','06B - Clear defense runtime cache',
+        _planner_action('Servants of Grenth','06 - Unflag heroes and followers',
                         lambda: _action('Clear Servants cache',_uw_clear_servants)),
         _planner_action('Servants of Grenth','07 - Wait quest 102 completed',
                         lambda: _wait_quest_completed(UW_QUEST_SERVANTS,timeout_ms=360_000)),
@@ -3703,23 +3801,15 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action('Dhuum','13A - Disable Dhuum Helper after fight', _dhuum_disable_helper),
         _planner_action('Dhuum','13A2 - Restore normal armor profiles where configured',
                         lambda: _action('Restore normal armor', lambda: _dhuum_switch_armor_profile('normal'))),
-        _planner_action('Dhuum','13B - Move party to chest area',
-                        lambda: BT.Move(Vec2f(-14381,17283),pause_on_combat=False,log=False)),
-        _planner_action('Dhuum','14 - Open chest on all accounts (pass 1)',_dhuum_chest_interaction),
-        _planner_action('Dhuum','15 - Wait 5s',lambda: BT.Wait(5000)),
-        _planner_action('Dhuum','16 - Open chest on all accounts (pass 2)',_dhuum_chest_interaction),
-        _planner_action('Dhuum','17 - Let HeroAI auto-loot (15s)',lambda: BT.Wait(15_000)),
-        _planner_action('Dhuum','18 - Loot sweep A (-14324,17549)',
+        _planner_action('Dhuum','14 - Open UW chest via multibox interaction',_dhuum_chest_interaction),
+        _planner_action('Dhuum','15 - Loot sweep A (-14324,17549)',
                         lambda: BT.Move(Vec2f(-14324,17549),log=False)),
-        _planner_action('Dhuum','19 - Loot sweep B (-14243,17017)',
+        _planner_action('Dhuum','16 - Loot sweep B (-14243,17017)',
                         lambda: BT.Move(Vec2f(-14243,17017),log=False)),
-        _planner_action('Dhuum','20 - Quest completion leader 0x846907',
+        _planner_action('Dhuum','17 - Quest completion leader 0x846907',
                         lambda: BT.MoveAndDialogByModelID(UW_KING_ID,dialog_id=0x846907,log=False)),
-        _planner_action('Dhuum','21 - Verify quest 1129 completed',
-                        lambda: _wait_quest_completed(UW_QUEST_NIGHTMARE,timeout_ms=30_000)),
-        _planner_action('Dhuum','22 - Record full UW completion',lambda: _record('Dhuum')),
-        _planner_action('Dhuum','23 - Final loot settle (15s)',lambda: BT.Wait(15_000)),
-        _planner_action('Dhuum','24 - Resign party back to UW entry outpost',_dhuum_resign_to_next_run),
+        _planner_action('Dhuum','18 - Record full UW completion',lambda: _record('Dhuum')),
+        _planner_action('Dhuum','19 - Resign party back to UW entry outpost',_dhuum_resign_to_next_run),
 
     ]
 
@@ -3735,7 +3825,7 @@ def _configure(tree: BottingTree) -> None:
         heroai_state_logging=False,
     )
     tree.EnsureSummoningStonePartyService(
-        enabled=lambda: _use_summoning_stone and Map.GetMapID()==UW_MAP_ID,
+        enabled=lambda: _use_summoning_stone and not _dhuum_chest_detected and Map.GetMapID()==UW_MAP_ID,
         map_ids=(UW_MAP_ID,),
         initial_grace_ms=2_000,
         attempt_interval_ms=5_000,
@@ -3768,6 +3858,7 @@ def main() -> None:
         ensure_botting_tree()
         initialized = True
     tree = ensure_botting_tree()
+    _dhuum_chest_stop_services_tick()
     _sync_upkeeps()
     _stats().start_if_necessary()
     if _horsemen_policy is not None:
@@ -3776,6 +3867,7 @@ def main() -> None:
         else:
             _horsemen_apply_policy()
     _recover_after_uw_outpost(tree)
+    _imprisoned_dead_member_deflag_tick()
     if _imprisoned_runtime_active:
         if Map.IsMapReady() and Map.IsOutpost():
             _imprisoned_restore_policy()
