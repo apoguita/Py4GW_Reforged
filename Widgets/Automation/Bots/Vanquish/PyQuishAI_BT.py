@@ -1873,6 +1873,27 @@ def _build_completion_fallback() -> BehaviorTree:
     )
 
 
+def _build_resign_if_in_explorable(definition: VanquishDefinition) -> BehaviorTree:
+    """Return to the outpost when the run starts inside an explorable.
+
+    A queue's last entry no longer resigns, so the party is left standing in the
+    map it cleared. Map travel only works from an outpost, so without this the
+    first travel of the next run would wait for a map load that never comes.
+    """
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not Map.IsExplorable():
+            return BT.Succeeder('AbleToTravel')
+        return BT.Resign(
+            wait_for_map_load=True,
+            target_map_id=definition.outpost_id,
+            multi_account=True,
+            log=True,
+        )
+
+    return BT.Subtree(name='ResignIfInExplorable', subtree_fn=_build)
+
+
 def _build_run_preparation(definition: VanquishDefinition) -> BehaviorTree:
     """Travel to the vanquish outpost, then rebuild the group there.
 
@@ -1890,6 +1911,9 @@ def _build_run_preparation(definition: VanquishDefinition) -> BehaviorTree:
     """
 
     children: list[BehaviorTree] = [
+        # A finished queue leaves the party in the map it cleared, so the next run
+        # can start out here: resign first, because travel needs an outpost.
+        _build_resign_if_in_explorable(definition),
         # The plan's own Form Party step forms in whatever outpost the run
         # started in; this dissolves that group so every account reaches the
         # vanquish outpost alone and nothing is left to travel together.
@@ -2587,14 +2611,27 @@ def _mark_recovery_suppression(value: bool) -> BehaviorTree:
     return _action(f'MarkResigning:{value}', _set)
 
 
-def _build_run_completion(definition: VanquishDefinition) -> BehaviorTree:
+def _build_run_completion(
+    definition: VanquishDefinition,
+    is_last_queue_entry: bool = True,
+) -> BehaviorTree:
+    """Record the run and resign only when the party still has to be in an outpost.
+
+    The trip back is needed by the repeat loop, which restarts from an outpost;
+    by the staging flow, whose reward step is claimed in the Great Temple and can
+    only map-travel from an outpost; and by every queue entry whose next Prepare
+    still has to travel.
+
+    The last entry of a queue is the exception: with nothing left to walk, the
+    party stays in the map it just cleared instead of being dragged back. The loop
+    keeps its resign even there, because its next pass starts from an outpost.
+    """
     children: list[BehaviorTree] = [_action('RecordRunCompletion', _mark_run_completed)]
 
-    # The trip back is needed by the repeat loop, which starts from an outpost,
-    # by the staging flow, which ends in Embark Beach so the next run starts from
-    # a staged position, and by every queue entry: the next Prepare has to travel
-    # from an outpost, and the only way out of a vanquish map is the resign.
-    if loop_runs or take_zquest or vanquish_queue:
+    # A queue needs the outpost only while another entry follows; the loop and the
+    # signpost flow need it every time.
+    needs_outpost = bool(loop_runs or take_zquest or (vanquish_queue and not is_last_queue_entry))
+    if needs_outpost:
         children.append(_mark_recovery_suppression(True))
         children.append(
             BT.Resign(
@@ -2943,12 +2980,17 @@ def _queue_definitions() -> list[VanquishDefinition]:
 
 def _queue_entry_steps(
     definition: VanquishDefinition,
+    is_last_queue_entry: bool,
 ) -> list[tuple[str, Callable[[], BehaviorTree]]]:
     """Prepare, walk, sweep and complete one queued map.
 
     Every entry repeats the same four steps, and the planner restarts steps by
     name, so the sweep and completion names carry the map name. The route steps
     already carry theirs as `(map M)`.
+
+    `is_last_queue_entry` only reaches the completion step: the last entry leaves
+    the party in the map it cleared, every other one resigns so the next Prepare
+    can travel.
     """
     steps: list[tuple[str, Callable[[], BehaviorTree]]] = [
         (
@@ -2972,7 +3014,10 @@ def _queue_entry_steps(
     steps.append(
         (
             f'Complete and return {definition.map_name}',
-            lambda definition=definition: _build_run_completion(definition),
+            lambda definition=definition, is_last_queue_entry=is_last_queue_entry: _build_run_completion(
+                definition,
+                is_last_queue_entry,
+            ),
         )
     )
     return steps
@@ -2989,8 +3034,14 @@ def get_queue_execution_steps(
     that map's outpost.
     """
     steps: list[tuple[str, Callable[[], BehaviorTree]]] = []
-    for definition in definitions:
-        steps.extend(_queue_entry_steps(definition))
+    last_index = len(definitions) - 1
+    for index, definition in enumerate(definitions):
+        steps.extend(
+            _queue_entry_steps(
+                definition,
+                is_last_queue_entry=index == last_index,
+            )
+        )
     return steps
 
 
