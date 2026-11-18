@@ -1,3 +1,5 @@
+import PySystem
+
 from Py4GWCoreLib import (
 	Agent,
 	AgentArray,
@@ -100,54 +102,68 @@ def _is_any_widget_enabled(*widget_names: str) -> bool:
 
 
 def _disable_combat_widgets_for_dialog() -> dict:
-	"""Disable HeroAI widget while the local player takes the Dhuum dialog."""
-	state = {
-		"heroai_was_enabled": False,
-		"custom_enabled_names": [],
-	}
+	"""Pause *locale* de HeroAI sans desactiver son widget.
 
+	Le widget doit rester actif pour pouvoir reprendre normalement apres le maire.
+	On coupe ses options partagees sur le compte courant pendant le dialogue.
+	"""
+	state = {"account_email": "", "heroai_options": None}
 	try:
-		widget_handler = get_widget_handler()
-
-		heroai_enabled = bool(widget_handler.is_widget_enabled(_HEROAI_WIDGET_NAME))
-		if heroai_enabled:
-			widget_handler.disable_widget(_HEROAI_WIDGET_NAME)
-			state["heroai_was_enabled"] = True
-			PySystem.Console.Log(
-				MODULE_NAME,
-				"Temporarily disabled HeroAI widget for Dhuum dialog.",
-				PySystem.Console.MessageType.Info,
-			)
-	except Exception as ex:
-		PySystem.Console.Log(
-			MODULE_NAME,
-			f"Failed to disable HeroAI widget before dialog: {ex}",
-			PySystem.Console.MessageType.Warning,
+		email = str(Player.GetAccountEmail() or "").strip()
+		if not email:
+			return state
+		options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(email)
+		if options is None:
+			return state
+		skills = getattr(options, "Skills", None)
+		state["account_email"] = email
+		state["heroai_options"] = {
+			key: bool(getattr(options, key, False))
+			for key in ("Following", "Avoidance", "Looting", "Targeting", "Combat")
+		}
+		state["heroai_options"]["Skills"] = (
+			[bool(skills[i]) for i in range(len(skills))] if skills is not None else []
 		)
-
+		for key in ("Following", "Avoidance", "Looting", "Targeting", "Combat"):
+			if hasattr(options, key):
+				setattr(options, key, False)
+		if skills is not None:
+			for i in range(len(skills)):
+				skills[i] = False
+		GLOBAL_CACHE.ShMem.SetHeroAIOptionsByEmail(email, options)
+		PySystem.Console.Log(MODULE_NAME, "HeroAI reste ON ; options locales suspendues pour le dialogue Dhuum.", PySystem.Console.MessageType.Info)
+	except Exception as ex:
+		PySystem.Console.Log(MODULE_NAME, f"Pause des options HeroAI impossible: {ex}", PySystem.Console.MessageType.Warning)
 	return state
 
 
+
 def _restore_combat_widgets_after_dialog(state: dict) -> None:
+	"""Restaure les options de ce follower, sans toucher a l'etat ON/OFF du widget."""
 	if not isinstance(state, dict):
 		return
-
+	snapshot = state.get("heroai_options")
+	email = str(state.get("account_email", "") or "").strip()
+	if not email or not isinstance(snapshot, dict):
+		return
 	try:
-		widget_handler = get_widget_handler()
-
-		if bool(state.get("heroai_was_enabled", False)) and not bool(widget_handler.is_widget_enabled(_HEROAI_WIDGET_NAME)):
-			widget_handler.enable_widget(_HEROAI_WIDGET_NAME)
-			PySystem.Console.Log(
-				MODULE_NAME,
-				"Restored HeroAI widget state after Dhuum dialog.",
-				PySystem.Console.MessageType.Info,
-			)
+		options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(email)
+		if options is None:
+			PySystem.Console.Log(MODULE_NAME, "Restauration HeroAI reportee: options introuvables.", PySystem.Console.MessageType.Warning)
+			return
+		for key in ("Following", "Avoidance", "Looting", "Targeting", "Combat"):
+			if hasattr(options, key):
+				setattr(options, key, bool(snapshot.get(key, False)))
+		skills = getattr(options, "Skills", None)
+		old_skills = snapshot.get("Skills") or []
+		if skills is not None:
+			for i in range(min(len(skills), len(old_skills))):
+				skills[i] = bool(old_skills[i])
+		GLOBAL_CACHE.ShMem.SetHeroAIOptionsByEmail(email, options)
+		PySystem.Console.Log(MODULE_NAME, "Options HeroAI restaurees apres le dialogue Dhuum (widget reste ON).", PySystem.Console.MessageType.Info)
 	except Exception as ex:
-		PySystem.Console.Log(
-			MODULE_NAME,
-			f"Failed to restore HeroAI widget after dialog: {ex}",
-			PySystem.Console.MessageType.Warning,
-		)
+		PySystem.Console.Log(MODULE_NAME, f"Restauration des options HeroAI impossible: {ex}", PySystem.Console.MessageType.Warning)
+
 
 
 def _toggle_local_cb_movement(enabled: bool) -> None:
@@ -515,6 +531,52 @@ def _coro_interact_and_dialog(target_npc: int):
 		_interaction_running = False
 
 
+def _dhuum_process_armor_capture_request() -> None:
+	"""Capture the actual local equipped armor for a request from UW BT.
+
+	Executed on the follower account, never on the leader. The shared global
+	JsonFactory stores per-email requests and the two five-slot profiles.
+	"""
+	email = str(Player.GetAccountEmail() or '').strip().lower()
+	if not email:
+		return
+	try:
+		# Read the request written by the leader in another Py4GW client.
+		_armor_doc.reload()
+		entry = _armor_doc.get_json(email, {})
+		if not isinstance(entry, dict):
+			return
+		request = entry.get('capture_request', {})
+		if not isinstance(request, dict) or not request:
+			return
+		profile = str(request.get('profile', ''))
+		request_id = str(request.get('id', ''))
+		if profile not in ('normal', 'sacrifice') or not request_id:
+			return
+		slots = {}
+		bag = PyInventory.Bag(22, 'Equipped_Items')
+		for item in bag.GetItems():
+			slot = int(getattr(item, 'slot', 0) or 0)
+			model_id = int(getattr(item, 'model_id', 0) or 0)
+			if slot in (2, 3, 4, 5, 6) and model_id > 0:
+				slots[str(slot)] = model_id
+		# Never overwrite a previously valid profile on partial/failed capture.
+		if len(slots) != 5:
+			message = f'FAILED: detected {len(slots)}/5 equipped armor parts. Keep all five pieces equipped and retry.'
+			PySystem.Console.Log(MODULE_NAME, message, PySystem.Console.MessageType.Warning)
+		else:
+			entry[profile] = slots
+			message = f'OK: {profile} armor saved (5/5 equipped parts).'
+			PySystem.Console.Log(MODULE_NAME, message, PySystem.Console.MessageType.Info)
+		entry['capture_response'] = {'id': request_id, 'profile': profile, 'message': message}
+		entry.pop('capture_request', None)
+		_armor_doc.set_json(email, entry)
+		# Publish the response to the leader immediately.
+		_armor_doc.save()
+	except Exception as exc:
+		PySystem.Console.Log(MODULE_NAME, f'Armor capture failed: {exc}', PySystem.Console.MessageType.Warning)
+
+
 def main():
 	global _buff_skill_id, _handled_current_buff, _interaction_running, _armor_written_this_map
 
@@ -523,8 +585,16 @@ def main():
 		_armor_written_this_map = False
 		return
 
+	# Manual capture requests are processed locally on each follower.
+	_dhuum_process_armor_capture_request()
 	if not _armor_written_this_map:
-		_write_equipped_armor_json()
+		# Never overwrite a captured normal profile with low sacrifice armor.
+		_local_email = str(Player.GetAccountEmail() or '').strip().lower()
+		_local_entry = _armor_doc.get_json(_local_email, {}) if _local_email else {}
+		if not isinstance(_local_entry, dict):
+			_local_entry = {}
+		if not _local_entry.get('normal') and not _local_entry.get('capture_request'):
+			_write_equipped_armor_json()
 		_armor_written_this_map = True
 
 	if not _CHECK_TIMER.IsExpired():

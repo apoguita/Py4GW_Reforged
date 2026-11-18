@@ -12,16 +12,16 @@ from __future__ import annotations
 import time
 import os
 import json
+import unicodedata
 from datetime import datetime, timezone
 from collections.abc import Callable
 
 import PyImGui
 import PySystem
-from Py4GWCoreLib import Agent, AgentArray, Map, GLOBAL_CACHE, Player, SharedCommandType
+from Py4GWCoreLib import Agent, AgentArray, Map, GLOBAL_CACHE, Player, SharedCommandType, Inventory, JsonFactory
 from Py4GWCoreLib.Quest import Quest
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.BottingTree import BottingTree
-from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.native_src.internals.types import Vec2f
 from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
@@ -35,6 +35,7 @@ from Sources.Sky.DungeonParty import DungeonPartyConfig
 from Sources.Sky.Support import attach_botting_tree_support
 from Sources.Sky.ConsumableRestockUI import draw_restock_group_grid
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
+from Widgets.System.Messaging import get_inventory_state, reset_inventory_state
 
 MODULE_NAME = "Underworld BT"
 MODULE_CATEGORY = "Automation"
@@ -66,7 +67,6 @@ _activate_pcons = True
 _restock_morale = True
 _activate_morale = True
 _use_summoning_stone = True
-_enable_inventory_handler = True
 # Selection matches the legacy UW entry points, where scroll use is mandatory.
 ENTRYPOINTS = (
     ("Embark Beach", int(name_to_map_id["Embark Beach"])),
@@ -75,6 +75,28 @@ ENTRYPOINTS = (
     ("Zin Ku Corridor", int(name_to_map_id["Zin Ku Corridor"])),
 )
 _entrypoint_index = 0
+# Shards of Orr inventory maintenance: local InventoryQuery on each client.
+EYE_OF_THE_NORTH = 642
+INVENTORY_BAG_IDS = frozenset((1, 2, 3, 4))
+ID_KIT_MODEL_IDS = (int(ModelID.Superior_Identification_Kit.value),)
+SALVAGE_KIT_MODEL_IDS = (int(ModelID.Superior_Salvage_Kit.value),)
+MERCHANT_RULES_WIDGET_NAME = "MerchantRules"
+INVENTORY_PLUS_WIDGET_NAME = "InventoryPlus"
+INVENTORY_TRAVEL_REGION = 2
+INVENTORY_TRAVEL_DISTRICT = 1
+INVENTORY_TRAVEL_LANGUAGE = 0
+INVENTORY_MAINTENANCE_RETRY_COUNT = 2
+INVENTORY_SNAPSHOT_SETTLE_MS = 2_000
+INVENTORY_TRAVEL_TIMEOUT_MS = 60_000
+INVENTORY_MERCHANT_TIMEOUT_MS = 240_000
+_INVENTORY_QUERY_POLL_MS = 200
+_INVENTORY_QUERY_TIMEOUT_MS = 10_000
+_inventory_maintenance_enabled = True
+_inventory_min_free_slots = 5
+_inventory_min_id_kits = 1
+_inventory_min_salvage_kits = 2
+_inventory_status_snapshot: dict[str, dict[str, object]] = {}
+
 UW_SCROLL_MODEL_ID = 3746
 MORALE_MODELS = (int(ModelID.Four_Leaf_Clover.value), int(ModelID.Honeycomb.value))
 PCON_MODELS = tuple(int(mid) for mid in ALL_CONSUMABLE_UPKEEPS
@@ -122,7 +144,7 @@ _PCON_PARTY_MORALE_TARGET_BY_MODEL = {
 def _load_settings() -> None:
     global _settings_loaded, _use_hard_mode, _restock_conset, _restock_uw_scrolls, _activate_conset
     global _restock_pcons, _activate_pcons, _restock_morale, _activate_morale
-    global _use_summoning_stone, _enable_inventory_handler, _entrypoint_index
+    global _use_summoning_stone, _entrypoint_index
     if _settings_loaded:
         return
     values = (
@@ -132,10 +154,15 @@ def _load_settings() -> None:
         ("RestockPcons", "_restock_pcons"), ("ActivatePcons", "_activate_pcons"),
         ("RestockMorale", "_restock_morale"), ("ActivateMorale", "_activate_morale"),
         ("UseSummoningStone", "_use_summoning_stone"),
-        ("InventoryHandler", "_enable_inventory_handler"),
     )
     for key, var in values:
         globals()[var] = bool(_settings.get_bool("Settings", key, globals()[var]))
+    global _inventory_maintenance_enabled, _inventory_min_free_slots
+    global _inventory_min_id_kits, _inventory_min_salvage_kits
+    _inventory_maintenance_enabled = bool(_settings.get_bool("Settings", "InventoryMaintenanceEnabled", True))
+    _inventory_min_free_slots = max(0, int(_settings.get_int("Settings", "InventoryMinFreeSlots", 5)))
+    _inventory_min_id_kits = max(0, int(_settings.get_int("Settings", "InventoryMinIdKits", 1)))
+    _inventory_min_salvage_kits = max(0, int(_settings.get_int("Settings", "InventoryMinSalvageKits", 2)))
     _entrypoint_index = max(0, min(len(ENTRYPOINTS)-1,
         int(_settings.get_int("Settings", "Entrypoint", 0))))
     for _group, _label, mid, key, default in RESTOCK_DEFS:
@@ -151,11 +178,14 @@ def _save_settings() -> None:
         "RestockPcons": _restock_pcons, "ActivatePcons": _activate_pcons,
         "RestockMorale": _restock_morale, "ActivateMorale": _activate_morale,
         "UseSummoningStone": _use_summoning_stone,
-        "InventoryHandler": _enable_inventory_handler,
         "Entrypoint": _entrypoint_index,
     }
     for key,value in flags.items():
         _settings.set("Settings", key, value)
+    _settings.set("Settings", "InventoryMaintenanceEnabled", _inventory_maintenance_enabled)
+    _settings.set("Settings", "InventoryMinFreeSlots", int(_inventory_min_free_slots))
+    _settings.set("Settings", "InventoryMinIdKits", int(_inventory_min_id_kits))
+    _settings.set("Settings", "InventoryMinSalvageKits", int(_inventory_min_salvage_kits))
     for _group, _label, mid, key, _default in RESTOCK_DEFS:
         _settings.set("Settings", "Restock"+key, int(_restock_quantities.get(mid,0)))
 
@@ -163,7 +193,7 @@ def _save_settings() -> None:
 def _draw_run_config() -> None:
     global _use_hard_mode, _restock_conset, _restock_uw_scrolls, _activate_conset
     global _restock_pcons, _activate_pcons, _restock_morale, _activate_morale
-    global _use_summoning_stone, _enable_inventory_handler, _entrypoint_index
+    global _use_summoning_stone, _entrypoint_index
     _load_settings()
     PyImGui.text("Underworld Run Config")
     PyImGui.separator()
@@ -185,7 +215,6 @@ def _draw_run_config() -> None:
         ("Morale", "Restock morale cons from storage", "_restock_morale"),
         ("Morale", "Activate / maintain morale cons", "_activate_morale"),
         ("Summoning", "Use summoning stones", "_use_summoning_stone"),
-        ("Inventory", "Enable Core auto inventory handler", "_enable_inventory_handler"),
     ):
         if group != previous_group:
             PyImGui.separator(); PyImGui.text(group)
@@ -195,10 +224,34 @@ def _draw_run_config() -> None:
         if new != old:
             globals()[name]=new
             _save_settings()
-            if name in ("_activate_conset", "_enable_inventory_handler"):
+            if name == "_activate_conset":
                 _sync_upkeeps(force=True)
     PyImGui.text_wrapped("Party heroes are configured in Party. UW passage scroll stock is configured in Restock and withdrawn only by the leader before entry.")
-    PyImGui.text_wrapped("Inventory: uses the Core auto handler, not Shards' MerchantRules multi-account threshold workflow.")
+    global _inventory_maintenance_enabled, _inventory_min_free_slots
+    global _inventory_min_id_kits, _inventory_min_salvage_kits
+    PyImGui.separator()
+    PyImGui.text("Inventory maintenance (Shards of Orr)")
+    value = PyImGui.checkbox("Run MerchantRules when inventory is low", _inventory_maintenance_enabled)
+    if value != _inventory_maintenance_enabled:
+        _inventory_maintenance_enabled = value
+        _save_settings()
+    if _inventory_maintenance_enabled:
+        for label, attr in (
+            ("Minimum free slots", "_inventory_min_free_slots"),
+            ("Minimum Superior ID kits (0 = disabled)", "_inventory_min_id_kits"),
+            ("Minimum Superior salvage kits (0 = disabled)", "_inventory_min_salvage_kits"),
+        ):
+            old = int(globals()[attr])
+            new = max(0, int(PyImGui.input_int(label, old)))
+            if new != old:
+                globals()[attr] = new
+                _save_settings()
+        PyImGui.text_wrapped(
+            "Checks actual bags and Superior kits on every active multibox account. "
+            "MerchantRules uses the active Shards of Orr profile and receives the requested kit stocks. "
+            "Maintenance is attempted in Eye of the North, before UW party setup. "
+            "A fresh mandatory check blocks the passage scroll if thresholds are not met."
+        )
     PyImGui.text_wrapped("PCons are maintained on the UW party via Shards direct multibox dispatcher. Morale items are triggered only below their targets.")
 
 
@@ -246,6 +299,759 @@ def _uw_scroll_restock_node() -> BehaviorTree:
             allow_missing=False,
         )
     return BT.Subtree(name="Restock UW Passage Scrolls on Leader", subtree_fn=_build)
+
+
+
+
+# Shards multibox inventory service, adapted to UW entry preparation.
+def _inventory_accounts() -> list[object]:
+    """Return the active accounts targeted by shared BT commands.
+
+    Unlike the statistics view, inventory maintenance respects BottingTree
+    account isolation so unrelated active clients are never moved or checked.
+    """
+    try:
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData(sort_results=False)
+    except TypeError:
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData()
+    except Exception:
+        accounts = []
+
+    unique: list[object] = []
+    seen: set[str] = set()
+    for account in accounts or []:
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not email or email in seen:
+            continue
+        seen.add(email)
+        unique.append(account)
+    return unique
+
+
+def _shared_account_label(account: object) -> str:
+    agent_data = getattr(account, "AgentData", None)
+    character_name = str(getattr(agent_data, 'CharacterName', '') or '').strip()
+    if character_name:
+        return character_name
+    return str(getattr(account, "AccountEmail", "") or "Unknown account")
+
+
+def _shared_account_map_id(account: object) -> int:
+    agent_data = getattr(account, "AgentData", None)
+    map_data = getattr(agent_data, "Map", None)
+    return int(getattr(map_data, "MapID", 0) or 0)
+
+
+def _shared_account_map_instance(account: object) -> tuple[int, int, int, int]:
+    agent_data = getattr(account, "AgentData", None)
+    map_data = getattr(agent_data, "Map", None)
+    return (int(getattr(map_data, 'MapID', 0) or 0), int(getattr(map_data, 'Region', 0) or 0), int(getattr(map_data, 'District', 0) or 0), int(getattr(map_data, 'Language', 0) or 0))
+
+
+def _iter_shared_inventory_slots(account: object):
+    """Yield mirrored slots only for diagnostic item listing.
+
+    Threshold decisions do NOT use this SharedMemory snapshot. Capacity and
+    free-slot counts are queried locally on each client through InventoryQuery.
+    """
+    inventory_bags = getattr(account, "InventoryBags", None)
+    if inventory_bags is None:
+        return
+
+    for bag in inventory_bags.iter_bags():
+        bag_id = int(getattr(bag, "BagID", 0) or 0)
+        if bag_id not in INVENTORY_BAG_IDS:
+            continue
+        for slot in bag.Slots:
+            yield bag_id, slot
+
+
+def _local_inventory_state() -> tuple[int, int, int, int]:
+    occupied, capacity = Inventory.GetInventorySpace()
+    id_kits = sum(
+        int(GLOBAL_CACHE.Inventory.GetModelCount(model_id))
+        for model_id in ID_KIT_MODEL_IDS
+    )
+    salvage_kits = sum(
+        int(GLOBAL_CACHE.Inventory.GetModelCount(model_id))
+        for model_id in SALVAGE_KIT_MODEL_IDS
+    )
+    return int(occupied), int(capacity), int(id_kits), int(salvage_kits)
+
+
+def _inventory_target_accounts() -> list[tuple[str, str]]:
+    """Return every active account as (email, display label), including self."""
+    targets: list[tuple[str, str]] = []
+    seen: set[str] = set()
+
+    for account in _inventory_accounts():
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not email or email in seen:
+            continue
+        seen.add(email)
+        targets.append((email, _shared_account_label(account)))
+
+    local_email = str(Player.GetAccountEmail() or "").strip()
+    if local_email and local_email not in seen:
+        local_name = str(Player.GetName() or "").strip()
+        targets.append((local_email, local_name or local_email))
+
+    return targets
+
+
+def _build_inventory_status(
+    email: str,
+    label: str,
+    state: tuple[int, int, int, int] | None,
+) -> dict[str, object]:
+    if state is None:
+        occupied = capacity = id_kits = salvage_kits = -1
+    else:
+        occupied, capacity, id_kits, salvage_kits = (int(value) for value in state)
+
+    available = capacity > 0 and occupied >= 0 and occupied <= capacity
+    free_slots = max(0, capacity - occupied) if available else 0
+
+    return {
+        "email": str(email),
+        "label": str(label),
+        "available": available,
+        "capacity": capacity,
+        "occupied": occupied,
+        "free_slots": free_slots,
+        "id_kits": id_kits,
+        "salvage_kits": salvage_kits,
+    }
+
+
+def _inventory_account_statuses() -> list[dict[str, object]]:
+    statuses: list[dict[str, object]] = []
+
+    for raw_status in _inventory_status_snapshot.values():
+        status = dict(raw_status)
+        account_issues: list[str] = []
+
+        if not bool(status.get("available", False)):
+            account_issues.append("inventory query unavailable")
+        else:
+            free_slots = int(status.get("free_slots", 0) or 0)
+            id_kits = int(status.get("id_kits", 0) or 0)
+            salvage_kits = int(status.get("salvage_kits", 0) or 0)
+
+            if _inventory_min_free_slots > 0 and free_slots < _inventory_min_free_slots:
+                account_issues.append(f"free slots {free_slots}/{_inventory_min_free_slots}")
+            if _inventory_min_id_kits > 0 and id_kits < _inventory_min_id_kits:
+                account_issues.append(f"ID kits {id_kits}/{_inventory_min_id_kits}")
+            if _inventory_min_salvage_kits > 0 and salvage_kits < _inventory_min_salvage_kits:
+                account_issues.append(f"salvage kits {salvage_kits}/{_inventory_min_salvage_kits}")
+
+        status["issues"] = account_issues
+        statuses.append(status)
+
+    return statuses
+
+
+def _inventory_maintenance_issues() -> list[str]:
+    statuses = _inventory_account_statuses()
+    if not statuses:
+        return ["No active account inventory query result is available."]
+
+    return [
+        f"{status['label']}: {', '.join(status['issues'])}"
+        for status in statuses
+        if status["issues"]
+    ]
+
+
+def _log_inventory_statuses(statuses: list[dict[str, object]]) -> None:
+    if not statuses:
+        PySystem.Console.Log(
+            MODULE_NAME,
+            "[Inventory] No active account inventory query result is available.",
+            PySystem.Console.MessageType.Warning,
+        )
+        return
+
+    for status in statuses:
+        issues = list(status["issues"])
+        result = "MAINTENANCE" if issues else "OK"
+        if bool(status.get("available", False)):
+            message = (
+                f"[Inventory] {status['label']}: free={status['free_slots']}/{status['capacity']}, "
+                f"occupied={status['occupied']}, Superior ID kits={status['id_kits']}, "
+                f"Superior salvage kits={status['salvage_kits']} -> {result}"
+            )
+        else:
+            message = f"[Inventory] {status['label']}: local inventory query unavailable -> {result}"
+
+        PySystem.Console.Log(
+            MODULE_NAME,
+            message,
+            PySystem.Console.MessageType.Warning if issues else PySystem.Console.MessageType.Info,
+        )
+
+
+def _query_all_inventory_states_node(
+    name: str,
+    *,
+    timeout_ms: int=_INVENTORY_QUERY_TIMEOUT_MS,
+) -> BehaviorTree:
+    """Query real inventory state locally on every active Guild Wars client."""
+    state: dict[str, object] = {
+        "started": False,
+        "request_id": "",
+        "sender_email": "",
+        "pending": {},
+        "results": {},
+        "started_at": 0.0,
+    }
+
+    def _reset() -> None:
+        state["started"] = False
+        state["request_id"] = ""
+        state["sender_email"] = ""
+        state["pending"] = {}
+        state["results"] = {}
+        state["started_at"] = 0.0
+
+    def _finish() -> BehaviorTree.NodeState:
+        global _inventory_status_snapshot
+        _inventory_status_snapshot = dict(state["results"])
+        _reset()
+        return BehaviorTree.NodeState.SUCCESS
+
+    def _start() -> None:
+        request_id = f"uw_inventory_state_{int(time.monotonic() * 1000)}"
+        sender_email = str(Player.GetAccountEmail() or "").strip()
+        targets = _inventory_target_accounts()
+
+        results: dict[str, dict[str, object]] = {}
+        pending: dict[str, str] = {}
+
+        for email, label in targets:
+            if email == sender_email:
+                try:
+                    local_state = _local_inventory_state()
+                except Exception as exc:
+                    PySystem.Console.Log(
+                        MODULE_NAME,
+                        f"[Inventory] Local inventory query failed on {label}: {exc}",
+                        PySystem.Console.MessageType.Error,
+                    )
+                    local_state = None
+                results[email] = _build_inventory_status(email, label, local_state)
+                continue
+
+            if not sender_email:
+                results[email] = _build_inventory_status(email, label, None)
+                continue
+
+            reset_inventory_state(email, request_id)
+            GLOBAL_CACHE.ShMem.SendMessage(
+                sender_email,
+                email,
+                SharedCommandType.InventoryQuery,
+                (
+                    float(ID_KIT_MODEL_IDS[0] if len(ID_KIT_MODEL_IDS) > 0 else 0),
+                    float(ID_KIT_MODEL_IDS[1] if len(ID_KIT_MODEL_IDS) > 1 else 0),
+                    float(SALVAGE_KIT_MODEL_IDS[0] if SALVAGE_KIT_MODEL_IDS else 0),
+                    0.0,
+                ),
+                ("report_inventory_state", request_id, "", ""),
+            )
+            pending[email] = label
+
+        state["started"] = True
+        state["request_id"] = request_id
+        state["sender_email"] = sender_email
+        state["pending"] = pending
+        state["results"] = results
+        state["started_at"] = time.monotonic()
+
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f"[Inventory] Requested real inventory state from {len(targets)} active account(s).",
+            PySystem.Console.MessageType.Info,
+        )
+
+    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        try:
+            if bool(node.blackboard.get("USER_INTERRUPT_ACTIVE", False)):
+                _reset()
+                return BehaviorTree.NodeState.FAILURE
+
+            if not bool(state["started"]):
+                _start()
+
+            pending: dict[str, str] = state["pending"]
+            request_id = str(state["request_id"])
+
+            for email in list(pending):
+                reply = get_inventory_state(email, request_id)
+                if reply is None:
+                    continue
+                label = pending.pop(email)
+                state["results"][email] = _build_inventory_status(email, label, reply)
+
+            if not pending:
+                return _finish()
+
+            elapsed_ms = int(
+                (time.monotonic() - float(state["started_at"])) * 1000.0
+            )
+            if elapsed_ms < max(0, int(timeout_ms)):
+                return BehaviorTree.NodeState.RUNNING
+
+            for email, label in list(pending.items()):
+                state["results"][email] = _build_inventory_status(email, label, None)
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[Inventory] Real inventory query timed out for {label}.",
+                    PySystem.Console.MessageType.Warning,
+                )
+            pending.clear()
+            return _finish()
+
+        except Exception as exc:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Inventory] Multibox inventory-state query failed: {exc}",
+                PySystem.Console.MessageType.Error,
+            )
+            return _finish()
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=_tick,
+            aftercast_ms=_INVENTORY_QUERY_POLL_MS,
+        )
+    )
+
+
+def _inventory_recipient_emails() -> list[str]:
+    """Return every currently active account that must receive maintenance."""
+    return [email for email, _label in _inventory_target_accounts()]
+
+
+def _inventory_maintenance_trigger_node() -> BehaviorTree:
+    def _log(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        statuses = _inventory_account_statuses()
+        trigger_labels = [str(status["label"]) for status in statuses if status["issues"]]
+        recipients = _inventory_recipient_emails()
+        trigger_text = ", ".join(trigger_labels) if trigger_labels else "inventory verification"
+        recipient_text = ", ".join(
+            str(status["label"])
+            for status in statuses
+            if str(status["email"]) in recipients
+        )
+        PySystem.Console.Log(
+            MODULE_NAME,
+            (
+                f"[Inventory] Maintenance triggered by: {trigger_text}. "
+                f"MerchantRules will run on ALL {len(recipients)} active account(s)"
+                + (f": {recipient_text}." if recipient_text else ".")
+            ),
+            PySystem.Console.MessageType.Warning,
+        )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Log Collective Inventory Maintenance Trigger",
+            action_fn=_log,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _inventory_model_label(model_id: int) -> str:
+    try:
+        return str(ModelID(int(model_id)).name)
+    except Exception:
+        return f"model_{int(model_id)}"
+
+
+def _log_unhealthy_inventory_contents() -> None:
+    """Log mirrored item contents for accounts that still fail local-query thresholds."""
+    status_by_email = {
+        str(status["email"]): status
+        for status in _inventory_account_statuses()
+        if status["issues"]
+    }
+
+    for account in _inventory_accounts():
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        status = status_by_email.get(email)
+        if status is None:
+            continue
+
+        label = str(status["label"])
+        entries: list[str] = []
+        for bag_id, slot in _iter_shared_inventory_slots(account):
+            model_id = int(getattr(slot, "ModelID", 0) or 0)
+            quantity = int(getattr(slot, "Quantity", 0) or 0)
+            if model_id <= 0 or quantity <= 0:
+                continue
+            slot_no = int(getattr(slot, "Slot", 0) or 0)
+            entries.append(
+                f"B{bag_id}:S{slot_no} {_inventory_model_label(model_id)}({model_id}) x{quantity}"
+            )
+
+        if bool(status.get("available", False)):
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    f"[Inventory diagnostic] {label}: "
+                    f"free={status['free_slots']}/{status['capacity']}, "
+                    f"Superior ID kits={status['id_kits']}, "
+                    f"Superior salvage kits={status['salvage_kits']}, "
+                    f"mirrored occupied items={len(entries)}."
+                ),
+                PySystem.Console.MessageType.Warning,
+            )
+        else:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Inventory diagnostic] {label}: local inventory query unavailable; mirrored occupied items={len(entries)}.",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        chunk_size = 8
+        for start_index in range(0, len(entries), chunk_size):
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Inventory diagnostic] {label}: "
+                + " | ".join(entries[start_index:start_index + chunk_size]),
+                PySystem.Console.MessageType.Info,
+            )
+
+
+def _inventory_is_healthy_node(name: str, *, log_success: bool=True) -> BehaviorTree:
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        statuses = _inventory_account_statuses()
+        _log_inventory_statuses(statuses)
+
+        if not statuses:
+            PySystem.Console.Log(MODULE_NAME, "Inventory maintenance required - no active account inventory snapshot is available.", PySystem.Console.MessageType.Warning)
+            return BehaviorTree.NodeState.FAILURE
+
+        issues = [
+            f"{status['label']}: {', '.join(status['issues'])}"
+            for status in statuses
+            if status["issues"]
+        ]
+        if issues:
+            PySystem.Console.Log(MODULE_NAME, "Inventory maintenance required - " + "; ".join(issues), PySystem.Console.MessageType.Warning)
+            return BehaviorTree.NodeState.FAILURE
+
+        if log_success:
+            PySystem.Console.Log(MODULE_NAME, "Inventory check passed on every active account.", PySystem.Console.MessageType.Success)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(BehaviorTree.ConditionNode(name=name, condition_fn=_check))
+
+
+def _all_accounts_on_map(map_id: int) -> bool:
+    accounts = _inventory_accounts()
+    return bool(accounts) and all((_shared_account_map_id(account) == int(map_id) for account in accounts))
+
+
+def _all_accounts_on_map_instance(map_id: int, region: int, district: int, language: int) -> bool:
+    expected = (int(map_id), int(region), int(district), int(language))
+    accounts = _inventory_accounts()
+    return bool(accounts) and all((_shared_account_map_instance(account) == expected for account in accounts))
+
+
+def _all_accounts_on_map_node(map_id: int, name: str) -> BehaviorTree:
+    return BehaviorTree(BehaviorTree.ConditionNode(name=name, condition_fn=lambda _node: _all_accounts_on_map(map_id)))
+
+
+def _wait_for_all_accounts_on_inventory_instance(map_id: int, *, name: str, timeout_ms: int=INVENTORY_TRAVEL_TIMEOUT_MS) -> BehaviorTree:
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if _all_accounts_on_map_instance(map_id, INVENTORY_TRAVEL_REGION, INVENTORY_TRAVEL_DISTRICT, INVENTORY_TRAVEL_LANGUAGE):
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(BehaviorTree.WaitUntilNode(name=name, condition_fn=_check, throttle_interval_ms=500, timeout_ms=timeout_ms))
+
+
+def _send_widget_state(widget_name: str, *, enabled: bool, refs_key: str) -> BehaviorTree:
+    return BTShared.SendAndWait(command=SharedCommandType.EnableWidget if enabled else SharedCommandType.DisableWidget, extra_data=(widget_name, '', '', ''), include_self=True, refs_blackboard_key=refs_key, timeout_ms=20000, poll_interval_ms=100, log=True)
+
+
+def _set_local_auto_inventory_handler(enabled: bool) -> BehaviorTree:
+    def _set(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if botting_tree is None:
+            return BehaviorTree.NodeState.SUCCESS
+
+        fn = getattr(botting_tree, "SetAutoInventoryHandlerEnabled", None)
+        if fn is None:
+            return BehaviorTree.NodeState.SUCCESS
+
+        try:
+            fn(enabled)
+        except Exception:
+            return BehaviorTree.NodeState.SUCCESS
+
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(BehaviorTree.ActionNode(name='Enable Local Auto Inventory Handler' if enabled else 'Disable Local Auto Inventory Handler', action_fn=_set, aftercast_ms=0))
+
+
+def _travel_all_accounts_to_eotn(attempt_key: str) -> BehaviorTree:
+    return BT.Sequence(
+        name="Travel Every Account To Eye of the North",
+        children=[
+            BTShared.SendAndWait(command=SharedCommandType.TravelToMap, params=(float(EYE_OF_THE_NORTH), float(INVENTORY_TRAVEL_REGION), float(INVENTORY_TRAVEL_DISTRICT), float(INVENTORY_TRAVEL_LANGUAGE)), include_self=True, refs_blackboard_key=f'{attempt_key}_travel_eotn_refs', timeout_ms=INVENTORY_TRAVEL_TIMEOUT_MS, poll_interval_ms=250, log=True),
+            _wait_for_all_accounts_on_inventory_instance(EYE_OF_THE_NORTH, name="Wait For Every Account In Eye of the North EU-English-1"),
+        ],
+    )
+
+
+def _return_all_accounts_to_eotn(attempt_key: str) -> BehaviorTree:
+    # UW checks run before party formation / scroll use, so no resignation from
+    # a dungeon is needed. A Planner jump directly inside UW skips this step.
+    return BT.Selector(
+        name="Ensure Every Account Is In Eye of the North",
+        children=[
+            _all_accounts_on_map_node(EYE_OF_THE_NORTH, "Every Account Already In Eye of the North"),
+            _travel_all_accounts_to_eotn(attempt_key),
+        ],
+    )
+
+
+def _restore_inventoryplus_after_merchant(attempt_key: str) -> BehaviorTree:
+    return BT.Sequence(name='Restore InventoryPlus After MerchantRules', children=[_send_widget_state(INVENTORY_PLUS_WIDGET_NAME, enabled=True, refs_key=f'{attempt_key}_enable_inventoryplus_refs'), _set_local_auto_inventory_handler(False)])
+
+
+def _merchant_stock_request_spec() -> str:
+    """Encode this bot's desired carried Merchant Stock targets for MerchantRules."""
+    targets: list[str] = []
+    if _inventory_min_id_kits > 0 and ID_KIT_MODEL_IDS:
+        targets.append(f"{int(ID_KIT_MODEL_IDS[0])}:{int(_inventory_min_id_kits)}")
+    if _inventory_min_salvage_kits > 0 and SALVAGE_KIT_MODEL_IDS:
+        targets.append(f"{int(SALVAGE_KIT_MODEL_IDS[0])}:{int(_inventory_min_salvage_kits)}")
+    return "stock:" + ",".join(targets) if targets else ""
+
+
+def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        recipients = _inventory_recipient_emails()
+        if not recipients:
+            PySystem.Console.Log(MODULE_NAME, "[Inventory] MerchantRules aborted: no active account recipients.", PySystem.Console.MessageType.Error)
+            return BehaviorTree(BehaviorTree.FailerNode(name="No Active MerchantRules Recipients"))
+
+        request_id = f"uw_inventory_{attempt_key}_{int(time.monotonic() * 1000)}"
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f"[Inventory] Dispatching MerchantRules to all {len(recipients)} active account(s).",
+            PySystem.Console.MessageType.Info,
+        )
+        execute = BTShared.SendAndWait(
+            command=SharedCommandType.MerchantRules,
+            params=(3.0, 0.0, 0.0, 0.0),
+            extra_data=(request_id, _merchant_stock_request_spec(), "0", "0"),
+            recipients=recipients,
+            include_self=True,
+            refs_blackboard_key=f"{attempt_key}_merchant_rules_refs",
+            timeout_ms=INVENTORY_MERCHANT_TIMEOUT_MS,
+            poll_interval_ms=250,
+            log=True,
+        )
+
+        return BT.Selector(
+            name="Execute MerchantRules And Restore InventoryPlus",
+            children=[
+                BT.Sequence(name="MerchantRules Completed", children=[execute, _restore_inventoryplus_after_merchant(attempt_key)]),
+                BT.Sequence(name="Restore InventoryPlus After MerchantRules Failure", children=[_restore_inventoryplus_after_merchant(f"{attempt_key}_failure"), BehaviorTree(BehaviorTree.FailerNode(name="Propagate MerchantRules Failure"))]),
+            ],
+        )
+
+    return BT.Subtree(name="Run MerchantRules On All Active Accounts", subtree_fn=_build)
+
+
+def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
+    """Run one MerchantRules attempt while staying in Eye of the North.
+
+    MerchantRules stays disabled outside the actual maintenance window. Any
+    failure restores InventoryPlus and disables MerchantRules before retrying.
+    """
+    attempt_key = f"inventory_attempt_{attempt_number}"
+
+    normal_attempt = BT.Sequence(
+        name=f"Inventory Maintenance Attempt {attempt_number} - Run",
+        children=[
+            BT.LogMessage(
+                message=(
+                    f"Inventory maintenance attempt {attempt_number}/"
+                    f"{INVENTORY_MAINTENANCE_RETRY_COUNT} in Eye of the North."
+                ),
+                module_name=MODULE_NAME,
+            ),
+            _set_local_auto_inventory_handler(False),
+            _send_widget_state(
+                INVENTORY_PLUS_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_inventoryplus_refs",
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=True,
+                refs_key=f"{attempt_key}_enable_merchant_rules_refs",
+            ),
+            BT.Wait(1_000),
+            _run_merchant_rules(attempt_key),
+            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+            _query_all_inventory_states_node(
+                name=f"Refresh Real Inventories After Attempt {attempt_number}"
+            ),
+            _inventory_is_healthy_node(
+                f"Verify Inventory After Attempt {attempt_number}",
+                log_success=True,
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_merchant_rules_success_refs",
+            ),
+        ],
+    )
+
+    cleanup_failure = BT.Sequence(
+        name=f"Inventory Maintenance Attempt {attempt_number} - Cleanup Failure",
+        children=[
+            _restore_inventoryplus_after_merchant(f"{attempt_key}_cleanup"),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_merchant_rules_failure_refs",
+            ),
+            BehaviorTree(
+                BehaviorTree.FailerNode(
+                    name=f"Inventory Maintenance Attempt {attempt_number} Failed"
+                )
+            ),
+        ],
+    )
+
+    return BT.Selector(
+        name=f"Inventory Maintenance Attempt {attempt_number}",
+        children=[normal_attempt, cleanup_failure],
+    )
+
+def _stop_for_inventory_failure_node() -> BehaviorTree:
+    stopped = False
+
+    def _stop(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        nonlocal stopped
+        if not stopped:
+            stopped = True
+            issues = _inventory_maintenance_issues()
+            issue_text = "; ".join(issues) if issues else "unknown verification error"
+            PySystem.Console.Log(MODULE_NAME, f'Inventory maintenance failed twice. The bot was paused safely. Remaining issue(s): {issue_text}', PySystem.Console.MessageType.Error)
+            _log_unhealthy_inventory_contents()
+
+            if botting_tree is not None:
+                fn = getattr(botting_tree, "SetAutoInventoryHandlerEnabled", None)
+                if callable(fn):
+                    try:
+                        fn(False)
+                    except Exception:
+                        pass
+
+            sender_email = str(Player.GetAccountEmail() or "").strip()
+            for account in _inventory_accounts():
+                receiver_email = str(getattr(account, 'AccountEmail', '') or '').strip()
+                if not sender_email or not receiver_email:
+                    continue
+                GLOBAL_CACHE.ShMem.SendMessage(sender_email, receiver_email, SharedCommandType.EnableWidget, (0.0, 0.0, 0.0, 0.0), (INVENTORY_PLUS_WIDGET_NAME, '', '', ''))
+
+            if botting_tree is not None:
+                fn = getattr(botting_tree, "Pause", None)
+                if callable(fn):
+                    try:
+                        fn(True)
+                    except Exception:
+                        pass
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(BehaviorTree.ActionNode(name='Pause Bot After Inventory Maintenance Failure', action_fn=_stop, aftercast_ms=0))
+
+
+def InventoryCheckAndMaintenance() -> BehaviorTree:
+    # MerchantRules is OFF during normal gameplay and inventory inspection. It is
+    # enabled only inside a real maintenance attempt, then disabled again on both
+    # success and failure paths.
+    disabled = BT.Sequence(
+        name="Inventory Maintenance Disabled",
+        children=[
+            BehaviorTree(
+                BehaviorTree.ConditionNode(
+                    name="Inventory Maintenance Disabled Check",
+                    condition_fn=lambda _node: not _inventory_maintenance_enabled,
+                )
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key="inventory_disabled_merchant_off_refs",
+            ),
+        ],
+    )
+
+    maintenance_attempts = [
+        _inventory_maintenance_attempt(attempt_number)
+        for attempt_number in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1)
+    ]
+    maintenance_attempts.append(_stop_for_inventory_failure_node())
+
+    enabled_flow = BT.Sequence(
+        name="Enabled Inventory Check And Maintenance",
+        children=[
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key="inventory_check_merchant_off_refs",
+            ),
+            _query_all_inventory_states_node(
+                name="Query Real Inventory State On Every Active Account"
+            ),
+            BT.Selector(
+                name="Check Inventory Thresholds",
+                children=[
+                    _inventory_is_healthy_node(
+                        "Inventory Thresholds Already Satisfied",
+                        log_success=True,
+                    ),
+                    BT.Sequence(
+                        name="Run Inventory Maintenance",
+                        children=[
+                            _inventory_maintenance_trigger_node(),
+                            _send_widget_state(
+                                MERCHANT_RULES_WIDGET_NAME,
+                                enabled=False,
+                                refs_key="inventory_before_travel_merchant_off_refs",
+                            ),
+                            _return_all_accounts_to_eotn("inventory_maintenance_setup"),
+                            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+                            BT.Selector(
+                                name="Retry Inventory Maintenance In Eye of the North",
+                                children=maintenance_attempts,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    return BT.Selector(
+        name="Inventory Check And Maintenance",
+        children=[disabled, enabled_flow],
+    )
+
 
 
 def _pcon_effect_name(model_id: int) -> str:
@@ -550,6 +1356,79 @@ def _sync_upkeeps(*, force: bool=False) -> None:
     _configured_upkeeps=target
 
 
+# Pre-entry equipment window. The Planner holds on this node for 60 seconds.
+# UI is drawn independently of the BT node so capture buttons remain usable.
+_UW_ARMOR_PREP_SECONDS = 60.0
+_uw_armor_prep_started_at: float | None = None
+_uw_armor_prep_skip_requested = False
+
+
+def _uw_armor_prep_node() -> BehaviorTree:
+    def _wait(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        global _uw_armor_prep_started_at, _uw_armor_prep_skip_requested
+        if Map.GetMapID() == UW_MAP_ID:
+            _uw_armor_prep_started_at = None
+            _uw_armor_prep_skip_requested = False
+            return BehaviorTree.NodeState.SUCCESS
+        now = time.monotonic()
+        if _uw_armor_prep_started_at is None:
+            _uw_armor_prep_started_at = now
+            _uw_armor_prep_skip_requested = False
+            _uw_log('[UW] Armor preparation started: 60 seconds before using the passage scroll.')
+        if _uw_armor_prep_skip_requested or now - _uw_armor_prep_started_at >= _UW_ARMOR_PREP_SECONDS:
+            _uw_armor_prep_started_at = None
+            _uw_armor_prep_skip_requested = False
+            _uw_log('[UW] Armor preparation complete. Using the Underworld passage scroll.')
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(BehaviorTree.ActionNode(name='Prepare sacrifice armor before UW scroll (60s)', action_fn=_wait))
+
+
+def _draw_uw_armor_prep_popup() -> None:
+    global _uw_armor_prep_skip_requested
+    if _uw_armor_prep_started_at is None or Map.GetMapID() == UW_MAP_ID:
+        return
+    remaining = max(0, int(_UW_ARMOR_PREP_SECONDS - (time.monotonic() - _uw_armor_prep_started_at) + 0.999))
+    # A dedicated foreground window is more reliable than an ImGui popup opened
+    # from a tree tick (OpenPopup needs the same UI ID scope as BeginPopup).
+    if PyImGui.begin('UW - Armor Preparation (60 seconds)'):
+        PyImGui.text(f'Entering the Underworld in: {remaining} seconds')
+        PyImGui.text_wrapped('Before using the scroll, equip each follower with their armor, '
+                              'then save both NORMAL and SACRIFICE sets. The capture reads '
+                              'the currently equipped armor on that follower account.')
+        PyImGui.separator()
+        local = str(Player.GetAccountEmail() or '').strip().lower()
+        displayed = 0
+        for account, _opts in _horsemen_accounts():
+            email = str(account.AccountEmail or '').strip().lower()
+            if not email or email == local or email not in _dhuum_sacrifice_emails:
+                continue
+            displayed += 1
+            label = str(getattr(account.AgentData, 'CharacterName', '') or email)
+            entry = _dhuum_armor_entry(email)
+            PyImGui.text(f'{label} : NORMAL {_dhuum_armor_profile_summary(entry, "normal")} | '
+                          f'SACRIFICE {_dhuum_armor_profile_summary(entry, "sacrifice")}')
+            if PyImGui.button(f'Save NORMAL armor##uwprep_n_{email}'):
+                _dhuum_request_armor_capture(account, 'normal')
+            if PyImGui.button(f'Save SACRIFICE armor##uwprep_s_{email}'):
+                _dhuum_request_armor_capture(account, 'sacrifice')
+            pending = entry.get('capture_request')
+            if isinstance(pending, dict) and pending:
+                PyImGui.text('Capture in progress, waiting for follower...')
+            response = entry.get('capture_response')
+            if isinstance(response, dict) and str(response.get('id', '')) == _dhuum_armor_last_request.get(email, ''):
+                PyImGui.text_wrapped('Result: ' + str(response.get('message', '')))
+            PyImGui.separator()
+        if not displayed:
+            PyImGui.text_wrapped('No sacrifice followers detected. Select them in the Dhuum tab.')
+        PyImGui.text_wrapped('The scroll will be used automatically after 60 seconds, '
+                              'even if a capture is incomplete. You can also continue early.')
+        if PyImGui.button('Continue now - Use scroll'):
+            _uw_armor_prep_skip_requested = True
+    PyImGui.end()
+
+
 def _scroll_use_node() -> BehaviorTree:
     """Use UW scroll in the outpost, unlike explorable-only UseConsumable."""
     def _use(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
@@ -571,35 +1450,47 @@ def _when_not_inside(factory: Callable[[],BehaviorTree], name: str) -> BehaviorT
     ])
 
 
-def _entrypoint_travel() -> BehaviorTree:
-    return BT.Subtree(name="Travel To Selected UW Outpost",
-        subtree_fn=lambda _node: BT.Travel(target_map_id=ENTRYPOINTS[_entrypoint_index][1],
-                                           random_travel=True,log=True))
 
 
-def _entrypoint_check() -> BehaviorTree:
-    return BT.Subtree(name="Verify Selected UW Outpost",
-        subtree_fn=lambda _node: BT.IsCurrentMap(map_id=ENTRYPOINTS[_entrypoint_index][1],log=True))
 
 
-def _difficulty_node() -> BehaviorTree:
-    return BT.Subtree(name="Apply Selected Difficulty",
-        subtree_fn=lambda _node: BT.SetHardMode(hard_mode=_use_hard_mode,log=True))
 
 
-def _party_node() -> BehaviorTree:
-    return _party_config.create_party_node(multibox_invite=True,timeout_ms=30_000,log=True)
 
 
 def _entry_steps() -> list[tuple[str,Callable[[],BehaviorTree]]]:
     """Planner-friendly individual preparation substeps, matching Shards."""
     return [
-       ("Prepare UW - 01 - Travel to entry point", lambda: _when_not_inside(_entrypoint_travel,"UW Travel / already inside")),
-       ("Prepare UW - 02 - Verify outpost", lambda: _when_not_inside(_entrypoint_check,"UW Outpost / already inside")),
-       ("Prepare UW - 03 - Create Party", lambda: _when_not_inside(_party_node,"UW Party / already inside")),
-       ("Prepare UW - 04 - Apply difficulty", lambda: _when_not_inside(_difficulty_node,"UW Difficulty / already inside")),
+        ("Prepare UW - 00 - Inventory maintenance (all accounts)",
+         lambda: _when_not_inside(InventoryCheckAndMaintenance,
+             "UW Inventory / already inside")),
+        ("Prepare UW - 01 - Travel to entry point", lambda: _when_not_inside(
+            lambda: BT.Travel(target_map_id=ENTRYPOINTS[_entrypoint_index][1], random_travel=True, log=True),
+            "UW Travel / already inside")),
+        ("Prepare UW - 02 - Verify outpost", lambda: _when_not_inside(
+            lambda: BT.IsCurrentMap(map_id=ENTRYPOINTS[_entrypoint_index][1], log=True),
+            "UW Outpost / already inside")),
+        ("Prepare UW - 03 - Create Party", lambda: _when_not_inside(
+            lambda: _party_config.create_party_node(multibox_invite=True, timeout_ms=30_000, log=True),
+            "UW Party / already inside")),
+        ("Prepare UW - 04 - Apply difficulty", lambda: _when_not_inside(
+            lambda: BT.SetHardMode(hard_mode=_use_hard_mode, log=True),
+            "UW Difficulty / already inside")),
        ("Prepare UW - 05 - Restock supplies", lambda: _when_not_inside(_restock_node,"UW Restock / already inside")),
        ("Prepare UW - 05A - Restock passage scrolls (leader)", lambda: _when_not_inside(_uw_scroll_restock_node,"UW Scroll Restock / already inside")),
+       ("Prepare UW - 05B - Query inventories after restock", lambda: _when_not_inside(
+           lambda: BT.Selector(name="Inventory pre-scroll query enabled", children=[
+               BehaviorTree(BehaviorTree.ConditionNode(
+                   name="Inventory maintenance disabled", condition_fn=lambda _node: not _inventory_maintenance_enabled)),
+               _query_all_inventory_states_node("Check real inventories immediately before UW scroll"),
+           ]), "UW Inventory pre-scroll query / already inside")),
+       ("Prepare UW - 05C - Verify inventories before scroll", lambda: _when_not_inside(
+           lambda: BT.Selector(name="Inventory pre-scroll guard", children=[
+               BehaviorTree(BehaviorTree.ConditionNode(
+                   name="Inventory maintenance disabled", condition_fn=lambda _node: not _inventory_maintenance_enabled)),
+               _inventory_is_healthy_node("All UW party inventories ready for passage scroll"),
+           ]), "UW Inventory guard / already inside")),
+       ("Prepare UW - 05D - Configure Dhuum armor (60s)", lambda: _when_not_inside(_uw_armor_prep_node, "UW Armor Prep / already inside")),
        ("Enter UW - 06 - Use UW Scroll", lambda: _when_not_inside(_scroll_use_node,"UW Scroll / already inside")),
        ("Enter UW - 07 - Wait for map 72", lambda: BT.Selector(
            name="Wait For Underworld Entry", children=[
@@ -1004,10 +1895,6 @@ def _draw_statistics() -> None:
 
 
 
-def _v(x: float, y: float) -> Vec2f:
-    return Vec2f(float(x), float(y))
-
-
 def _action(name: str, func: Callable[[], None]) -> BehaviorTree:
     """A one-shot, synchronous BT action. Any error FAILS the node."""
     def _run(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
@@ -1020,74 +1907,128 @@ def _action(name: str, func: Callable[[], None]) -> BehaviorTree:
     return BehaviorTree(BehaviorTree.ActionNode(name=name, action_fn=_run, aftercast_ms=0))
 
 
-def _ensure_uw() -> BehaviorTree:
-    """Use the existing BT map guard rather than another custom action."""
-    return BT.IsCurrentMap(map_id=UW_MAP_ID, log=False)
+
+
+# Stage-aware UW blacklist manager. Do NOT assign guessed model IDs: learn them
+# from live foes, and remove only the IDs that this script itself introduced.
+# Enable/disable transitions intentionally follow the original Underworld.py.
+_UW_BLACKLIST_ALIASES: dict[str, tuple[str, ...]] = {
+    "obsidian guardian": ("obsidian guardian", "gardien d'obsidienne", "gardien d obsidienne", "gardien obsidien"),
+    "vengeful aatxe": ("vengeful aatxe", "aatxe vengeur", "aatxe revenchard", "aatxe revanchard"),
+    "chained soul": ("chained soul", "ame enchainee", "ame enchainee", "esprit enchaine"),
+    "banished dream rider": ("banished dream rider", "cavalier des reves banni", "cavalier du reve banni", "chevaucheur de reves banni"),
+    "tortured spirit": ("tortured spirit", "esprit torture", "esprit tourmente"),
+    "obsidian behemoth": ("obsidian behemoth", "behemoth d'obsidienne", "behemoth d obsidienne", "behemoth obsidien"),
+}
+_UW_BLACKLIST_ACTIVE: dict[str, bool] = {name: False for name in _UW_BLACKLIST_ALIASES}
+_UW_BLACKLIST_ACTIVE.update({"obsidian guardian": True, "vengeful aatxe": True})
+_UW_BLACKLIST_OWNED_IDS: dict[str, set[int]] = {name: set() for name in _UW_BLACKLIST_ALIASES}
+_UW_BLACKLIST_SCAN_AT = 0.0
+_UW_BLACKLIST_LOGGED: set[tuple[str, int]] = set()
+
+
+def _uw_normalized_name(value: str) -> str:
+    value = unicodedata.normalize("NFKD", str(value or "").casefold())
+    return " ".join("".join(c if c.isalnum() else " " for c in value if not unicodedata.combining(c)).split())
+
+
+def _uw_blacklist_category(name: str) -> str | None:
+    normalized = _uw_normalized_name(name)
+    for category, aliases in _UW_BLACKLIST_ALIASES.items():
+        if normalized == _uw_normalized_name(category):
+            return category
+        if any(normalized == _uw_normalized_name(alias) for alias in aliases):
+            return category
+    return None
+
+
+def _uw_enemy_is_category(normalized: str, category: str) -> bool:
+    if any(_uw_normalized_name(alias) in normalized for alias in _UW_BLACKLIST_ALIASES[category]):
+        return True
+    tokens = set(normalized.split())
+    if category == "vengeful aatxe":
+        return "aatxe" in tokens and any(t.startswith(("reven", "revan", "venge")) for t in tokens)
+    if category == "obsidian guardian":
+        return any(t.startswith(("gardien", "guardian")) for t in tokens) and any(t.startswith(("obsidi",)) for t in tokens)
+    if category == "obsidian behemoth":
+        return any(t.startswith(("behemot",)) for t in tokens) and any(t.startswith(("obsidi",)) for t in tokens)
+    if category == "chained soul":
+        return ("soul" in tokens and "chained" in tokens) or ("ame" in tokens and any(t.startswith("enchain") for t in tokens))
+    if category == "banished dream rider":
+        return any(t.startswith(("rider", "cavalier", "chevaucheur")) for t in tokens) and any(t.startswith(("dream", "reve")) for t in tokens) and any(t.startswith(("banish", "banni")) for t in tokens)
+    if category == "tortured spirit":
+        return any(t.startswith(("spirit", "esprit")) for t in tokens) and any(t.startswith(("tortur", "tourment")) for t in tokens)
+    return False
+
+
+def _uw_set_blacklist(category: str, enabled: bool) -> None:
+    blacklist = EnemyBlacklist()
+    normalized = _uw_blacklist_category(category)
+    if normalized is None:
+        # Preserve compatibility with unrelated legacy names, if any.
+        if enabled:
+            blacklist.add_name(category)
+        else:
+            blacklist.remove_name(category)
+        return
+    _UW_BLACKLIST_ACTIVE[normalized] = bool(enabled)
+    for alias in _UW_BLACKLIST_ALIASES[normalized]:
+        if enabled:
+            if alias.casefold() not in blacklist.get_all_names():
+                blacklist.add_name(alias)
+        else:
+            blacklist.remove_name(alias)
+    if enabled:
+        _uw_scan_blacklists(force=True)
+    else:
+        for model_id in tuple(_UW_BLACKLIST_OWNED_IDS[normalized]):
+            # Do not remove a model id needed by another active blacklist family.
+            if not any(other != normalized and _UW_BLACKLIST_ACTIVE[other]
+                       and model_id in _UW_BLACKLIST_OWNED_IDS[other]
+                       for other in _UW_BLACKLIST_ALIASES):
+                blacklist.remove(model_id)
+            _UW_BLACKLIST_OWNED_IDS[normalized].discard(model_id)
+        _uw_log(f"[UW Blacklist] {normalized}: OFF (temporary IDs withdrawn)")
 
 
 def _blacklist(name: str, enabled: bool) -> BehaviorTree:
-    def _apply() -> None:
-        blacklist = EnemyBlacklist()
-        if enabled:
-            blacklist.add_name(name)
-        else:
-            blacklist.remove_name(name)
-    verb = "Blacklist" if enabled else "Unblacklist"
-    return _action(f"{verb}: {name}", _apply)
+    return _action(f"{'Blacklist' if enabled else 'Unblacklist'}: {name}",
+                   lambda: _uw_set_blacklist(name, enabled))
 
 
-# Obsidian Guardians can appear after Clear the Chamber (notably Terrorweb).
-# The original name-only blacklist depends on an exact decoded enemy name;
-# resolve live model IDs as they spawn and add those to the SAME shared filter.
-# This is deliberately UW-scoped and leaves all routes and HeroAI settings intact.
-_uw_guardian_scan_at = 0.0
-_uw_guardian_known_models: set[int] = set()
-_uw_guardian_reported_unmatched: set[tuple[int, str]] = set()
-
-
-def _sync_uw_guardian_blacklist(force: bool = False) -> None:
-    global _uw_guardian_scan_at
-    if not Map.IsMapReady() or Map.GetMapID() != UW_MAP_ID:
-        _uw_guardian_scan_at = 0.0
+def _uw_scan_blacklists(force: bool = False) -> None:
+    global _UW_BLACKLIST_SCAN_AT
+    if not Map.IsMapReady() or Map.GetMapID() != UW_MAP_ID or Map.IsOutpost():
+        _UW_BLACKLIST_SCAN_AT = 0.0
         return
     now = time.monotonic()
-    if not force and now - _uw_guardian_scan_at < 0.5:
+    if not force and now - _UW_BLACKLIST_SCAN_AT < 0.5:
         return
-    _uw_guardian_scan_at = now
+    _UW_BLACKLIST_SCAN_AT = now
     blacklist = EnemyBlacklist()
-    # Keep the original name entry as fallback, including for name resolution
-    # during the first few frames after a map load.
-    if "obsidian guardian" not in blacklist.get_all_names():
-        blacklist.add_name("obsidian guardian")
-
-    for enemy_id in AgentArray.GetEnemyArray() or []:
-        if not Agent.IsValid(enemy_id):
+    active = [category for category, enabled in _UW_BLACKLIST_ACTIVE.items() if enabled]
+    if not active:
+        return
+    for agent_id in AgentArray.GetEnemyArray() or []:
+        if not Agent.IsValid(agent_id):
             continue
-        model_id = int(Agent.GetModelID(enemy_id) or 0)
+        model_id = int(Agent.GetModelID(agent_id) or 0)
         if model_id <= 0:
             continue
-        name = str(Agent.GetNameByID(enemy_id) or "").strip().casefold()
-        # English and French GW client names; allow optional apostrophe variants.
-        is_guardian = ("obsidian guardian" in name or
-                       ("gardien" in name and "obsidien" in name))
-        if is_guardian:
+        name = str(Agent.GetNameByID(agent_id) or "").strip()
+        normalized = _uw_normalized_name(name)
+        if not normalized:
+            continue
+        for category in active:
+            if not _uw_enemy_is_category(normalized, category):
+                continue
             if not blacklist.contains(model_id):
                 blacklist.add(model_id)
-            if model_id not in _uw_guardian_known_models:
-                _uw_guardian_known_models.add(model_id)
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    f"[UW Blacklist] Obsidian Guardian model={model_id}, "
-                    f"name='{name}', blacklisted={blacklist.is_blacklisted(enemy_id)}",
-                    PySystem.Console.MessageType.Info,
-                )
-        elif ("guardian" in name or "gardien" in name) and (model_id, name) not in _uw_guardian_reported_unmatched:
-            _uw_guardian_reported_unmatched.add((model_id, name))
-            PySystem.Console.Log(
-                MODULE_NAME,
-                f"[UW Blacklist] Unrecognized guardian candidate model={model_id} name='{name}' (not auto-blocked)",
-                PySystem.Console.MessageType.Warning,
-            )
+                _UW_BLACKLIST_OWNED_IDS[category].add(model_id)
+            if (category, model_id) not in _UW_BLACKLIST_LOGGED:
+                _UW_BLACKLIST_LOGGED.add((category, model_id))
+                _uw_log(f"[UW Blacklist] {category}: ModelID={model_id}, "
+                        f"name={name!r}, active=True, blacklisted={blacklist.is_blacklisted(agent_id)}")
 
 
 # Keeper 2: Vengeful Aatxes cannot be killed until their Keeper dies.
@@ -1095,43 +2036,9 @@ def _sync_uw_guardian_blacklist(force: bool = False) -> None:
 # Persistent focus calls only the Keeper, with no nearest-enemy fallback.
 # Name-only blacklist is language-sensitive. Resolve a live model ID whenever
 # a Vengeful/Revengeful Aatxe becomes visible; do not guess a numeric ID.
-_uw_aatxe_scan_at = 0.0
-_uw_aatxe_seen: set[int] = set()
 _uw_keeper2_passage_active = False
 _uw_keeper2_local_combat_before: bool | None = None
 _uw_keeper2_last_clear_at = 0.0
-
-
-def _sync_uw_aatxe_blacklist(force: bool = False) -> None:
-    global _uw_aatxe_scan_at
-    if not Map.IsMapReady() or Map.GetMapID() != UW_MAP_ID:
-        return
-    now = time.monotonic()
-    if not force and now - _uw_aatxe_scan_at < 0.35:
-        return
-    _uw_aatxe_scan_at = now
-    blacklist = EnemyBlacklist()
-    existing_names = blacklist.get_all_names()
-    for alias in ('vengeful aatxe', 'aatxe vengeur', 'aatxe revenchard', 'aatxe revanchard'):
-        if alias not in existing_names:
-            blacklist.add_name(alias)
-    for agent_id in AgentArray.GetEnemyArray() or []:
-        if not Agent.IsValid(agent_id):
-            continue
-        name = str(Agent.GetNameByID(agent_id) or '').strip().casefold()
-        is_vengeful = ('aatxe' in name and
-                       ('venge' in name or 'reven' in name or 'revan' in name))
-        if not is_vengeful:
-            continue
-        model_id = int(Agent.GetModelID(agent_id) or 0)
-        if model_id <= 0:
-            continue
-        if not blacklist.contains(model_id):
-            blacklist.add(model_id)
-        if model_id not in _uw_aatxe_seen:
-            _uw_aatxe_seen.add(model_id)
-            _uw_log(f'[Keeper 2] Vengeful Aatxe: model={model_id} name={name!r} '
-                    f'blacklisted={blacklist.is_blacklisted(agent_id)}')
 
 
 def _keeper2_set_leader_combat(enabled: bool) -> None:
@@ -1144,7 +2051,7 @@ def _keeper2_set_leader_combat(enabled: bool) -> None:
             local_options = options
             break
     if not enabled:
-        _sync_uw_aatxe_blacklist(force=True)
+        _uw_scan_blacklists(force=True)
         if local_options is None:
             raise RuntimeError('Keeper 2: local leader HeroAI options unavailable; refusing unsafe passage.')
         if not _uw_keeper2_passage_active:
@@ -1174,7 +2081,7 @@ def _keeper2_tick_passage() -> None:
     if not Map.IsMapReady() or Map.GetMapID() != UW_MAP_ID or Map.IsOutpost():
         _keeper2_set_leader_combat(True)
         return
-    _sync_uw_aatxe_blacklist()
+    _uw_scan_blacklists()
     local_email = str(Player.GetAccountEmail() or '').strip().casefold()
     for account, options in _horsemen_accounts():
         if str(account.AccountEmail or '').strip().casefold() == local_email:
@@ -1188,7 +2095,7 @@ def _keeper2_tick_passage() -> None:
     if target > 0 and Agent.IsValid(target):
         name = str(Agent.GetNameByID(target) or '').casefold()
         # Do not clear a legitimate Keeper target or unrelated NPC target.
-        if ('aatxe' in name and ('reven' in name or 'revan' in name or 'venge' in name)):
+        if _uw_enemy_is_category(_uw_normalized_name(name), 'vengeful aatxe'):
             Player.ChangeTarget(0)
             _uw_keeper2_last_clear_at = now
             _uw_log(f'[Keeper 2] Cleared invulnerable Aatxe target {target}; leader Combat stays OFF.')
@@ -1201,7 +2108,7 @@ def _keeper2_focus_fendi_style() -> BehaviorTree:
     stance so the invulnerable Aatxes cannot steal its auto-attacks. Party
     members still have HeroAI combat enabled and can engage the called Keeper.
     """
-    state = {'started': None, 'seen': False, 'gone_at': None,
+    state = {'started': None, 'seen': False, 'missing_since': None,
              'last_call_at': 0.0, 'last_target': 0}
     center_x, center_y = -8371.0, 4865.0
     radius_sq = 3200.0 ** 2
@@ -1213,7 +2120,13 @@ def _keeper2_focus_fendi_style() -> BehaviorTree:
         # Keep the original safety policy on until the Keeper is defeated.
         if not _uw_keeper2_passage_active:
             _keeper2_set_leader_combat(False)
-        _sync_uw_aatxe_blacklist()
+        _uw_scan_blacklists()
+        # The previous target may leave the enemy array as soon as it dies.
+        # A disappearance alone is NOT a confirmed kill.
+        previous_target = int(state['last_target'] or 0)
+        if previous_target > 0 and Agent.IsValid(previous_target) and Agent.IsDead(previous_target):
+            _uw_log(f'[Keeper 2] Confirmed dead Keeper agent={previous_target}.')
+            return BehaviorTree.NodeState.SUCCESS
         living = []
         for agent_id in AgentArray.GetEnemyArray() or []:
             if not Agent.IsValid(agent_id) or not Agent.IsAlive(agent_id):
@@ -1225,7 +2138,7 @@ def _keeper2_focus_fendi_style() -> BehaviorTree:
                 living.append(int(agent_id))
         if living:
             state['seen'] = True
-            state['gone_at'] = None
+            state['missing_since'] = None
             target = min(living, key=lambda a: (Agent.GetXY(a)[0]-center_x)**2 +
                           (Agent.GetXY(a)[1]-center_y)**2)
             changed = target != state['last_target']
@@ -1242,11 +2155,12 @@ def _keeper2_focus_fendi_style() -> BehaviorTree:
                 _uw_log(f'[Keeper 2] Fendi-style focus: Keeper agent={target}, '
                         'leader passive, party combat active.')
         elif state['seen']:
-            if state['gone_at'] is None:
-                state['gone_at'] = now
-            if now - state['gone_at'] >= 2.0:
-                _uw_log('[Keeper 2] Keeper no longer alive/visible for 2s; releasing combat hold.')
-                return BehaviorTree.NodeState.SUCCESS
+            if state['missing_since'] is None:
+                state['missing_since'] = now
+            if now - state['missing_since'] >= 8.0:
+                _uw_log('[Keeper 2] Keeper disappeared for 8s without an observed death; '
+                        'refusing to advance. Inspect the boss position / target.', True)
+                return BehaviorTree.NodeState.FAILURE
         if now - state['started'] >= 150.0:
             _uw_log('[Keeper 2] Focus timeout: no confirmed Keeper kill. Check path/aggro.', True)
             return BehaviorTree.NodeState.FAILURE
@@ -1256,8 +2170,6 @@ def _keeper2_focus_fendi_style() -> BehaviorTree:
         name='Keeper 2 boss-only focus (Fendi style)', action_fn=_tick, aftercast_ms=0))
 
 
-def _guardian_blacklist_checkpoint() -> BehaviorTree:
-    return _action("Verify live Guardian blacklist", lambda: _sync_uw_guardian_blacklist(force=True))
 
 
 def _record(label: str) -> BehaviorTree:
@@ -1435,67 +2347,10 @@ def _horsemen_restore_policy() -> None:
                          PySystem.Console.MessageType.Info)
 
 
-def _horsemen_hold_until_complete(timeout_ms: int = 360_000) -> BehaviorTree:
-    """Keep the *leader* in place while the quest runs.
-
-    The normal BT movement nodes return once a waypoint is reached; they cannot
-    counter intermittent HeroAI reposition commands. This single UW-specific
-    action therefore maintains the old hold point, while the ordinary native
-    BT.FlagAllHeroes handles heroes and multibox accounts.
-    """
-    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        if Map.GetMapID() != UW_MAP_ID:
-            node.blackboard.pop("uw_horsemen_hold_since", None)
-            return BehaviorTree.NodeState.FAILURE
-        if Quest.IsQuestCompleted(QUEST_FOUR_HORSEMEN):
-            node.blackboard.pop("uw_horsemen_hold_since", None)
-            return BehaviorTree.NodeState.SUCCESS
-
-        agent_id = Player.GetAgentID()
-        if not agent_id or not Agent.IsValid(agent_id) or Agent.IsDead(agent_id):
-            node.blackboard.pop("uw_horsemen_hold_since", None)
-            return BehaviorTree.NodeState.FAILURE
-
-        now = time.monotonic()
-        started = node.blackboard.setdefault("uw_horsemen_hold_since", now)
-        if (now - started) * 1000 >= timeout_ms:
-            PySystem.Console.Log(
-                MODULE_NAME, "Four Horsemen hold timed out; quest 106 not completed.",
-                PySystem.Console.MessageType.Warning,
-            )
-            node.blackboard.pop("uw_horsemen_hold_since", None)
-            return BehaviorTree.NodeState.FAILURE
-
-        px, py = Player.GetXY()
-        if (px - HORSEMEN_HOLD_X) ** 2 + (py - HORSEMEN_HOLD_Y) ** 2 > 80.0 ** 2:
-            Player.Move(HORSEMEN_HOLD_X, HORSEMEN_HOLD_Y)
-        return BehaviorTree.NodeState.RUNNING
-
-    return BehaviorTree(BehaviorTree.ActionNode(
-        name="Maintain hold and verify Four Horsemen quest",
-        action_fn=_tick,
-        aftercast_ms=0,
-    ))
-
-
 def _horsemen_clear_stale_target() -> BehaviorTree:
     """Avoid retaining a despawned Horseman target after the encounter."""
     return _action("Clear stale Horsemen target",
                    lambda: Player.ChangeTarget(Player.GetAgentID()))
-
-
-def _stop_before_restore_vale() -> BehaviorTree:
-    """Development checkpoint. This is not a full UW run."""
-    def _stop(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        PySystem.Console.Log(
-            MODULE_NAME,
-            "BT checkpoint reached: Imprisoned Spirits complete. Restore Vale pending migration.",
-            PySystem.Console.MessageType.Warning,
-        )
-        return BehaviorTree.NodeState.FAILURE
-    return BehaviorTree(BehaviorTree.ActionNode(
-        name="STOP: Restore Vale pending", action_fn=_stop, aftercast_ms=0,
-    ))
 
 
 # Imprisoned Spirits: slots are the visible, 1-based party roster positions.
@@ -1503,7 +2358,7 @@ def _stop_before_restore_vale() -> BehaviorTree:
 # Follower account flags use HeroAI ShMem; hero flags use the native party API.
 IMPRISONED_QUEST_ID = 105
 IMPRISONED_LEFT_POINTS = ((13849, 6602), (13876, 6752), (13985, 6840),
-                          (13598, 6779), (13845, 6489))
+                          (13598, 6779), (13845,6834))
 IMPRISONED_RIGHT_POINTS = ((12871, 2512), (12640, 2485), (12402, 2472),
                            (12137, 2444), (12150, 2139), (12239, 2324))
 _imprisoned_team_assignments: dict[int, str] = {}
@@ -1672,29 +2527,40 @@ def _imprisoned_stage_flags() -> None:
 
 
 def _imprisoned_clear_flags() -> None:
-    _imprisoned_target_flags.clear()
-    _imprisoned_hero_flags.clear()
+    # Same proven pattern as EotN Storyline BT / A Little Help:
+    # UnflagHero takes the 1-based hero position (1..hero_count) here,
+    # NOT the world agent_id used by FlagHero(agent_id, x, y).
+    hero_count = int(GLOBAL_CACHE.Party.GetHeroCount() or 0)
     GLOBAL_CACHE.Party.Heroes.UnflagAllHeroes()
+    for hero_position in range(1, hero_count + 1):
+        GLOBAL_CACHE.Party.Heroes.UnflagHero(hero_position)
+    _imprisoned_hero_flags.clear()
+    _imprisoned_target_flags.clear()
     for _, options in _imprisoned_accounts():
         options.IsFlagged = False
         options.FlagPos.x = 0.0
         options.FlagPos.y = 0.0
         options.AllFlag.x = 0.0
         options.AllFlag.y = 0.0
+        options.Following = True
     PySystem.Console.Log(MODULE_NAME,
-        '[Imprisoned] Cleared left/right flags; party resumes movement.',
+        f'[Imprisoned] Unflagged {hero_count} individual hero positions, '
+        'cleared HeroAI flags and enabled follower Following.',
         PySystem.Console.MessageType.Info)
 
 
 def _imprisoned_restore_policy() -> None:
     global _imprisoned_runtime_active, _imprisoned_timer_started
+    # Stop the per-frame Imprisoned policy before releasing the party.
+    _imprisoned_runtime_active = False
     _imprisoned_clear_flags()
     for account, options in _imprisoned_accounts():
         email = str(account.AccountEmail)
         old = _imprisoned_snapshot.get(email)
-        options.Following = old[0] if old is not None else True
+        # Do not restore a stale Following=False snapshot from the defense phase.
+        # The next Planner steps require every follower to move with the leader.
+        options.Following = True
         options.Looting = old[1] if old is not None else True
-    _imprisoned_runtime_active = False
     _imprisoned_timer_started = None
     _imprisoned_snapshot.clear()
 
@@ -1731,15 +2597,15 @@ MOUNTAIN_RESTORE = [(4455, -7967), (2008, -10290), (-542, -9046),
 # Underworld.py; labels are new, not route modifications.
 POOLS_RESTORE_ROUTE = [
     (6869, -17771), (2867, -19746), (1753, -14703),
-    (-12703, -10990), (-11849, -11986), (-5974, -19739),
+    (-12703, -10990), (-5974, -19739),
     (-7217, -19394), (-5688, -19471),
 ]
-PIT_RESTORE_ROUTE_INITIAL = [(14178, -57)]
+PIT_RESTORE_ROUTE_INITIAL = [(13017,-16900),(13440,-10272),(11644,-4407),(14178, -57)]
 PIT_RESTORE_ROUTE_APPROACH = [(15323, 2970), (15393, 406)]
 PIT_BRIDGE_PATH = [(15252, 316), (13451, 1123), (13181, 1419), (13076, 1547)]
 PIT_RESTORE_ROUTE_FINAL = [
     (13216, 1428), (13896, 3670), (15382, 6581),
-    (10620, 2665), (8644, 6242),
+    (10620, 2665), (8598,5885),
 ]
 
 
@@ -1747,22 +2613,13 @@ PIT_RESTORE_ROUTE_FINAL = [
 def _planner_step(name: str, factory: Callable[[], BehaviorTree]) -> tuple[str, Callable[[], BehaviorTree]]:
     """Check map when the selected step starts, without replaying earlier steps."""
     def _build() -> BehaviorTree:
-        return BT.Sequence(name=name, children=[_ensure_uw(), factory()])
+        return BT.Sequence(name=name, children=[BT.IsCurrentMap(map_id=UW_MAP_ID, log=False), factory()])
     return name, _build
 
 
-def _vanquish_point(name: str, x: float, y: float) -> BehaviorTree:
-    """Shards-style native one-point VanquishNode, independently restartable."""
-    return BT.VanquishNode(
-        clear_area_radius=Range.Longbow.value,
-        steps=[_v(x, y)],
-        name=name,
-        pause_on_combat=True,
-        log=False,
-    )
 
 
-def _planner_move_steps(section: str, label: str,
+def _planner_vanquish_steps(section: str, label: str,
                         points: list[tuple[int, int]], *,
                         combat: bool = True, first_index: int = 1
                         ) -> list[tuple[str, Callable[[], BehaviorTree]]]:
@@ -1774,12 +2631,12 @@ def _planner_move_steps(section: str, label: str,
     result = []
     for index, (x, y) in enumerate(points, start=first_index):
         name = f"{section} - {label} Point {index:02d} ({x}, {y})"
-        def _build(x=x, y=y, name=name):
-            return _planner_step(name, lambda: (
-                _vanquish_point(name, x, y) if combat
-                else BT.Move(_v(x, y), pause_on_combat=False, log=False)
-            ))[1]()
-        result.append((name, _build))
+        result.append(_planner_step(
+            name,
+            (lambda x=x, y=y, name=name: BT.VanquishNode(steps=[Vec2f(x, y)], name=name, pause_on_combat=True, log=False))
+            if combat else
+            (lambda x=x, y=y: BT.Move(Vec2f(x, y), pause_on_combat=False, log=False)),
+        ))
     return result
 
 
@@ -1795,7 +2652,7 @@ def _spawn_planner_steps(spawn: int, point: tuple[int, int]) -> list[tuple[str, 
         x, y = point
         result.append(_planner_action(
             "Restore Planes", f"0{3 + spawn} - Spawn {spawn} - Approach {attempt:02d} ({x}, {y})",
-            lambda x=x, y=y: BT.Move(_v(x, y), log=False),
+            lambda x=x, y=y: BT.Move(Vec2f(x, y), log=False),
         ))
         result.append(_planner_action(
             "Restore Planes", f"0{3 + spawn} - Spawn {spawn} - Mindblades check {attempt:02d}",
@@ -1829,7 +2686,12 @@ _dhuum_sacrifice_emails: set[str] = set()
 _dhuum_min_spiritforms = 2
 _dhuum_ready = False
 _dhuum_combat_hold = False
+_dhuum_flags_active = False  # Flags start only at planner step 08.
 _dhuum_policy_snapshot: dict[str, tuple[bool, bool, bool]] = {}
+_dhuum_spirit_completed_accounts: set[str] = set()
+_dhuum_normal_armor_restored: set[str] = set()
+_dhuum_rest_100_seen = False
+_dhuum_rest_watch_next = 0.0
 _servants_policy_active = False
 _uw_pacifist_active = False
 _servants_flag_cache: dict[str, tuple[float, float]] = {}
@@ -1902,8 +2764,8 @@ def _uw_wrathful_tick() -> None:
 
 
 def _uw_set_combat_policy(enabled: bool) -> None:
-    global _dhuum_combat_hold
-    _dhuum_combat_hold = not enabled
+    # Direct one-shot party option. Dhuum's persistent combat hold is managed
+    # separately by its own lifecycle, not by unrelated quests.
     for _account, opts in _horsemen_accounts():
         opts.Combat = bool(enabled)
 
@@ -1962,88 +2824,248 @@ def _dhuum_settings_save() -> None:
     _settings.set('DhuumBT', 'MinSpiritforms', int(_dhuum_min_spiritforms))
 
 
+_DHUUM_ARMOR_SLOT_LABELS = {'2': 'Chest', '3': 'Legs', '4': 'Head', '5': 'Feet', '6': 'Hands'}
+_dhuum_armor_doc = JsonFactory('Widgets/EquippedArmor.json', 'global')
+_dhuum_armor_last_request: dict[str, str] = {}
+
+
+def _dhuum_armor_entry(email: str) -> dict:
+    try:
+        # Global JSON is shared across separate Py4GW clients: refresh disk view.
+        _dhuum_armor_doc.reload()
+        entry = _dhuum_armor_doc.get_json(email, {})
+        return dict(entry) if isinstance(entry, dict) else {}
+    except Exception as exc:
+        _uw_log(f'[Dhuum] Cannot read armor setup for {email}: {exc}', True)
+        return {}
+
+
+def _dhuum_request_armor_capture(account: object, profile: str) -> None:
+    """Ask the actual follower client to read EQUIPPED bag 22.
+
+    SharedMemory mirrors only inventory bags 1..4, NOT equipped armor. The
+    companion Dhuum Helper widget therefore fulfills this request locally.
+    """
+    if profile not in ('normal', 'sacrifice'):
+        return
+    email = str(account.AccountEmail or '').strip().lower()
+    sender = str(Player.GetAccountEmail() or '').strip()
+    if not sender or not email or email == sender.lower():
+        return
+    try:
+        from uuid import uuid4
+        request_id = uuid4().hex
+        # Enable the companion widget BEFORE submitting; it handles the capture
+        # even outside UW and never changes the account's currently worn armor.
+        index = GLOBAL_CACHE.ShMem.SendMessage(
+            sender, str(account.AccountEmail), SharedCommandType.EnableWidget,
+            (0.0, 0.0, 0.0, 0.0), ('Dhuum Helper', '', '', ''))
+        if int(index) < 0:
+            raise RuntimeError('EnableWidget could not be queued')
+        entry = _dhuum_armor_entry(email)
+        entry['capture_request'] = {'id': request_id, 'profile': profile}
+        # This is the same global JsonFactory document read by Dhuum Helper.
+        _dhuum_armor_doc.set_json(email, entry)
+        _dhuum_armor_doc.save()
+        _dhuum_armor_last_request[email] = request_id
+        _uw_log(f'[Dhuum] Requested {profile} armor capture on follower {email}.')
+    except Exception as exc:
+        _uw_log(f'[Dhuum] Armor capture request failed for {email}: {exc}', True)
+
+
+def _dhuum_armor_profile_summary(entry: dict, profile: str) -> str:
+    pieces = entry.get(profile, {})
+    count = sum(bool(int((pieces or {}).get(slot, 0) or 0))
+                for slot in _DHUUM_ARMOR_SLOT_LABELS) if isinstance(pieces, dict) else 0
+    return f'{count}/5' if count else 'not saved'
+
+
 def _draw_dhuum_config() -> None:
-    global _dhuum_min_spiritforms
-    PyImGui.text('Dhuum - party setup')
-    PyImGui.text_wrapped('Select follower accounts to sacrifice. All unselected followers '
-                          'will be flagged as survivors. The leader is never sacrificed.')
+    PyImGui.text('Dhuum - sacrifice / armor / chest / restart')
+    PyImGui.text_wrapped('Equip the normal or low-armor set ON EACH FOLLOWER, then click the matching capture button here. '
+                          'The local Dhuum Helper widget reads equipped items (bag 22); no Model IDs to enter.')
+    PyImGui.text_wrapped('Each sacrifice follower needs BOTH complete 5-piece sets recorded before running.')
+    PyImGui.separator()
     local = str(Player.GetAccountEmail() or '').lower()
     for account, _opts in _horsemen_accounts():
-        email = str(account.AccountEmail or '').lower()
+        email = str(account.AccountEmail or '').strip().lower()
         if not email or email == local:
             continue
         label = str(getattr(account.AgentData, 'CharacterName', '') or email)
         updated = PyImGui.checkbox(f'Sacrifice: {label}##dhuum_{email}', email in _dhuum_sacrifice_emails)
         if updated != (email in _dhuum_sacrifice_emails):
-            if updated: _dhuum_sacrifice_emails.add(email)
-            else: _dhuum_sacrifice_emails.discard(email)
+            if updated:
+                _dhuum_sacrifice_emails.add(email)
+            else:
+                _dhuum_sacrifice_emails.discard(email)
             _dhuum_settings_save()
-    new = PyImGui.input_int('Min Spirit Form accounts', int(_dhuum_min_spiritforms))
-    if isinstance(new, tuple): new = new[-1]
-    new = max(1, min(8, int(new)))
-    if new != _dhuum_min_spiritforms:
-        _dhuum_min_spiritforms = new
-        _dhuum_settings_save()
+        entry = _dhuum_armor_entry(email)
+        normal_count = _dhuum_armor_profile_summary(entry, 'normal')
+        sacrifice_count = _dhuum_armor_profile_summary(entry, 'sacrifice')
+        PyImGui.text(f'    Armor: normal {normal_count} | sacrifice {sacrifice_count}')
+        if PyImGui.button(f'Capture NORMAL equipped armor##normal_{email}'):
+            _dhuum_request_armor_capture(account, 'normal')
+        if PyImGui.button(f'Capture SACRIFICE equipped armor##sacrifice_{email}'):
+            _dhuum_request_armor_capture(account, 'sacrifice')
+        reply = entry.get('capture_response', {})
+        if isinstance(reply, dict) and reply:
+            reply_id = str(reply.get('id', ''))
+            if reply_id == _dhuum_armor_last_request.get(email, ''):
+                PyImGui.text_wrapped('    Capture: ' + str(reply.get('message', '')))
+        pending = entry.get('capture_request', {})
+        if isinstance(pending, dict) and pending:
+            PyImGui.text('    Waiting for the follower widget to read equipped armor...')
+        PyImGui.separator()
     if not _dhuum_sacrifice_emails:
-        PyImGui.text_wrapped('WARNING: no sacrifice account selected; Dhuum flag step will fail safely.')
-    PyImGui.separator()
-    PyImGui.text_wrapped('Armor switching from the legacy EquippedArmor.json is not automated '
-                          'in this BT version. Set the desired armor manually before the fight.')
-    PyImGui.text_wrapped('Dhuum Helper must be enabled on the selected accounts.')
+        PyImGui.text_wrapped('WARNING: choose at least one sacrifice account.')
+    PyImGui.text_wrapped('Equip changes are applied before sacrifice and automatically restored after each follower returns from Spirit Form.')
+    PyImGui.text_wrapped('No Spirit Form threshold blocks the fight. Dhuum Helper stays enabled on sacrifices; HeroAI widget remains ON.')
 
 
 def _dhuum_validate_party() -> None:
     local = str(Player.GetAccountEmail() or '').lower()
     follower_emails = {str(account.AccountEmail or '').lower()
-                       for account, _opts in _horsemen_accounts() if str(account.AccountEmail or '').lower() != local}
+                       for account, _opts in _horsemen_accounts()
+                       if str(account.AccountEmail or '').lower() != local}
     if not _dhuum_sacrifice_emails:
         raise RuntimeError('Select sacrifice accounts in the Dhuum tab first.')
     if _dhuum_sacrifice_emails - follower_emails:
         raise RuntimeError(f'Dhuum sacrifice account(s) missing: {_dhuum_sacrifice_emails - follower_emails}')
-    if _dhuum_min_spiritforms > len(follower_emails) + 1:
-        raise RuntimeError('Dhuum: Spirit Form threshold exceeds connected player count.')
-
 
 def _dhuum_flag_groups() -> None:
+    global _dhuum_flags_active
     _dhuum_validate_party()
+    # Individual sacrifices ONLY; no survivor/hero immobilization.
+    # Allow following until the follower reaches the flag, otherwise some HeroAI
+    # clients refuse to navigate (the old Dhuum implementation did exactly this).
     local = str(Player.GetAccountEmail() or '').lower()
     GLOBAL_CACHE.Party.Heroes.UnflagAllHeroes()
     for account, opts in _horsemen_accounts():
         email = str(account.AccountEmail or '').lower()
-        if email == local: continue
-        x, y = (-15386.0, 17295.0) if email in _dhuum_sacrifice_emails else (-14374.0, 17261.0)
-        opts.Following = False
-        opts.IsFlagged = True
-        opts.FlagPos.x, opts.FlagPos.y = x, y
-        opts.FlagFacingAngle = 0.0
-        _uw_log(f'[Dhuum] {email} -> {"sacrifice" if email in _dhuum_sacrifice_emails else "survivor"} ({x:.0f},{y:.0f})')
-    GLOBAL_CACHE.Party.Heroes.FlagAllHeroes(-14374.0, 17261.0)
-
+        if not email or email == local:
+            continue
+        opts.IsFlagged = False
+        opts.FlagPos.x = opts.FlagPos.y = 0.0
+        opts.AllFlag.x = opts.AllFlag.y = 0.0
+        opts.Following = True
+        opts.Combat = True
+        if email in _dhuum_sacrifice_emails:
+            opts.IsFlagged = True
+            opts.FlagPos.x, opts.FlagPos.y = -15386.0, 17295.0
+            opts.FlagFacingAngle = 0.0
+            _uw_log(f'[Dhuum] Sacrifice {email}: follow to individual flag (-15386,17295).')
+        else:
+            _uw_log(f'[Dhuum] Survivor {email}: no flag, combat enabled.')
+    _dhuum_flags_active = True
 
 def _dhuum_start_fight() -> None:
-    global _dhuum_ready
+    global _dhuum_ready, _dhuum_flags_active, _dhuum_combat_hold, _dhuum_rest_100_seen
+    _dhuum_rest_100_seen = False
     _dhuum_validate_party()
-    _dhuum_ready = True
+    _dhuum_flags_active = False
+    _dhuum_combat_hold = False
     _dhuum_policy_snapshot.clear()
+    _dhuum_spirit_completed_accounts.clear()
+    _dhuum_normal_armor_restored.clear()
     for account, opts in _horsemen_accounts():
         _dhuum_policy_snapshot[str(account.AccountEmail).lower()] = (
             bool(opts.Combat), bool(opts.Following), bool(opts.Looting))
-    _uw_set_combat_policy(False)
-
+    # Never gate combat on Spirit Form; the threshold can deadlock the entire fight.
+    _uw_set_combat_policy(True)
+    _uw_log('[Dhuum] Survivor combat enabled immediately; no Spirit Form threshold.')
 
 def _dhuum_tick() -> None:
+    global _dhuum_rest_100_seen, _dhuum_flags_active, _dhuum_rest_watch_next
     if not _dhuum_ready or Map.GetMapID() != UW_MAP_ID:
         return
+    # The Reapers change from Dhuum's Rest to their Ghostly Fury spell when
+    # the Rest meter fills. Detect this without creating a blocking Planner gate.
+    now = time.monotonic()
+    if not _dhuum_rest_100_seen and now >= _dhuum_rest_watch_next:
+        _dhuum_rest_watch_next = now + 0.5
+        for agent_id in AgentArray.GetAgentArray() or []:
+            try:
+                if not Agent.IsValid(agent_id):
+                    continue
+                if int(Agent.GetCastingSkillID(agent_id) or 0) != 3136:
+                    continue
+                name = str(Agent.GetNameByID(agent_id) or '').lower()
+                if 'reaper' not in name and 'faucheur' not in name:
+                    continue
+                _dhuum_rest_100_seen = True
+                _dhuum_flags_active = False
+                GLOBAL_CACHE.Party.Heroes.UnflagAllHeroes()
+                for pos in range(1, int(GLOBAL_CACHE.Party.GetHeroCount() or 0) + 1):
+                    GLOBAL_CACHE.Party.Heroes.UnflagHero(pos)
+                for account, opts in _horsemen_accounts():
+                    opts.IsFlagged = False
+                    opts.FlagPos.x = opts.FlagPos.y = 0.0
+                    opts.AllFlag.x = opts.AllFlag.y = 0.0
+                    opts.Following = not _dhuum_has_spirit_form(account)
+                    opts.Combat = True
+                _uw_log('[Dhuum] Reaper casting Ghostly Fury: Rest-full transition inferred; '
+                        'all sacrifice/hero flags cleared; combat stays ON.')
+                break
+            except (AttributeError, TypeError, ValueError):
+                continue
     for account, opts in _horsemen_accounts():
         email = str(account.AccountEmail or '').lower()
-        if _dhuum_combat_hold:
-            opts.Combat = False
-        if email != str(Player.GetAccountEmail() or '').lower():
-            x, y = (-15386.,17295.) if email in _dhuum_sacrifice_emails else (-14374.,17261.)
+        if not email or email == str(Player.GetAccountEmail() or '').lower():
+            continue
+        # IMPORTANT: never overwrite a spirit's movement to Mayor Alegheri.
+        # Dhuum Helper runs locally on each sacrificed follower.
+        if _dhuum_rest_100_seen:
+            # Keep a returning ghost free after Dhuum Helper completes its dialog.
+            if not _dhuum_has_spirit_form(account):
+                if email in _dhuum_spirit_completed_accounts and email not in _dhuum_normal_armor_restored:
+                    _dhuum_normal_armor_restored.add(email)
+                    _dhuum_switch_armor_profile('normal', only_email=email)
+                opts.Following = True
+                opts.Combat = True
+            continue
+        if email in _dhuum_sacrifice_emails and _dhuum_flags_active:
+            if _dhuum_has_spirit_form(account):
+                # Once sacrificed, NEVER reapply the sacrifice flag, even after
+                # Dhuum Helper brings the follower back from Mayor Alegheri.
+                _dhuum_spirit_completed_accounts.add(email)
+                opts.IsFlagged = False
+                opts.Following = False
+                continue
+            if email in _dhuum_spirit_completed_accounts:
+                # The follower has returned through Mayor Alegheri: restore
+                # the normal armor once, not after the whole Dhuum fight.
+                if email not in _dhuum_normal_armor_restored:
+                    _dhuum_normal_armor_restored.add(email)
+                    _dhuum_switch_armor_profile('normal', only_email=email)
+                opts.IsFlagged = False
+                opts.Following = True
+                opts.Combat = True
+                continue
             opts.IsFlagged = True
-            opts.FlagPos.x, opts.FlagPos.y = x, y
-            opts.Following = False
+            opts.FlagPos.x, opts.FlagPos.y = -15386.0, 17295.0
+            opts.FlagFacingAngle = 0.0
+            # Follow is left ON while walking to the sacrifice flag. Disable it
+            # only after arrival, without touching Combat/Targeting/Skills.
+            try:
+                p = account.AgentData
+                px, py = float(p.X), float(p.Y)
+                close = (px + 15386.0)**2 + (py - 17295.0)**2 <= 450.0**2
+            except (AttributeError, TypeError, ValueError):
+                close = False
+            opts.Following = not close
+        elif email not in _dhuum_sacrifice_emails:
+            opts.IsFlagged = False
+            opts.Following = True
+            opts.Combat = True
 
+
+def _dhuum_has_spirit_form(account: object) -> bool:
+    try:
+        return (int(account.AgentData.Map.MapID) == UW_MAP_ID
+                and any(int(buff.SkillId) == UW_SPIRIT_FORM_BUFF
+                        for buff in account.AgentData.Buffs.Buffs))
+    except (AttributeError, TypeError, ValueError):
+        return False
 
 def _dhuum_spirit_count() -> int:
     count = 0
@@ -2059,42 +3081,48 @@ def _dhuum_spirit_count() -> int:
 
 
 def _dhuum_enable_combat_if_ready() -> bool:
-    if _dhuum_spirit_count() < _dhuum_min_spiritforms:
-        return False
+    # Kept for callers of older revisions; this method no longer gates combat.
+    global _dhuum_combat_hold
+    _dhuum_combat_hold = False
     _uw_set_combat_policy(True)
-    _uw_log(f'[Dhuum] Spirit Form ready: {_dhuum_spirit_count()}/{_dhuum_min_spiritforms}; combat enabled.')
     return True
-
 
 def _dhuum_chest_id() -> int:
     for agent_id in AgentArray.GetAgentArray() or []:
         if not Agent.IsValid(agent_id) or not Agent.IsGadget(agent_id):
             continue
-        if 'underworld chest' not in str(Agent.GetNameByID(agent_id) or '').strip().lower():
-            continue
         x, y = Agent.GetXY(agent_id)
-        if (x+14381.)**2 + (y-17283.)**2 <= 300.**2:
+        if (x+14381.)**2 + (y-17283.)**2 > 300.**2:
+            continue
+        name = _uw_normalized_name(str(Agent.GetNameByID(agent_id) or ''))
+        # Do not guess a ModelID; accept only a chest-like gadget in the original
+        # Dhuum chest spawn area, in either English or French game clients.
+        if 'underworld chest' in name or 'coffre' in name:
             return int(agent_id)
     return 0
 
 
 def _dhuum_finish() -> None:
-    global _dhuum_ready, _dhuum_combat_hold
+    global _dhuum_ready, _dhuum_combat_hold, _dhuum_flags_active, _dhuum_rest_100_seen
+    _dhuum_rest_100_seen = False
+    # Stop the tick policy BEFORE unflagging, or flags reappear immediately.
     _dhuum_ready = False
     _dhuum_combat_hold = False
+    _dhuum_flags_active = False
     GLOBAL_CACHE.Party.Heroes.UnflagAllHeroes()
-    local = str(Player.GetAccountEmail() or '').lower()
+    for position in range(1, int(GLOBAL_CACHE.Party.GetHeroCount() or 0) + 1):
+        GLOBAL_CACHE.Party.Heroes.UnflagHero(position)
     for account, opts in _horsemen_accounts():
-        email = str(account.AccountEmail or '').lower()
-        original = _dhuum_policy_snapshot.get(email)
         opts.IsFlagged = False
         opts.FlagPos.x = opts.FlagPos.y = 0.0
         opts.AllFlag.x = opts.AllFlag.y = 0.0
-        opts.Combat = original[0] if original else True
-        opts.Following = original[1] if original else True
-        opts.Looting = original[2] if original else True
+        opts.Following = True
+        opts.Combat = True
+        opts.Looting = True
     _dhuum_policy_snapshot.clear()
-
+    _dhuum_spirit_completed_accounts.clear()
+    _dhuum_normal_armor_restored.clear()
+    _uw_log('[Dhuum] All individual hero/follower flags cleared; follow/combat/loot ON.')
 
 def _dhuum_chest_interaction() -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
@@ -2110,15 +3138,85 @@ def _dhuum_chest_interaction() -> BehaviorTree:
 
 
 def _dhuum_enable_helper() -> BehaviorTree:
-    return BTShared.SendAndWait(
-        command=SharedCommandType.EnableWidget,
-        extra_data=('Dhuum Helper', '', '', ''),
-        include_self=True, timeout_ms=30_000, poll_interval_ms=150, log=False)
+    def _enable() -> None:
+        sender = str(Player.GetAccountEmail() or '').strip()
+        for account, _opts in _horsemen_accounts():
+            email = str(account.AccountEmail or '').strip()
+            if email.lower() not in _dhuum_sacrifice_emails:
+                continue
+            index = GLOBAL_CACHE.ShMem.SendMessage(
+                sender, email, SharedCommandType.EnableWidget,
+                (0.0, 0.0, 0.0, 0.0), ('Dhuum Helper', '', '', ''))
+            if int(index) < 0:
+                raise RuntimeError(f'Failed to enable Dhuum Helper on {email}')
+            _uw_log(f'[Dhuum] Dhuum Helper requested on sacrificial follower {email}.')
+    return _action('Enable Dhuum Helper (sacrifices only)', _enable)
 
+
+def _dhuum_disable_helper() -> BehaviorTree:
+    def _disable() -> None:
+        sender = str(Player.GetAccountEmail() or '').strip()
+        for account, _opts in _horsemen_accounts():
+            email = str(account.AccountEmail or '').strip()
+            if email.lower() in _dhuum_sacrifice_emails:
+                GLOBAL_CACHE.ShMem.SendMessage(
+                    sender, email, SharedCommandType.DisableWidget,
+                    (0.0, 0.0, 0.0, 0.0), ('Dhuum Helper', '', '', ''))
+    return _action('Disable Dhuum Helper after chest', _disable)
+
+
+def _dhuum_switch_armor_profile(profile: str, only_email: str | None = None) -> None:
+    """Equip each model ID for one follower or the selected sacrifice group."""
+    sender = str(Player.GetAccountEmail() or '').strip()
+    sent = 0
+    if profile not in ('normal', 'sacrifice') or not sender:
+        return
+    for account, _opts in _horsemen_accounts():
+        email = str(account.AccountEmail or '').strip().lower()
+        if email not in _dhuum_sacrifice_emails:
+            continue
+        if only_email is not None and email != only_email.lower():
+            continue
+        saved = _dhuum_armor_entry(email)
+        pieces = saved.get(profile, {})
+        if not isinstance(pieces, dict) or any(int(pieces.get(slot, 0) or 0) <= 0
+                                               for slot in _DHUUM_ARMOR_SLOT_LABELS):
+            _uw_log(f'[Dhuum] {profile} armor incomplete on {email} (need 5 pieces).', True)
+            continue
+        for slot in _DHUUM_ARMOR_SLOT_LABELS:
+            model_id = int(pieces[slot])
+            index = GLOBAL_CACHE.ShMem.SendMessage(
+                sender, str(account.AccountEmail), SharedCommandType.EquipItem,
+                (float(model_id), 0.0, 0.0, 0.0))
+            if int(index) >= 0:
+                sent += 1
+    if sent:
+        _uw_log(f'[Dhuum] Sent {sent} {profile} armor equip requests.')
+
+
+
+def _dhuum_prechest_loot_policy() -> None:
+    # Shards approach: let HeroAI do normal auto-loot after opening.
+    for _account, opts in _horsemen_accounts():
+        opts.Looting = True
+        opts.Combat = True
+        opts.Following = True
+
+
+def _dhuum_resign_to_next_run() -> BehaviorTree:
+    # BT.Resign is already used by Shards and handles the whole multibox party.
+    # The existing _recover_after_uw_outpost() will then restart at Initialize Bot.
+    return BT.Resign(
+        wait_for_map_load=True,
+        target_map_id=ENTRYPOINTS[_entrypoint_index][1],
+        multi_account=True,
+        timeout_ms=60_000,
+        log=True,
+    )
 
 def _uw_route(section: str, points: tuple[tuple[int, int], ...], prefix: str) -> list[tuple[str, Callable[[], BehaviorTree]]]:
     return [_planner_action(section, f'{prefix} {index:02d} ({x}, {y})',
-                            lambda x=x, y=y: BT.Move(_v(x,y), log=False))
+                            lambda x=x, y=y: BT.Move(Vec2f(x,y), log=False))
             for index, (x,y) in enumerate(points, 1)]
 
 
@@ -2126,7 +3224,7 @@ def _keeper_approach_steps(number: int, coords: tuple[tuple[int, int], ...]) -> 
     result = []
     for i, (x,y) in enumerate(coords, 1):
         result.append(_planner_action('Unwanted Guests', f'{number:02d} - Keeper {number} approach {i} ({x},{y})',
-                                      lambda x=x,y=y: BT.Move(_v(x,y), log=False)))
+                                      lambda x=x,y=y: BT.Move(Vec2f(x,y), log=False)))
     result.append(_planner_action('Unwanted Guests', f'{number:02d} - Target Keeper {number}',
                                   lambda: _action('Focus Keeper of Souls', _uw_focus_keeper)))
     result.append(_planner_action('Unwanted Guests', f'{number:02d} - Target settle',lambda: BT.Wait(500)))
@@ -2173,42 +3271,47 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Initialize Bot", InitializeBot),
         *_entry_steps(),
 
-        _planner_action("Clear the Chamber", "01 - Configure blacklists", lambda: BT.Sequence(
-            name="Chamber combat filters", children=[
-                _blacklist("obsidian guardian", True),
-                _blacklist("vengeful aatxe", True),
-                _blacklist("chained soul", True),
-                _blacklist("wastfull spirit", False),
-                _blacklist("obsidian behemoth", False),
-                _blacklist("banished dream rider", False),
-            ])),
+        # V2: each combat-filter transition is its own independently selectable step.
+        _planner_action("Clear the Chamber", "01A - Blacklist Obsidian Guardian",
+                        lambda: _blacklist("obsidian guardian", True)),
+        _planner_action("Clear the Chamber", "01B - Blacklist Vengeful Aatxe",
+                        lambda: _blacklist("vengeful aatxe", True)),
+        _planner_action("Clear the Chamber", "01C - Blacklist Chained Soul",
+                        lambda: _blacklist("chained soul", True)),
+        _planner_action("Clear the Chamber", "01D - Clear legacy Wrathful typo filter",
+                        lambda: _blacklist("wastfull spirit", False)),
+        _planner_action("Clear the Chamber", "01E - Unblacklist Obsidian Behemoth",
+                        lambda: _blacklist("obsidian behemoth", False)),
+        _planner_action("Clear the Chamber", "01F - Unblacklist Banished Dream Rider",
+                        lambda: _blacklist("banished dream rider", False)),
         _planner_action("Clear the Chamber", "02 - Accept quest (101)",
                         lambda: _quest_npc(NPC_LOST_SOUL, 0x806501, QUEST_CLEAR, "Accept Chamber quest")),
         _planner_action("Clear the Chamber", "03 - Approach (769, 6564)",
-                        lambda: BT.Move(_v(769, 6564), pause_on_combat=False, log=False)),
+                        lambda: BT.Move(Vec2f(769, 6564), pause_on_combat=False, log=False)),
         _planner_action("Clear the Chamber", "04 - Settle 5 seconds", lambda: BT.Wait(5_000)),
-        *_planner_move_steps("Clear the Chamber", "05 - Route", CHAMBER_ROUTE),
+        *_planner_vanquish_steps("Clear the Chamber", "05 - Route", CHAMBER_ROUTE),
         _planner_action("Clear the Chamber", "06 - Verify quest complete (101)",
                         lambda: _wait_quest_completed(QUEST_CLEAR, timeout_ms=90_000)),
         _planner_action("Clear the Chamber", "07 - Claim Reaper reward",
-                        lambda: BT.MoveAndDialogByModelID(NPC_REAPER, dialog_id=0x806707, multi_account=True)),
-        _planner_action("Clear the Chamber", "08 - Accept Restore Monuments (109)",
-                        lambda: _quest_npc(NPC_REAPER, 0x806707, QUEST_RESTORE_MONUMENTS, "Accept Monuments")),
-        _planner_action("Clear the Chamber", "09 - Completed", lambda: _record("Clear the Chamber")),
+                        lambda: BT.MoveAndDialogByModelID(NPC_REAPER, dialog_id=0x806507, multi_account=False)),
+        _planner_action("Clear the Chamber", "08 - Reward settle", lambda: BT.Wait(1_000)),
+        _planner_action("Clear the Chamber", "09 - Accept Restore Monuments (109)",
+                        lambda: _quest_npc(NPC_REAPER, 0x806D01, QUEST_RESTORE_MONUMENTS, "Accept Monuments")),
+        _planner_action("Clear the Chamber", "10 - Completed", lambda: _record("Clear the Chamber")),
 
-        *_planner_move_steps("Pass the Mountains", "Route", MOUNTAIN_PASSAGE),
+        *_planner_vanquish_steps("Pass the Mountains", "Route", MOUNTAIN_PASSAGE),
         _planner_action("Pass the Mountains", "Completed", lambda: _record("Pass the Mountains")),
 
-        *_planner_move_steps("Restore Mountains", "Route", MOUNTAIN_RESTORE),
+        *_planner_vanquish_steps("Restore Mountains", "Route", MOUNTAIN_RESTORE),
         _planner_action("Restore Mountains", "Settle 5 seconds", lambda: BT.Wait(5_000)),
         _planner_action("Restore Mountains", "Completed", lambda: _record("Restore Mountains")),
 
         _planner_action("Demon Assassin", "01 - Approach Reaper (-8250, -5171)",
-                        lambda: BT.Move(_v(-8250, -5171), log=False)),
+                        lambda: BT.Move(Vec2f(-8250, -5171), log=False)),
         _planner_action("Demon Assassin", "02 - Accept quest (104)",
                         lambda: _quest_npc(NPC_REAPER, 0x806801, QUEST_DEMON_ASSASSIN, "Accept Demon Assassin")),
         _planner_action("Demon Assassin", "03 - Fight (-3645, -5820)",
-                        lambda: _vanquish_point("Demon Assassin fight", -3645, -5820)),
+                        lambda: BT.VanquishNode(steps=[Vec2f(-3645, -5820)], name="Demon Assassin fight", pause_on_combat=True, log=False)),
         _planner_action("Demon Assassin", "04 - Verify quest complete (104)",
                         lambda: _wait_quest_completed(QUEST_DEMON_ASSASSIN, timeout_ms=120_000)),
         _planner_action("Demon Assassin", "05 - Completed", lambda: _record("Deamon Assassin")),
@@ -2216,7 +3319,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action("Restore Planes", "01 - Blacklist Dream Rider",
                         lambda: _blacklist("banished dream rider", True)),
         _planner_action("Restore Planes", "02 - Bypass Rider (13837, -14736)",
-                        lambda: BT.Move(_v(13837, -14736), pause_on_combat=True, log=False)),
+                        lambda: BT.Move(Vec2f(13837, -14736), pause_on_combat=True, log=False)),
         _planner_action("Restore Planes", "03 - Unblacklist Dream Rider",
                         lambda: _blacklist("banished dream rider", False)),
         *_spawn_planner_steps(1, (13790, -15568)),
@@ -2228,31 +3331,40 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         # in the original HeroAI version; disable following anchors followers
         # at their current positions instead. Each step is Planner-selectable.
         _planner_action("The Four Horsemen", "00 - Check Obsidian Guardian blacklist",
-                        _guardian_blacklist_checkpoint),
+                        lambda: _action("Verify live Guardian blacklist", lambda: _uw_scan_blacklists(force=True))),
         _planner_action("The Four Horsemen", "01 - Approach staging point (13473, -12091)",
-                        lambda: _vanquish_point("Horsemen staging", 13473, -12091)),
+                        lambda: BT.VanquishNode(steps=[Vec2f(13473, -12091)], name="Horsemen staging", pause_on_combat=True, log=False)),
         _planner_action("The Four Horsemen", "02 - Staging settle 10 seconds",
                         lambda: BT.Wait(10_000)),
         _planner_action("The Four Horsemen", "03 - Disable following and loot; anchor followers",
                         lambda: _action("4H staging options", _horsemen_start_staging)),
+        _planner_action("The Four Horsemen", "03A - Flag ALL heroes",
+                        lambda: BT.FlagAllHeroes(13473, -12091)),
         _planner_action("The Four Horsemen", "04 - Approach Chaos Reaper (11371, -17990)",
-                        lambda: BT.Move(_v(11371, -17990), pause_on_combat=False, log=False)),
+                        lambda: BT.Move(Vec2f(11371, -17990), pause_on_combat=False, log=False)),
         _planner_action("The Four Horsemen", "05 - Accept quest (106)",
                         lambda: _quest_npc(NPC_REAPER, 0x806A01,
                                            QUEST_FOUR_HORSEMEN, "Accept Four Horsemen")),
         _planner_action("The Four Horsemen", "06 - Spawn settle 32 seconds",
                         lambda: BT.Wait(32_000)),
         _planner_action("The Four Horsemen", "07 - Return to Chaos Reaper",
-                        lambda: BT.Move(_v(11371, -17990), pause_on_combat=False, log=False)),
-        _planner_action("The Four Horsemen", "08 - Reaper teleport to Lab (0x8D)",
+                        lambda: BT.Move(Vec2f(11371, -17990), pause_on_combat=False, log=False)),
+        _planner_action("The Four Horsemen", "08 - Clear staging flags",
+                        lambda: BT.Sequence(
+                            name="4H Resume Follow Before Lab Teleport",
+                            children=[
+                                _action("4H resume following before teleport", _horsemen_start_defense),
+                                BT.UnflagAllHeroes(log=False),
+                            ],
+                        )),                        
+        _planner_action("The Four Horsemen", "09 - Reaper teleport to Lab (0x8D)",
                         lambda: BT.MoveAndDialogByModelID(
                             NPC_REAPER, dialog_id=0x8D, multi_account=False, log=False)),
-        _planner_action("The Four Horsemen", "09 - Clear staging flags",
-                        lambda: BT.UnflagAllHeroes(log=False)),
+
         _planner_action("The Four Horsemen", "10 - Resume following, keep looting off",
                         lambda: _action("4H defense following", _horsemen_start_defense)),
         _planner_action("The Four Horsemen", "11 - Move to Labyrinth Reaper (-5782, 12819)",
-                        lambda: BT.Move(_v(-5782, 12819), pause_on_combat=False, log=False)),
+                        lambda: BT.Move(Vec2f(-5782, 12819), pause_on_combat=False, log=False)),
         _planner_action("The Four Horsemen", "12 - Teleport settle 1 second",
                         lambda: BT.Wait(1_000)),
         _planner_action("The Four Horsemen", "13 - Reaper teleport to Chaos (0x8B)",
@@ -2270,10 +3382,20 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                         lambda: BT.FlagAllHeroes(
                             x=HORSEMEN_HOLD_X, y=HORSEMEN_HOLD_Y)),
         _planner_action("The Four Horsemen", "17 - Move leader to defense position",
-                        lambda: BT.Move(_v(HORSEMEN_HOLD_X, HORSEMEN_HOLD_Y),
+                        lambda: BT.Move(Vec2f(HORSEMEN_HOLD_X, HORSEMEN_HOLD_Y),
                                         pause_on_combat=False, log=False)),
-        _planner_action("The Four Horsemen", "18 - Hold leader until quest 106 complete",
-                        lambda: _horsemen_hold_until_complete()),
+        _planner_action("The Four Horsemen", "18 - Hold defense until area clear",
+                        lambda: BT.WaitForClearEnemiesInArea(
+                            x=HORSEMEN_HOLD_X,
+                            y=HORSEMEN_HOLD_Y,
+                            radius=1500.0,
+                            allowed_alive_enemies=0,
+                            stable_clear_ms=8000,
+                            keep_player_near_center=True,
+                            center_tolerance=200.0,
+                            log=False)),
+        _planner_action("The Four Horsemen", "18A - Wait for quest 106 completed",
+                        lambda: _wait_quest_completed(QUEST_FOUR_HORSEMEN, timeout_ms=360_000)),
         _planner_action("The Four Horsemen", "19 - Clear despawned target",
                         _horsemen_clear_stale_target),
         _planner_action("The Four Horsemen", "20 - Clear flags",
@@ -2281,7 +3403,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action("The Four Horsemen", "21 - Recover 10 seconds",
                         lambda: BT.Wait(10_000)),
         _planner_action("The Four Horsemen", "22 - Return to Chaos Reaper",
-                        lambda: BT.Move(_v(11371, -17990), pause_on_combat=False, log=False)),
+                        lambda: BT.Move(Vec2f(11371, -17990), pause_on_combat=False, log=False)),
         _planner_action("The Four Horsemen", "23 - Claim local reward (0x806A07)",
                         lambda: BT.MoveAndDialogByModelID(
                             NPC_REAPER, dialog_id=0x806A07, multi_account=False, log=False)),
@@ -2292,12 +3414,11 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
 
         # Source: Underworld.py Restore_Pools. One named Planner entry per
         # old Move.XY. Unlike Four Horsemen, this section has no quest dialog.
-        _planner_action("Restore Pools", "01 - Restore normal combat filters",
-                        lambda: BT.Sequence(name="Restore Pools policy", children=[
-                            _action("Restore follower following and looting", _horsemen_restore_policy),
-                            _blacklist("banished dream rider", True),
-                        ])),
-        *_planner_move_steps("Restore Pools", "02 - Route", POOLS_RESTORE_ROUTE),
+        _planner_action("Restore Pools", "01A - Restore following and looting",
+                        lambda: _action("Restore follower following and looting", _horsemen_restore_policy)),
+        _planner_action("Restore Pools", "01B - Blacklist Banished Dream Rider",
+                        lambda: _blacklist("banished dream rider", True)),
+        *_planner_vanquish_steps("Restore Pools", "02 - Route", POOLS_RESTORE_ROUTE),
         _planner_action("Restore Pools", "03 - Record completion",
                         lambda: _record("Restore Pools")),
 
@@ -2305,16 +3426,16 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         # reward dialog 0x806B07, Reaper teleport dialog 0x8B.
         # Followers do NOT claim quests or rewards, per the latest user choice.
         _planner_action("Terrorweb Queen", "00 - Check Obsidian Guardian blacklist",
-                        _guardian_blacklist_checkpoint),
+                        lambda: _action("Verify live Guardian blacklist", lambda: _uw_scan_blacklists(force=True))),
         _planner_action("Terrorweb Queen", "01 - Move to Pools Reaper (-6957, -19478)",
-                        lambda: _vanquish_point("Pools Reaper approach", -6957, -19478)),
+                        lambda: BT.VanquishNode(steps=[Vec2f(-6957, -19478)], name="Pools Reaper approach", pause_on_combat=True, log=False)),
         _planner_action("Terrorweb Queen", "02 - Accept quest 107 (0x806B01)",
                         lambda: _quest_npc(NPC_REAPER, 0x806B01, QUEST_TERRORWEB_QUEEN,
                                            "Accept Terrorweb Queen")),
         _planner_action("Terrorweb Queen", "03 - Approach Queen (-12432, -15874)",
-                        lambda: _vanquish_point("Terrorweb Queen fight", -12432, -15874)),
+                        lambda: BT.VanquishNode(steps=[Vec2f(-12432, -15874)], name="Terrorweb Queen fight", pause_on_combat=True, log=False)),
         _planner_action("Terrorweb Queen", "04 - Return to Pools Reaper (-6957, -19478)",
-                        lambda: _vanquish_point("Return to Pools Reaper", -6957, -19478)),
+                        lambda: BT.VanquishNode(steps=[Vec2f(-6957, -19478)], name="Return to Pools Reaper", pause_on_combat=True, log=False)),
         _planner_action("Terrorweb Queen", "05 - Wait 10 seconds",
                         lambda: BT.Wait(10_000)),
         _planner_action("Terrorweb Queen", "06 - Claim leader reward (0x806B07)",
@@ -2330,16 +3451,16 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
 
         # Restore Pit: preserve original waypoints exactly, including the
         # four-point bridge passage. Named bridge node can be restarted alone.
-        *_planner_move_steps("Restore Pit", "01 - First approach", PIT_RESTORE_ROUTE_INITIAL),
+        *_planner_vanquish_steps("Restore Pit", "01 - First approach", PIT_RESTORE_ROUTE_INITIAL),
         _planner_action("Restore Pit", "02 - Remove Dream Rider blacklist",
                         lambda: _blacklist("banished dream rider", False)),
-        *_planner_move_steps("Restore Pit", "03 - Approach bridge", PIT_RESTORE_ROUTE_APPROACH),
+        *_planner_vanquish_steps("Restore Pit", "03 - Approach bridge", PIT_RESTORE_ROUTE_APPROACH),
         _planner_action("Restore Pit", "04 - Cross bridge (MoveDirect)",
                         lambda: BT.MoveDirect(
-                            [_v(x,y) for x,y in PIT_BRIDGE_PATH],
+                            [Vec2f(x,y) for x,y in PIT_BRIDGE_PATH],
                             pause_on_combat=True,
                             log=False)),
-        *_planner_move_steps("Restore Pit", "05 - Final route", PIT_RESTORE_ROUTE_FINAL),
+        *_planner_vanquish_steps("Restore Pit", "05 - Final route", PIT_RESTORE_ROUTE_FINAL),
         _planner_action("Restore Pit", "06 - Wait 3 seconds",
                         lambda: BT.Wait(3_000)),
         _planner_action("Restore Pit", "07 - Record completion",
@@ -2348,32 +3469,25 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         # Imprisoned Spirits: configured party-slot teams, timed left/right phases,
         # temporary Chained Soul blacklist exception, teleport back to Chamber.
         _planner_action("Imprisoned Spirits", "01 - Approach staging (13212, 4978)",
-                        lambda: BT.Move(_v(13212, 4978), log=False)),
+                        lambda: BT.Move(Vec2f(13212, 4978), log=False)),
         _planner_action("Imprisoned Spirits", "02 - Assign left/right party-slot flags",
                         lambda: _action("Set original Imprisoned teams", _imprisoned_stage_flags)),
         _planner_action("Imprisoned Spirits", "03 - Approach Bone Pits Reaper (8692, 6292)",
-                        lambda: BT.Move(_v(8692, 6292), log=False)),
-        _planner_action("Imprisoned Spirits", "04 - Reaper final approach (8666, 6308)",
-                        lambda: BT.Move(_v(8666, 6308), log=False)),
+                        lambda: BT.Move(Vec2f(8692, 6292), log=False)),
+        _planner_action("Imprisoned Spirits", "04 - Reaper final approach (8598, 5885)",
+                        lambda: BT.Move(Vec2f(8598, 5885), log=False)),
         _planner_action("Imprisoned Spirits", "05 - Accept quest 105 (0x806901)",
                         lambda: _quest_npc(NPC_REAPER, 0x806901, IMPRISONED_QUEST_ID, "Accept Imprisoned Spirits")),
         _planner_action("Imprisoned Spirits", "06 - Start timed event clock",
                         lambda: _action("Start Imprisoned clock", _imprisoned_start_timer)),
-        _planner_action("Imprisoned Spirits", "07 - Move toward left side (13652, 6117)",
-                        lambda: BT.Move(_v(13652, 6117), pause_on_combat=False, log=False)),
-        # Extend the original leader sweep into the LEFT defense area.
-        # This waypoint is drawn from the original left-team flag positions.
-        _planner_action("Imprisoned Spirits", "07A - Push deeper left (13985, 6840)",
-                        lambda: BT.Move(_v(13985, 6840), pause_on_combat=False, log=False)),
+        _planner_action("Imprisoned Spirits", "07 - Move toward left side (13845, 6834)",
+                        lambda: BT.Move(Vec2f(13845,6834), pause_on_combat=False, log=False)),
         _planner_action("Imprisoned Spirits", "08 - Wait for 28-second mark",
                         lambda: _imprisoned_wait_elapsed(28.0)),
         _planner_action("Imprisoned Spirits", "09 - Release left/right team flags",
                         lambda: _action("Release Imprisoned flags", _imprisoned_clear_flags)),
-        _planner_action("Imprisoned Spirits", "10 - Move toward right side (12593, 1814)",
-                        lambda: BT.Move(_v(12593, 1814), pause_on_combat=False, log=False)),
-        # Push the leader closer to the RIGHT defense positions before holding.
-        _planner_action("Imprisoned Spirits", "10A - Push deeper right (12150, 2139)",
-                        lambda: BT.Move(_v(12150, 2139), pause_on_combat=False, log=False)),
+        _planner_action("Imprisoned Spirits", "10 - Move toward right side (12663, 2470)",
+                        lambda: BT.Move(Vec2f(12663, 2470), pause_on_combat=False, log=False)),
         _planner_action("Imprisoned Spirits", "11 - Hold right side 40 seconds",
                         lambda: BT.Wait(40_000)),
         _planner_action("Imprisoned Spirits", "12 - Wait for 90-second mark",
@@ -2381,16 +3495,11 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action("Imprisoned Spirits", "13 - Allow Chained Soul targets",
                         lambda: _blacklist("chained soul", False)),
         _planner_action("Imprisoned Spirits", "14 - Move toward center (10437, 5005)",
-                        lambda: BT.Move(_v(10437, 5005), log=False)),
-        # Explicit full deflag after reaching center: clear native GW hero flags,
-        # HeroAI account flags/AllFlag, AND the event's persistent flag cache.
-        # Both children are necessary: the runtime policy would otherwise
-        # reapply cached follower flags on subsequent frames.
-        _planner_action("Imprisoned Spirits", "14A - Full party deflag after center",
-                        lambda: BT.Sequence(name="Imprisoned full deflag", children=[
-                            BT.UnflagAllHeroes(log=False),
-                            _action("Clear Imprisoned flag cache", _imprisoned_clear_flags),
-                        ])),
+                        lambda: BT.Move(Vec2f(10437, 5005), log=False)),
+        _planner_action("Imprisoned Spirits", "14A - Unflag native heroes and HeroAI accounts",
+                        lambda: BT.UnflagAllHeroes(log=False)),
+        _planner_action("Imprisoned Spirits", "14B - Clear event flag cache",
+                        lambda: _action("Clear Imprisoned flag cache", _imprisoned_clear_flags)),
         _planner_action("Imprisoned Spirits", "15 - Verify quest 105 completed",
                         lambda: _wait_quest_completed(IMPRISONED_QUEST_ID, timeout_ms=360_000)),
         _planner_action("Imprisoned Spirits", "16 - Re-blacklist Chained Souls",
@@ -2398,7 +3507,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action("Imprisoned Spirits", "17 - Restore party looting/following",
                         lambda: _action("Restore party options", _imprisoned_restore_policy)),
         _planner_action("Imprisoned Spirits", "18 - Return to Bone Pits Reaper (8692, 6292)",
-                        lambda: BT.Move(_v(8692, 6292), log=False)),
+                        lambda: BT.Move(Vec2f(8692, 6292), log=False)),
         _planner_action("Imprisoned Spirits", "19 - Teleport to Chamber (0x8D)",
                         lambda: BT.MoveAndDialogByModelID(
                             NPC_REAPER, dialog_id=0x8D, multi_account=False, log=False)),
@@ -2407,7 +3516,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
 
         # Restore Vale - Escort of Souls (quest 108).
         _planner_action('Restore Vale', '01 - Travel to Reaper (-5806,12831)',
-                        lambda: BT.Move(_v(-5806,12831), log=False)),
+                        lambda: BT.Move(Vec2f(-5806,12831), log=False)),
         _planner_action('Restore Vale', '02 - Reaper dialog 0x806C03',
                         lambda: BT.MoveAndDialogByModelID(NPC_REAPER, dialog_id=0x806C03, log=False)),
         _planner_action('Restore Vale', '03 - Accept Escort of Souls (108)',
@@ -2415,11 +3524,13 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         *_uw_route('Restore Vale', ((-8660,5655),(-9431,1659),(-11123,2531),
                                      (-11926,1146),(-10691,98),(-15424,1319),(-13246,5110)), '04 - Travel'),
         _planner_action('Restore Vale','05 - Settle 3s',lambda: BT.Wait(3000)),
+        _planner_action('Restore Vale','05A - Verify Escort of Souls (108) completed',
+                        lambda: _wait_quest_completed(UW_QUEST_ESCORT, timeout_ms=180_000)),
         _planner_action('Restore Vale','06 - Record',lambda: _record('Restore Vale')),
 
         # Wrathful Spirits - first pass is pacifist around Tortured Spirits.
-        _planner_action('Wrathful Spirits','01 - Approach Reaper (5755,12769)',
-                        lambda: BT.Move(_v(5755,12769),log=False)),
+        _planner_action('Wrathful Spirits','01 - Approach Reaper (-13248.00, 5256.00)',
+                        lambda: BT.Move(Vec2f(-13248.00, 5256.00),log=False)),
         _planner_action('Wrathful Spirits','02 - Reaper dialog 0x806E03',
                         lambda: BT.MoveAndDialogByModelID(NPC_REAPER,dialog_id=0x806E03,log=False)),
         _planner_action('Wrathful Spirits','03 - Accept quest 110',
@@ -2431,7 +3542,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action('Wrathful Spirits','05 - Disable followers during first approach',
                         lambda: _action('Disable following',lambda: _uw_set_follow_policy(False))),
         _planner_action('Wrathful Spirits','06 - Cross pacifist part (-13422,973)',
-                        lambda: BT.Move(_v(-13422,973),pause_on_combat=False,log=False)),
+                        lambda: BT.Move(Vec2f(-13422,973),pause_on_combat=False,log=False)),
         _planner_action('Wrathful Spirits','06A - Re-enable combat',
                         lambda: _action('Wrathful restore combat',lambda: _uw_wrathful_pacifist(False))),
         _planner_action('Wrathful Spirits','07 - Restore following',
@@ -2441,8 +3552,8 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         *_uw_route('Wrathful Spirits', ((-13791,1642),(-12889,963),(-11445,1154),
             (-10554,1695),(-9481,963),(-9949,177),(-11498,-173),(-12677,-205),
             (-13622,336),(-12974,4116),(-14184,7279),(-15055,3755),(-13409,4933)), '09 - Loop'),
-        _planner_action('Wrathful Spirits','10 - Reaper approach (5755,12769)',
-                        lambda: BT.Move(_v(5755,12769),log=False)),
+        _planner_action('Wrathful Spirits','10 - Reaper approach (-13248.00, 5256.00)',
+                        lambda: BT.Move(Vec2f(-13248.00, 5256.00),log=False)),
         _planner_action('Wrathful Spirits','11 - Verify quest 110 completed',
                         lambda: _wait_quest_completed(UW_QUEST_WRATHFUL,timeout_ms=120_000)),
         _planner_action('Wrathful Spirits','12 - Claim reward leader 0x806E07',
@@ -2460,7 +3571,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action('Unwanted Guests','01 - Blacklist Obsidian Behemoth',
                         lambda: _blacklist('obsidian behemoth',True)),
         _planner_action('Unwanted Guests','02 - Stage party near Keeper 1 (-2965,10260)',
-                        lambda: BT.Move(_v(-2965,10260), log=False)),
+                        lambda: BT.Move(Vec2f(-2965,10260), log=False)),
         _planner_action('Unwanted Guests','03 - Wait for party (5s)',lambda: BT.Wait(5000)),
         _planner_action('Unwanted Guests','04 - Enable combat for followers',
                         lambda: _action('Enable HeroAI combat',lambda: _uw_set_combat_policy(True))),
@@ -2469,7 +3580,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action('Unwanted Guests','04B - Disable follower following',
                         lambda: _action('Hold follower position',lambda: _uw_set_follow_policy(False))),
         _planner_action('Unwanted Guests','05 - Leader goes to Reaper (-5806,12831)',
-                        lambda: BT.Move(_v(-5806,12831),log=False)),
+                        lambda: BT.Move(Vec2f(-5806,12831),log=False)),
         _planner_action('Unwanted Guests','06 - Accept quest 103',
                         lambda: _quest_npc(NPC_REAPER,0x806701,UW_QUEST_UNWANTED,'Accept Unwanted Guests')),
         # The original issues THREE focus commands for Keeper 1, with 500ms
@@ -2499,33 +3610,34 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                         lambda: _action('Start Keeper 2 safe passage',
                                         lambda: _keeper2_set_leader_combat(False))),
         _planner_action('Unwanted Guests', '09B - Navigate Keeper 2 (-12953,750) NO combat pause',
-                        lambda: BT.Move(_v(-12953,750), pause_on_combat=False,
+                        lambda: BT.Move(Vec2f(-12953,750), pause_on_combat=False,
                                         avoid_obstacles=True, log=False)),
         _planner_action('Unwanted Guests', '09C - Navigate Keeper 2 (-8371,4865) NO combat pause',
-                        lambda: BT.Move(_v(-8371,4865), pause_on_combat=False,
+                        lambda: BT.Move(Vec2f(-8371,4865), pause_on_combat=False,
                                         avoid_obstacles=True, log=False)),
         _planner_action('Unwanted Guests', '09D - Keep leader passive while Keeper 2 alive',
                         lambda: _action('Verify Keeper 2 safety',
-                                        lambda: _keeper2_set_leader_combat(False))),
+                                        lambda: _keeper2_set_leader_combat(True))),
         _planner_action('Unwanted Guests', '09E - Focus Keeper 2 until defeat (Fendi style)',
                         _keeper2_focus_fendi_style),
-        _planner_action('Unwanted Guests', '09F - Restore LEADER combat after Keeper 2',
-                        lambda: _action('End Keeper 2 safety policy',
-                                        lambda: _keeper2_set_leader_combat(True))),
         _planner_action('Unwanted Guests','10 - Keeper 2 depart (-7589,6801)',
-                        lambda: BT.Move(_v(-7589,6801),log=False)),
+                        lambda: BT.Move(Vec2f(-7589,6801),log=False)),
         *_keeper_approach_steps(3, ((-4095,12964),)),
         _planner_action('Unwanted Guests','11 - Keeper 3 depart (-647,13356)',
-                        lambda: BT.Move(_v(-647,13356),log=False)),
+                        lambda: BT.Move(Vec2f(-647,13356),log=False)),
         *_keeper_approach_steps(4, ((1098,12215),)),
         _planner_action('Unwanted Guests','12 - Keeper 4 depart (3113,9503)',
-                        lambda: BT.Move(_v(3113,9503),log=False)),
+                        lambda: BT.Move(Vec2f(3113,9503),log=False)),
         *_keeper_approach_steps(5, ((1586,10362),)),
         _planner_action('Unwanted Guests','13 - Keeper 5 depart (367,7214)',
-                        lambda: BT.Move(_v(367,7214),log=False)),
+                        lambda: BT.Move(Vec2f(367,7214),log=False)),
         *_keeper_approach_steps(6, ((-3125,916),(-597,-537),(-344,2155))),
         _planner_action('Unwanted Guests','14 - Keeper 6 depart (1256,4623)',
-                        lambda: BT.Move(_v(1256,4623),log=False)),
+                        lambda: BT.Move(Vec2f(1256,4623),log=False)),
+        # The original records here without checking the quest. In BT, protect
+        # downstream Restore Wastes from silent partial completion.
+        _planner_action('Unwanted Guests','14A - Verify quest 103 completed',
+                        lambda: _wait_quest_completed(UW_QUEST_UNWANTED, timeout_ms=120_000)),
         _planner_action('Unwanted Guests','15 - Remove Behemoth blacklist',
                         lambda: _blacklist('obsidian behemoth',False)),
         _planner_action('Unwanted Guests','16 - Record',lambda: _record('Unwanted Guests')),
@@ -2538,24 +3650,25 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         # Servants of Grenth: spread 7 secondary members using their actual
         # roster positions, not BT.FlagHero's mixed hero/player numbering.
         _planner_action('Servants of Grenth','01 - Staging (2700,19952)',
-                        lambda: BT.Move(_v(2700,19952),log=False)),
+                        lambda: BT.Move(Vec2f(2700,19952),log=False)),
         _planner_action('Servants of Grenth','02 - Spread defense flags (all 7 slots)',
                         lambda: _action('Spread Servants flags',_uw_set_servants_flags)),
         _planner_action('Servants of Grenth','03 - Leader approaches Reaper (554,18384)',
-                        lambda: BT.Move(_v(554,18384),log=False)),
+                        lambda: BT.Move(Vec2f(554,18384),log=False)),
         _planner_action('Servants of Grenth','04 - Accept quest 102',
                         lambda: _quest_npc(NPC_REAPER,0x806601,UW_QUEST_SERVANTS,'Accept Servants of Grenth')),
         _planner_action('Servants of Grenth','05 - Return to defense (2700,19952)',
-                        lambda: BT.Move(_v(2700,19952),log=False)),
-        _planner_action('Servants of Grenth','06 - Clear defense flags',
-                        lambda: BT.Sequence(name='Clear Servants flags',children=[BT.UnflagAllHeroes(),
-                            _action('Clear Servants cache',_uw_clear_servants)])),
+                        lambda: BT.Move(Vec2f(2700,19952),log=False)),
+        _planner_action('Servants of Grenth','06A - Unflag heroes and followers',
+                        lambda: BT.UnflagAllHeroes()),
+        _planner_action('Servants of Grenth','06B - Clear defense runtime cache',
+                        lambda: _action('Clear Servants cache',_uw_clear_servants)),
         _planner_action('Servants of Grenth','07 - Wait quest 102 completed',
                         lambda: _wait_quest_completed(UW_QUEST_SERVANTS,timeout_ms=360_000)),
         _planner_action('Servants of Grenth','08 - Reward settle 30 seconds',
                         lambda: BT.Wait(30_000)),
         _planner_action('Servants of Grenth','09 - Reaper approach (554,18384)',
-                        lambda: BT.Move(_v(554,18384),log=False)),
+                        lambda: BT.Move(Vec2f(554,18384),log=False)),
         _planner_action('Servants of Grenth','10 - Claim reward leader 0x806607',
                         lambda: BT.MoveAndDialogByModelID(NPC_REAPER,dialog_id=0x806607,log=False)),
         _planner_action('Servants of Grenth','11 - Record',lambda: _record('Servants of Grenth')),
@@ -2566,38 +3679,47 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action('Dhuum','02 - Follow King Frozenwind to destination',
                         lambda: _uw_follow_king()),
         _planner_action('Dhuum','03 - Move to King destination (-11278,17297)',
-                        lambda: BT.Move(_v(-11278,17297),log=False)),
+                        lambda: BT.Move(Vec2f(-11278,17297),log=False)),
         _planner_action('Dhuum','04 - Wait King in interact range',
                         lambda: _wait_npc_near(UW_KING_ID,1100.,180.,'Wait King Frozenwind')),
         _planner_action('Dhuum','05 - King settle 10 seconds',lambda: BT.Wait(10_000)),
         _planner_action('Dhuum','06 - Accept Nightmare Cometh (1129)',
                         lambda: _quest_npc(UW_KING_ID,0x846901,UW_QUEST_NIGHTMARE,'Accept Nightmare Cometh')),
-        _planner_action('Dhuum','07 - Start fight hold / disable combat',
-                        lambda: _action('Hold Dhuum combat',_dhuum_start_fight)),
-        _planner_action('Dhuum','08 - Flag sacrifice and survivor accounts',
+        _planner_action('Dhuum','07 - Begin encounter (combat ON, no Spirit threshold)',
+                        lambda: _action('Begin Dhuum fight',_dhuum_start_fight)),
+        _planner_action('Dhuum','07B - Equip sacrifice armor profiles where configured',
+                        lambda: _action('Equip sacrifice armor', lambda: _dhuum_switch_armor_profile('sacrifice'))),
+        _planner_action('Dhuum','08 - Flag sacrifices only (survivors free)',
                         lambda: _action('Flag Dhuum groups',_dhuum_flag_groups)),
-        _planner_action('Dhuum','09 - Enable Dhuum Helper on all accounts',
+        _planner_action('Dhuum','09 - Enable Dhuum Helper on sacrifice followers',
                         _dhuum_enable_helper),
         _planner_action('Dhuum','10 - Move into Dhuum fight (-14007,17287)',
-                        lambda: BT.Move(_v(-14007,17287),pause_on_combat=False,log=False)),
-        _planner_action('Dhuum','11 - Wait for Spirit Form threshold, enable combat',
-                        lambda: _wait_until('Spirit Form readiness',_dhuum_enable_combat_if_ready,240.)),
+                        lambda: BT.Move(Vec2f(-14007,17287),pause_on_combat=False,log=False)),
         _planner_action('Dhuum','12 - Wait for Underworld chest',
                         lambda: _wait_until('Dhuum chest appears',lambda: _dhuum_chest_id()>0,1200.)),
-        _planner_action('Dhuum','13 - Restore combat, clear all flags',
-                        lambda: BT.Sequence(name='Dhuum cleanup',children=[BT.UnflagAllHeroes(),
-                            _action('Restore Dhuum options',_dhuum_finish)])),
-        _planner_action('Dhuum','14 - Loot chest party (pass 1)',_dhuum_chest_interaction),
+        # Disable the per-frame Dhuum flag policy BEFORE issuing the native unflag.
+        _planner_action('Dhuum','13 - Full deflag, enable follow/combat and auto-loot',
+                        lambda: _action('Restore Dhuum party policy', _dhuum_finish)),
+        _planner_action('Dhuum','13A - Disable Dhuum Helper after fight', _dhuum_disable_helper),
+        _planner_action('Dhuum','13A2 - Restore normal armor profiles where configured',
+                        lambda: _action('Restore normal armor', lambda: _dhuum_switch_armor_profile('normal'))),
+        _planner_action('Dhuum','13B - Move party to chest area',
+                        lambda: BT.Move(Vec2f(-14381,17283),pause_on_combat=False,log=False)),
+        _planner_action('Dhuum','14 - Open chest on all accounts (pass 1)',_dhuum_chest_interaction),
         _planner_action('Dhuum','15 - Wait 5s',lambda: BT.Wait(5000)),
-        _planner_action('Dhuum','16 - Loot chest party (pass 2)',_dhuum_chest_interaction),
-        _planner_action('Dhuum','17 - Wait 5s',lambda: BT.Wait(5000)),
+        _planner_action('Dhuum','16 - Open chest on all accounts (pass 2)',_dhuum_chest_interaction),
+        _planner_action('Dhuum','17 - Let HeroAI auto-loot (15s)',lambda: BT.Wait(15_000)),
         _planner_action('Dhuum','18 - Loot sweep A (-14324,17549)',
-                        lambda: BT.Move(_v(-14324,17549),log=False)),
+                        lambda: BT.Move(Vec2f(-14324,17549),log=False)),
         _planner_action('Dhuum','19 - Loot sweep B (-14243,17017)',
-                        lambda: BT.Move(_v(-14243,17017),log=False)),
+                        lambda: BT.Move(Vec2f(-14243,17017),log=False)),
         _planner_action('Dhuum','20 - Quest completion leader 0x846907',
                         lambda: BT.MoveAndDialogByModelID(UW_KING_ID,dialog_id=0x846907,log=False)),
-        _planner_action('Dhuum','21 - Record full UW completion',lambda: _record('Dhuum')),
+        _planner_action('Dhuum','21 - Verify quest 1129 completed',
+                        lambda: _wait_quest_completed(UW_QUEST_NIGHTMARE,timeout_ms=30_000)),
+        _planner_action('Dhuum','22 - Record full UW completion',lambda: _record('Dhuum')),
+        _planner_action('Dhuum','23 - Final loot settle (15s)',lambda: BT.Wait(15_000)),
+        _planner_action('Dhuum','24 - Resign party back to UW entry outpost',_dhuum_resign_to_next_run),
 
     ]
 
@@ -2605,7 +3727,9 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
 def _configure(tree: BottingTree) -> None:
     tree.Config.ConfigureUpkeep(
         looting_enabled=True,
-        auto_inventory_handler_enabled=_enable_inventory_handler,
+        # Inventory is checked in the preparation Planner only. Never enable
+        # the Core automatic handler: it may resign mid-Underworld on low space.
+        auto_inventory_handler_enabled=False,
         consumable_upkeeps=_enabled_upkeeps(),
         enable_party_wipe_recovery=False,
         heroai_state_logging=False,
@@ -2661,13 +3785,13 @@ def main() -> None:
         if _servants_policy_active: _uw_clear_servants()
         if _uw_pacifist_active: _uw_wrathful_pacifist(False)
         if _dhuum_ready: _dhuum_finish()
-    _sync_uw_guardian_blacklist()
-    _sync_uw_aatxe_blacklist()
+    _uw_scan_blacklists()
     _keeper2_tick_passage()
     _uw_servants_tick()
     _uw_wrathful_tick()
     _dhuum_tick()
     tree.tick()
+    _draw_uw_armor_prep_popup()
     _stats().watch_planner(tree)
     _tick_direct_pcon_upkeep()
     attach_botting_tree_support(tree)

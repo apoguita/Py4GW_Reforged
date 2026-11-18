@@ -193,7 +193,16 @@ class BottingTreeHeroAIMixin:
         self.headless_heroai_enabled = enabled
         self._last_heroai_state = None
         self.ApplyAccountIsolation()
-        self._sync_multibox_heroai_widget(bool(enabled and self.started and not self.paused))
+        # ApoBottingLib pauses local headless HeroAI while interacting with
+        # NPCs. This is NOT a request to turn off the HeroAI widget on every
+        # follower. Only explicit, non-guarded state changes may sync widgets.
+        bb = self.blackboard
+        local_action_pause = bool(bb.get('__apobottinglib_heroai_local_pause', False))
+        if not local_action_pause:
+            self._sync_multibox_heroai_widget(bool(enabled and self.started and not self.paused))
+        elif bb.pop('__apobottinglib_heroai_local_resume_pending', False):
+            # Clear only after the queued restore request has been consumed.
+            bb.pop('__apobottinglib_heroai_local_pause', None)
         if reset_runtime:
             self.headless_heroai.reset()
             bb = self.blackboard

@@ -46,6 +46,11 @@ def _save_headless_heroai_state() -> BehaviorTree:
         if not started['value']:
             ActionQueueManager().ResetAllQueues()
             node.blackboard[_HEROAI_GUARD_KEY] = bool(node.blackboard.get('headless_heroai_enabled', True))
+            # A temporary action pause is local to the leader. The actual
+            # HeroAI widget on followers must stay enabled throughout dialogs.
+            # Keep this guard until BottingTree processes the restore request.
+            node.blackboard['__apobottinglib_heroai_local_pause'] = True
+            node.blackboard.pop('__apobottinglib_heroai_local_resume_pending', None)
             node.blackboard['headless_heroai_enabled_request'] = False
             node.blackboard['headless_heroai_reset_runtime_request'] = True
             started['value'] = True
@@ -72,6 +77,9 @@ def _save_headless_heroai_state() -> BehaviorTree:
 def _restore_headless_heroai_state() -> BehaviorTree:
     def _restore(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         restore_enabled = bool(node.blackboard.pop(_HEROAI_GUARD_KEY, node.blackboard.get('headless_heroai_enabled', True)))
+        # Do not clear local_pause here: the request is asynchronous and the
+        # BottingTree must skip follower widget sync for the restore too.
+        node.blackboard['__apobottinglib_heroai_local_resume_pending'] = True
         node.blackboard['headless_heroai_enabled_request'] = restore_enabled
         node.blackboard['headless_heroai_reset_runtime_request'] = True
         return BehaviorTree.NodeState.SUCCESS

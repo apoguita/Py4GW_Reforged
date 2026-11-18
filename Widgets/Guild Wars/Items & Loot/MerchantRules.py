@@ -24662,7 +24662,21 @@ class MerchantRulesWidget:
     def _open_merchant(self, coords: tuple[float, float]):
         x, y = coords
         self._debug_log(f"Opening merchant at {self._format_debug_coords(coords)}.")
-        yield from Routines.Yield.Movement.FollowPath([(x, y)])
+        # The selected NPC coordinates identify the merchant, not necessarily a
+        # reachable standing point. Stopping at 150 units can make pathfinding
+        # orbit the NPC/collision geometry. Let InteractWithAgentXY finish the
+        # last few steps after a less aggressive approach.
+        approach_tolerance = 300.0
+        px, py = Player.GetXY()
+        if math.hypot(float(px) - float(x), float(py) - float(y)) > approach_tolerance:
+            reached = yield from Routines.Yield.Movement.FollowPath(
+                [(x, y)], tolerance=approach_tolerance,
+            )
+            if not reached:
+                self._debug_log(
+                    f"Merchant approach failed at {self._format_debug_coords(coords)}."
+                )
+                return []
         yield from Routines.Yield.wait(100)
         ok = yield from Routines.Yield.Agents.InteractWithAgentXY(x, y)
         if not ok:
