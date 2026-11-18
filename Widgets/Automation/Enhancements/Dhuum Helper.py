@@ -312,28 +312,112 @@ def _tick(_node):
 tree = BehaviorTree(BehaviorTree.ActionNode(name='Dhuum Spirit Form: Mayor dialog', action_fn=_tick, aftercast_ms=0))
 
 
+# Dashboard palette: violet UW accent, green success, amber activity, red errors.
+_UI_PURPLE = (0.67, 0.48, 0.97, 1.0)
+_UI_GREEN = (0.38, 0.86, 0.63, 1.0)
+_UI_AMBER = (1.0, 0.76, 0.37, 1.0)
+_UI_RED = (1.0, 0.41, 0.44, 1.0)
+_UI_MUTED = (0.61, 0.65, 0.73, 1.0)
+_UI_WHITE = (0.92, 0.94, 0.98, 1.0)
+_UI_STEPS = ('Waiting', 'Find mayor', 'Move', 'Interact', 'Dialog', 'Completed')
+
+
+def _ui_text(value, color=None):
+    if color is not None:
+        PyImGui.push_style_color(PyImGui.ImGuiCol.Text, color)
+    PyImGui.text(str(value))
+    if color is not None:
+        PyImGui.pop_style_color(1)
+
+
+def _ui_kv(label, value, color=None):
+    _ui_text(label, _UI_MUTED)
+    PyImGui.same_line()
+    _ui_text(value, color or _UI_WHITE)
+
+
+def _ui_section(title):
+    PyImGui.spacing()
+    _ui_text(title, _UI_PURPLE)
+    PyImGui.separator()
+
+
 def _draw_status():
-    # Always render the diagnostic panel, even with no map or buff.
-    if PyImGui.begin('Dhuum Helper BT - Diagnostic'):
-        PyImGui.text('Account: ' + str(Player.GetName() or '?'))
-        PyImGui.text('Map: ' + str(state['map_id']) + ' | Spirit Form (3134): ' + ('YES' if state['spirit'] else 'NO'))
-        PyImGui.text('BT stage: ' + str(state['stage']))
-        PyImGui.text('Mayor agent: ' + str(state['npc']))
-        PyImGui.text('Mayor distance: ' + (f"{state['distance']:.0f}" if state['distance'] != float('inf') else 'not loaded'))
-        PyImGui.text_wrapped('Last action: ' + str(state['note']))
+    # The GUI remains visible even when idle or outside Underworld.
+    opened = PyImGui.begin('Dhuum Helper BT  |  Spirit Operations')
+    if opened:
+        _ui_text('D H U U M   /   S P I R I T   O P S', _UI_PURPLE)
+        _ui_text('BT DIAGNOSTICS  -  Mayor Alegheri', _UI_MUTED)
+        PyImGui.separator()
+
+        in_uw = state['map_id'] == UW_MAP
+        spirit = bool(state['spirit'])
+        stage = str(state['stage'])
+        bad = stage == 'Error' or bool(state['last_error']) and stage == 'Error'
+        if bad:
+            status_text, status_color = 'ERROR  |  ACTION REQUIRED', _UI_RED
+        elif stage == 'Completed':
+            status_text, status_color = 'COMMAND SENT  |  VERIFY IN GAME', _UI_GREEN
+        elif spirit and in_uw:
+            status_text, status_color = 'SPIRIT FORM ACTIVE  |  RUNNING', _UI_AMBER
+        elif in_uw:
+            status_text, status_color = 'STANDBY  |  WAITING FOR SACRIFICE', _UI_MUTED
+        else:
+            status_text, status_color = 'OFF DUTY  |  OUTSIDE UNDERWORLD', _UI_MUTED
+        _ui_text(status_text, status_color)
+
+        _ui_section('01  /  CHARACTER')
+        _ui_kv('Character:', Player.GetName() or 'Unknown')
+        _ui_kv('Underworld:', 'CONNECTED' if in_uw else 'NOT IN UW', _UI_GREEN if in_uw else _UI_MUTED)
+        _ui_kv('Spirit Form [3134]:', 'DETECTED' if spirit else 'ABSENT', _UI_GREEN if spirit else _UI_MUTED)
+        _ui_kv('HeroAI takeover:', 'SUSPENDED' if state['heroai_backup'] else 'NORMAL', _UI_AMBER if state['heroai_backup'] else _UI_MUTED)
+
+        _ui_section('02  /  BEHAVIOR TREE')
+        _ui_kv('Current node:', stage, _UI_RED if bad else _UI_AMBER if stage not in ('Waiting', 'Completed') else _UI_GREEN if stage == 'Completed' else _UI_MUTED)
+        if stage in _UI_STEPS:
+            index = _UI_STEPS.index(stage)
+            fraction = index / (len(_UI_STEPS) - 1)
+        else:
+            fraction = 0.0
+        PyImGui.progress_bar(fraction, -1, 0, f'{int(fraction * 100)}%  |  {stage}')
+        _ui_text('WAIT  >  LOCATE  >  MOVE  >  INTERACT  >  DIALOG  >  DONE', _UI_MUTED)
+        elapsed = max(0.0, time.monotonic() - float(state['since']))
+        _ui_kv('Time at stage:', f'{elapsed:.1f} s')
+
+        _ui_section('03  /  TARGET TRACKING')
+        npc = int(state['npc'] or 0)
+        _ui_kv('Mayor Alegheri:', 'FOUND' if npc else 'NOT LOADED', _UI_GREEN if npc else _UI_AMBER)
+        _ui_kv('Agent ID:', str(npc) if npc else '--')
+        distance = float(state['distance'])
+        _ui_kv('Distance:', f'{distance:.0f} units' if 0 <= distance < float('inf') else '--')
+        _ui_kv('Interaction range:', f'{INTERACT_RANGE:.0f} units')
+
+        _ui_section('04  /  LIVE ACTIVITY')
+        _ui_text('Last event:', _UI_MUTED)
+        PyImGui.text_wrapped(str(state['note'] or 'No activity'))
         if state['last_error']:
-            PyImGui.text_wrapped('Last error: ' + str(state['last_error']))
-        if PyImGui.button('Retry / reset'):
-            _reset('Manual reset')
-        PyImGui.same_line()
-        if PyImGui.button('Force test (Spirit Form only!)'):
-            # Test navigation in Spirit Form even when the Effects cache misses 3134.
-            if state['spirit']:
-                state['override'] = True
-                state['completed'] = False
-                _set_stage('Find mayor', 'Manual test requested')
-            else:
-                _log('Force test refused: no Spirit Form', True)
+            _ui_text('Last error:', _UI_RED)
+            PyImGui.text_wrapped(str(state['last_error']))
+
+        _ui_section('05  /  CONTROLS')
+        PyImGui.push_style_color(PyImGui.ImGuiCol.Button, (0.27, 0.19, 0.43, 1.0))
+        PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0.38, 0.27, 0.60, 1.0))
+        PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0.49, 0.36, 0.72, 1.0))
+        try:
+            if PyImGui.button('RESET / RETRY'):
+                _reset('Manual reset')
+            PyImGui.same_line()
+            if PyImGui.button('TEST SPIRIT FORM'):
+                if state['spirit']:
+                    state['override'] = True
+                    state['completed'] = False
+                    _set_stage('Find mayor', 'Manual test requested')
+                else:
+                    _log('Force test refused: no Spirit Form', True)
+        finally:
+            PyImGui.pop_style_color(3)
+        PyImGui.spacing()
+        _ui_text('Local account only  |  Does not restart Underworld BT', _UI_MUTED)
     PyImGui.end()
 
 
