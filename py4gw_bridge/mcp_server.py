@@ -207,6 +207,180 @@ def _tool_list() -> list[dict[str, Any]]:
                 "additionalProperties": False,
             },
         },
+        {
+            "name": "list_widgets",
+            "description": (
+                "List every widget the target client's widget manager knows: its plain name (the "
+                "script file stem), whether it is enabled, and the state of the botting tree it "
+                "owns, if any."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": target_schema["properties"],
+                "minProperties": 1,
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "get_widget_status",
+            "description": "Report one widget's enabled state and the state of its botting tree.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    **target_schema["properties"],
+                    "name": {
+                        "type": "string",
+                        "description": "Plain name of the widget: the script file stem, e.g. PyQuishAI_BT.",
+                    },
+                },
+                "required": ["name"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "enable_widget",
+            "description": (
+                "Enable a widget in the target client's manager. This loads its module and registers "
+                "its callbacks, exactly like ticking it in the widget manager. Refused while a map is "
+                "loading."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    **target_schema["properties"],
+                    "name": {
+                        "type": "string",
+                        "description": "Plain name of the widget: the script file stem, e.g. PyQuishAI_BT.",
+                    },
+                },
+                "required": ["name"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "disable_widget",
+            "description": (
+                "Disable a widget: its callbacks are paused and its on_disable hook runs, which is how "
+                "a bot deliberately stands itself down."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    **target_schema["properties"],
+                    "name": {
+                        "type": "string",
+                        "description": "Plain name of the widget: the script file stem, e.g. PyQuishAI_BT.",
+                    },
+                },
+                "required": ["name"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "start_widget",
+            "description": (
+                "Start the botting tree a widget owns, with the same effect as pressing its own Start "
+                "button. The widget must be enabled, and a map load refuses the call. Widgets without a "
+                "botting tree answer widget_has_no_botting_tree."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    **target_schema["properties"],
+                    "name": {
+                        "type": "string",
+                        "description": "Plain name of the widget: the script file stem, e.g. PyQuishAI_BT.",
+                    },
+                },
+                "required": ["name"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "stop_widget",
+            "description": (
+                "Stop the botting tree a widget owns and restore what starting it took over: widget "
+                "states, account isolation and the HeroAI hand-off."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    **target_schema["properties"],
+                    "name": {
+                        "type": "string",
+                        "description": "Plain name of the widget: the script file stem, e.g. PyQuishAI_BT.",
+                    },
+                },
+                "required": ["name"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "reload_widgets",
+            "description": (
+                "Re-run the widget manager's discovery: every enabled widget is disabled, its file "
+                "reimported, and it is enabled again if it was enabled before. This is how a change "
+                "under Widgets/ or Py4GWCoreLib/ reaches a running client without a game restart. "
+                "Botting trees that were running are stopped, the bridge itself reconnects, and a "
+                "map load refuses the call."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": target_schema["properties"],
+                "minProperties": 1,
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "get_widget_config",
+            "description": (
+                "Read the configuration a widget declares for the bridge: the settings it exposes, "
+                "plus locked/writable so a caller can tell whether a write would be accepted right now. "
+                "Widgets that expose no configuration answer widget_config_unavailable."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    **target_schema["properties"],
+                    "name": {
+                        "type": "string",
+                        "description": "Plain name of the widget: the script file stem, e.g. PyQuishAI_BT.",
+                    },
+                },
+                "required": ["name"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "set_widget_config",
+            "description": (
+                "Change a widget's configuration by writing through the widget's own setter, which keeps "
+                "derived state in sync and persists what its window persists. Call get_widget_config "
+                "first: writable_keys lists what this widget accepts, and the widget itself refuses "
+                "changes in states its own window forbids (guard_widget_running, "
+                "guard_queue_not_empty). Values are merged, not replaced."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    **target_schema["properties"],
+                    "name": {
+                        "type": "string",
+                        "description": "Plain name of the widget: the script file stem, e.g. PyQuishAI_BT.",
+                    },
+                    "values": {
+                        "type": "object",
+                        "description": (
+                            "Settings to change, keyed by the names get_widget_config reports in "
+                            "writable_keys. Unknown keys are refused instead of ignored."
+                        ),
+                        "minProperties": 1,
+                    },
+                },
+                "required": ["name", "values"],
+                "additionalProperties": False,
+            },
+        },
     ]
 
 
@@ -282,6 +456,48 @@ class Py4GWMcpServer:
                 params,
                 timeout=self.timeout,
             )
+        if name in (
+            "list_widgets",
+            "get_widget_status",
+            "enable_widget",
+            "disable_widget",
+            "start_widget",
+            "stop_widget",
+            "reload_widgets",
+            "get_widget_config",
+            "set_widget_config",
+        ):
+            command_map = {
+                "list_widgets": "widgets.list",
+                "get_widget_status": "widgets.status",
+                "enable_widget": "widgets.enable",
+                "disable_widget": "widgets.disable",
+                "start_widget": "widgets.start",
+                "stop_widget": "widgets.stop",
+                "reload_widgets": "widgets.reload",
+                "get_widget_config": "widgets.config.get",
+                "set_widget_config": "widgets.config.set",
+            }
+            params = self._target_params(arguments)
+            payload_params: dict[str, Any] = {}
+            if command_map[name] not in ("widgets.list", "widgets.reload"):
+                widget_name = str(arguments.get("name") or "").strip()
+                if not widget_name:
+                    raise ValueError("name is required")
+                payload_params["name"] = widget_name
+            if name == "set_widget_config":
+                values = arguments.get("values")
+                if not isinstance(values, dict) or not values:
+                    raise ValueError("values must be a non-empty object")
+                payload_params["values"] = values
+            params["payload"] = {"command": command_map[name], "params": payload_params}
+            return _daemon_request(
+                self.daemon_host,
+                self.daemon_port,
+                "client.request",
+                params,
+                timeout=max(self.timeout, 15.0),
+            )
         raise ValueError(f"Unknown tool: {name}")
 
     def _negotiate_protocol_version(self, requested_version: Any) -> str:
@@ -310,6 +526,26 @@ class Py4GWMcpServer:
     def _handle_tools_list(self, msg_id: Any) -> dict[str, Any]:
         return _make_jsonrpc_result(msg_id, {"tools": _tool_list()})
 
+    @staticmethod
+    def _result_is_error(result: Any) -> bool:
+        """Whether a daemon response carries a failure, at either layer.
+
+        The daemon answers ``ok: true`` as soon as it relayed the request, and
+        the client's own verdict arrives nested in ``bridge_response``. Reading
+        only the envelope turns a refused command (``unsupported command``, a
+        guard, a script that failed to load) into a success for the caller.
+        """
+        if not isinstance(result, dict):
+            return True
+        if not bool(result.get("ok", False)):
+            return True
+        nested = result.get("result")
+        if isinstance(nested, dict):
+            bridge_response = nested.get("bridge_response")
+            if isinstance(bridge_response, dict) and not bool(bridge_response.get("ok", True)):
+                return True
+        return False
+
     def _handle_tools_call(self, msg_id: Any, params: dict[str, Any]) -> dict[str, Any]:
         name = str(params.get("name") or "")
         arguments = params.get("arguments", {})
@@ -333,7 +569,7 @@ class Py4GWMcpServer:
                     }
                 ],
                 "structuredContent": result,
-                "isError": not bool(result.get("ok", False)),
+                "isError": self._result_is_error(result),
             },
         )
 
