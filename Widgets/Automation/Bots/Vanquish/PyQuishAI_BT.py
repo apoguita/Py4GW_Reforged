@@ -8,6 +8,7 @@ import time
 from collections.abc import Callable
 from collections.abc import Mapping
 from collections.abc import Sequence
+from typing import Any
 from typing import NamedTuple
 from typing import TypeAlias
 
@@ -826,6 +827,291 @@ def _sync_take_zquest() -> None:
     """
     global take_zquest
     take_zquest = automatic_zquest and not vanquish_queue
+
+
+def _set_automatic_zquest(value: bool) -> None:
+    """Flip Automatic ZQuest handling the way the Config tab does.
+
+    Turning it on clears `loop_runs`, since a repeated pass would have nothing
+    left to accept. `take_zquest` is derived from the switch, `_auto_definition`
+    is stale afterwards and the plan has to be rebuilt. Every path that flips
+    this switch comes through here, so the checkbox and the bridge cannot drift.
+    """
+    global automatic_zquest, loop_runs, _auto_definition
+    automatic_zquest = bool(value)
+    if automatic_zquest:
+        loop_runs = False
+    _sync_take_zquest()
+    _auto_definition = None
+    _save_settings()
+    _request_rebuild()
+
+
+def _queue_changed() -> None:
+    """Bring the derived switch and the plan back in step after the queue moves.
+
+    `take_zquest` is derived from the queue as well as from the automatic switch,
+    and the plan shape changes with the queue, so every mutation ends here
+    instead of repeating the three calls and forgetting one.
+    """
+    _sync_take_zquest()
+    _save_settings()
+    _request_rebuild()
+
+
+def _clear_vanquish_queue() -> int:
+    """Empty the vanquish queue and persist it. Returns how many entries went."""
+    removed = len(vanquish_queue)
+    if removed:
+        vanquish_queue.clear()
+        _queue_changed()
+    return removed
+
+
+def _add_map_to_queue(region: str, map_name: str) -> int:
+    """Queue one map of a region. Returns 1 when the queue changed, 0 when it was there.
+
+    A pure mutation like `_append_region_to_queue`: the caller decides whether to
+    save and rebuild, which is what lets a bridge call validate first and tell a
+    no-op from a real change.
+    """
+    entry = (region, map_name)
+    if entry in vanquish_queue:
+        return 0
+    vanquish_queue.append(entry)
+    return 1
+
+
+def _remove_map_from_queue(region: str, map_name: str) -> int:
+    """Drop one queued map. Returns 1 when the queue changed, 0 when it was not there.
+
+    Deliberately not validated against the catalogue: the queue is the authority on
+    what it holds, and a map that the catalogue has since renamed is still an entry
+    somebody may want out.
+    """
+    entry = (region, map_name)
+    if entry not in vanquish_queue:
+        return 0
+    vanquish_queue.remove(entry)
+    return 1
+
+
+# ---- Bridge config surface ---------------------------------------------------
+# The Py4GW bridge resolves `bridge_config_get` and `bridge_config_set` by name,
+# the same way `widgets.start` resolves `ensure_botting_tree`. They exist so the
+# bridge never pokes module globals: a write goes through the helpers above,
+# which keep the derived flags in sync and persist what the Config tab persists.
+_BRIDGE_CONFIG_WRITABLE: tuple[str, ...] = (
+    'automatic_zquest',
+    'queue_add_map',
+    'queue_add_region',
+    'queue_add',
+    'queue_remove_map',
+    'clear_queue',
+)
+
+
+def _invalid(message: str) -> dict[str, Any]:
+    return {'error': {'code': 'invalid_value', 'message': message}}
+
+
+def _split_map_entry(entry: Any) -> tuple[str, str]:
+    """Read a {region, map} record, tolerating a missing map name."""
+    if not isinstance(entry, dict):
+        return '', ''
+    return (
+        str(entry.get('region') or '').strip(),
+        str(entry.get('map') or '').strip(),
+    )
+
+
+def _region_error(region: str) -> dict[str, Any] | None:
+    if region not in MAP_CATALOG:
+        return _unknown_region(region)
+    return None
+
+
+def _map_error(region: str, map_name: str) -> dict[str, Any] | None:
+    maps = MAP_CATALOG.get(region, ())
+    if map_name in maps:
+        return None
+    return {
+        'error': {
+            'code': 'unknown_map',
+            'message': f"{map_name!r} is not in {region}; maps: {', '.join(maps)}",
+        }
+    }
+
+
+def _queue_refusal() -> dict[str, Any] | None:
+    """The two queue edits and the automatic switch are mutually exclusive.
+
+    The Config tab disables the queue buttons while automatic handling is on, so
+    a caller that queues has to switch it off first — in the same call is fine,
+    the keys are applied in the order they are listed above.
+    """
+    if automatic_zquest:
+        return {
+            'error': {
+                'code': 'guard_automatic_zquest',
+                'message': 'turn automatic ZQuest handling off before queueing maps',
+            }
+        }
+    return None
+
+
+def _unknown_region(region: str) -> dict[str, Any]:
+    return {
+        'error': {
+            'code': 'unknown_region',
+            'message': f"{region!r} is not a region; regions: {', '.join(REGIONS)}",
+        }
+    }
+
+
+def bridge_config_get() -> dict[str, Any]:
+    """Report the configuration a bridge caller may read or change.
+
+    `locked` is the condition the Config tab uses to disable its whole panel: a
+    tree that is already running has built its plan, so nothing is writable.
+    """
+    tree = botting_tree
+    locked = bool(tree is not None and tree.IsStarted())
+    return {
+        'automatic_zquest': bool(automatic_zquest),
+        'take_zquest': bool(take_zquest),
+        'loop_runs': bool(loop_runs),
+        'queue': [{'region': region, 'map': map_name} for region, map_name in vanquish_queue],
+        'regions': list(REGIONS),
+        'locked': locked,
+        'writable': not locked,
+        'writable_keys': list(_BRIDGE_CONFIG_WRITABLE),
+    }
+
+
+def bridge_config_set(values: dict[str, Any] | None) -> dict[str, Any]:
+    """Apply a configuration change, or answer with why it was refused.
+
+    The refusals mirror the Config tab: its panel is disabled while the tree
+    runs, and the automatic switch is disabled while the queue has entries,
+    because a queued run picks its own maps and `take_zquest` would be forced off
+    anyway.
+    """
+    changes = dict(values or {})
+    tree = botting_tree
+    if tree is not None and tree.IsStarted():
+        return {
+            'error': {
+                'code': 'guard_widget_running',
+                'message': 'stop the bot before changing its configuration',
+            }
+        }
+    unknown = sorted(key for key in changes if key not in _BRIDGE_CONFIG_WRITABLE)
+    if unknown:
+        return {
+            'error': {
+                'code': 'unknown_setting',
+                'message': f"unknown keys: {', '.join(unknown)}",
+            }
+        }
+
+    applied: list[str] = []
+    added: dict[str, int] = {}
+    removed: dict[str, int] = {}
+    if 'automatic_zquest' in changes:
+        if vanquish_queue:
+            return {
+                'error': {
+                    'code': 'guard_queue_not_empty',
+                    'message': 'clear the vanquish queue before switching automatic ZQuest handling',
+                }
+            }
+        _set_automatic_zquest(bool(changes['automatic_zquest']))
+        applied.append('automatic_zquest')
+    if 'queue_add_map' in changes:
+        refusal = _queue_refusal()
+        if refusal is not None:
+            return refusal
+        region, map_name = _split_map_entry(changes['queue_add_map'])
+        if not region or not map_name:
+            return _invalid('queue_add_map accepts {"region": ..., "map": ...}')
+        error = _region_error(region) or _map_error(region, map_name)
+        if error is not None:
+            return error
+        added['queue_add_map'] = _add_map_to_queue(region, map_name)
+        if added['queue_add_map']:
+            _queue_changed()
+        applied.append('queue_add_map')
+    if 'queue_add_region' in changes:
+        refusal = _queue_refusal()
+        if refusal is not None:
+            return refusal
+        region = str(changes['queue_add_region'] or '').strip()
+        error = _region_error(region)
+        if error is not None:
+            return error
+        added['queue_add_region'] = _append_region_to_queue(region)
+        if added['queue_add_region']:
+            _queue_changed()
+        applied.append('queue_add_region')
+    if 'queue_add' in changes:
+        refusal = _queue_refusal()
+        if refusal is not None:
+            return refusal
+        batch = changes['queue_add']
+        if not isinstance(batch, list) or not batch:
+            return _invalid(
+                'queue_add accepts a non-empty list of {"region", "map"} or {"region"}'
+            )
+        # Validate the whole batch first: a queue half-applied because entry 7 was
+        # a typo is worse than one that refused the lot and said which entry failed.
+        planned: list[tuple[str, str]] = []
+        for index, raw in enumerate(batch):
+            region, map_name = _split_map_entry(raw)
+            if not region:
+                return _invalid(f"queue_add[{index}] needs a region")
+            error = _region_error(region) or (
+                _map_error(region, map_name) if map_name else None
+            )
+            if error is not None:
+                # In a batch the same region can appear twice, so say which entry
+                # the catalogue rejected instead of leaving the caller to guess.
+                error['error']['message'] = f"queue_add[{index}]: {error['error']['message']}"
+                return error
+            if map_name:
+                planned.append((region, map_name))
+            else:
+                planned.extend((region, each) for each in MAP_CATALOG[region])
+        count = 0
+        for plan_region, plan_map in planned:
+            count += _add_map_to_queue(plan_region, plan_map)
+        if count:
+            _queue_changed()
+        added['queue_add'] = count
+        applied.append('queue_add')
+    if 'queue_remove_map' in changes:
+        refusal = _queue_refusal()
+        if refusal is not None:
+            return refusal
+        region, map_name = _split_map_entry(changes['queue_remove_map'])
+        if not region or not map_name:
+            return _invalid('queue_remove_map accepts {"region": ..., "map": ...}')
+        removed['queue_remove_map'] = _remove_map_from_queue(region, map_name)
+        if removed['queue_remove_map']:
+            _queue_changed()
+        applied.append('queue_remove_map')
+    if 'clear_queue' in changes:
+        if not bool(changes['clear_queue']):
+            return _invalid('clear_queue only accepts true')
+        removed['clear_queue'] = _clear_vanquish_queue()
+        applied.append('clear_queue')
+    result: dict[str, Any] = {'applied': applied}
+    if added:
+        result['added'] = added
+    if removed:
+        result['removed'] = removed
+    result['config'] = bridge_config_get()
+    return result
 
 
 def _load_settings() -> None:
@@ -3977,9 +4263,7 @@ def _draw_config() -> None:
     global region_index
     global map_index
     global loop_runs
-    global take_zquest
     global automatic_zquest
-    global _auto_definition
     global forward_clear_radius
     global reverse_clear_radius_1
     global reverse_clear_radius_2
@@ -3998,16 +4282,7 @@ def _draw_config() -> None:
     PyImGui.begin_disabled(queued)
     new_automatic = PyImGui.checkbox('Automatic ZQuest handling', automatic_zquest)
     if new_automatic != automatic_zquest:
-        automatic_zquest = new_automatic
-        if automatic_zquest:
-            # The map comes from the quest the signpost hands over and a repeated
-            # pass would have nothing left to accept.
-            loop_runs = False
-        # Taking the quest is derived from this switch, not toggled on its own.
-        _sync_take_zquest()
-        _auto_definition = None
-        _save_settings()
-        _request_rebuild()
+        _set_automatic_zquest(new_automatic)
     PyImGui.end_disabled()
 
     PyImGui.begin_disabled(automatic_zquest)
@@ -4032,21 +4307,15 @@ def _draw_config() -> None:
 
     PyImGui.begin_disabled(automatic_zquest)
     if PyImGui.button('Add Map to queue'):
-        entry = (_selected_region(), _selected_map())
-        if entry not in vanquish_queue:
-            vanquish_queue.append(entry)
-            _save_settings()
-            _request_rebuild()
+        if _add_map_to_queue(_selected_region(), _selected_map()):
+            _queue_changed()
     PyImGui.same_line(0, 16)
     if PyImGui.button('Add Region to queue'):
         if _append_region_to_queue(_selected_region()):
-            _save_settings()
-            _request_rebuild()
+            _queue_changed()
     PyImGui.same_line(0, 16)
-    if PyImGui.button('Clear queue') and vanquish_queue:
-        vanquish_queue.clear()
-        _save_settings()
-        _request_rebuild()
+    if PyImGui.button('Clear queue'):
+        _clear_vanquish_queue()
 
     if vanquish_queue:
         PyImGui.text(f'Queued vanquishes: {len(vanquish_queue)}')
@@ -4055,9 +4324,8 @@ def _draw_config() -> None:
         PyImGui.text(f'{position + 1:>2}. {region} / {map_name}')
         PyImGui.same_line(0, 24)
         if PyImGui.button(f'Remove##queue{position}'):
-            vanquish_queue.pop(position)
-            _save_settings()
-            _request_rebuild()
+            if _remove_map_from_queue(region, map_name):
+                _queue_changed()
             break
     PyImGui.end_disabled()
 
