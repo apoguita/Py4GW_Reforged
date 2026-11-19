@@ -401,8 +401,8 @@ one: the outer one only says who replied.
   "request_id": "5fbbfee9...",
   "ok": true,
   "result": {
-    "target": {"session_id": "...", "hwnd": 6949550, "pid": 2344,
-               "character_name": "Aura Divina"},
+    "target": {"session_id": "...", "hwnd": 123456, "pid": 4567,
+               "character_name": "Example Hero"},
     "bridge_response": {
       "type": "response",
       "ok": true,
@@ -865,15 +865,15 @@ decision, not a second attempt.
 Worked example, instruction first:
 
 ```text
-"connect to Aura Divina, enable PyQuishAI_BT with automatic zquest on, start it"
+"connect to Example Hero, enable PyQuishAI_BT with automatic zquest on, start it"
 
-list_clients                    -> hwnd 6949550, character_name "Aura Divina"
-enable_widget    6949550        -> enabled: true, module_loaded: true
-get_widget_config 6949550       -> writable_keys: [automatic_zquest, clear_queue]
+list_clients                    -> hwnd 123456, character_name "Example Hero"
+enable_widget    123456         -> enabled: true, module_loaded: true
+get_widget_config 123456        -> writable_keys: [automatic_zquest, clear_queue]
 set_widget_config automatic_zquest = true
                                 -> applied: [automatic_zquest], take_zquest: false -> true
-start_widget     6949550        -> botting_tree.started: true, was_started: false
-get_widget_status 6949550       -> started: true, paused: false
+start_widget     123456         -> botting_tree.started: true, was_started: false
+get_widget_status 123456        -> started: true, paused: false
 ```
 
 That last line is worth insisting on: `start_widget` answers with the tree as it
