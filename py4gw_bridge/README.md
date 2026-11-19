@@ -219,6 +219,12 @@ This runs outside injection and:
 - exposes a control API for tools/CLI/MCP
 - routes requests to a specific target client
 
+The `--token` it takes guards the **widget ingress only**: a client whose
+`hello` carries a different token is refused. The control API that the CLI and
+the MCP server talk to does not authenticate at all, and it is bound to
+`127.0.0.1` for that reason. Do not point `--control-host` at another interface
+unless you accept that anything on that interface can drive every client.
+
 ### 3. Bridge CLI (tester/operator tool)
 
 File:
@@ -226,6 +232,30 @@ File:
 - `py4gw_bridge/cli.py`
 
 This is a local CLI for testing and using the daemon without writing raw socket code.
+
+### 4. MCP server (agent-facing adapter)
+
+File:
+
+- `py4gw_bridge/mcp_server.py`
+
+A JSON-RPC 2.0 server over **stdio** — no port of its own, no second token. It
+sits in front of the daemon control API and exposes the curated command set as
+tools, plus `tools/list` as the authoritative contract:
+
+```powershell
+python -m py4gw_bridge.mcp_server --host 127.0.0.1 --port 47812 --timeout 5.0
+```
+
+- `--host` / `--port`: the daemon **control** endpoint, not the widget ingress
+- `--timeout`: default per-request timeout; the tools that wait on a client
+  (`enable_widget`, `set_widget_config`, `reload_widgets`…) raise it to at least 15s
+- every tool takes `hwnd` or `pid` to pick the client, except `list_clients`,
+  which asks the daemon
+
+Running it through an MCP host means the host owns the process and the stdio
+pipes; running it by hand in a terminal only makes sense to inspect
+`tools/list`.
 
 ## Architecture (brief)
 
@@ -328,6 +358,75 @@ This returns connected injected clients with:
 - `account_email`
 - `character_name`
 - session metadata
+
+## Targeting one account among several
+
+Every request names its client. There is no "current" or "default" client and no
+broadcast: `list_clients` returns one record per connected client, and you pass
+the `hwnd` (or the `pid`) of the one you mean.
+
+- `hwnd` is the stable identity while the window lives. A restarted client gets a
+  new one, so resolve it at the start of each session instead of caching it
+  across restarts.
+- `pid` is the fallback the daemon accepts when the handle is not at hand.
+- `character_name` says who is behind it; `account_email` is the key the
+  shared-memory layer uses, which is what you match on when two clients belong to
+  accounts you coordinate between.
+- Everything a bridge command does happens to **one** client. Enabling a widget,
+  travelling, sending a shmem command: one call, one account. To act on all of
+  them, loop over `list_clients`.
+
+Telling which client is *the one you care about* is not something the bridge can
+answer: eight clients in a guild hall all report themselves as their party's
+leader. The per-account settings tree is the honest signal — `Settings` writes to
+`settings/<account>/<path>`, rooted at the projects path a client reports through
+`console.call {"method": "get_projects_path"}`:
+
+```python
+# "which of these eight clients actually ran the vanquish bot?"
+root = Path(projects) / "settings"
+for account_dir in root.iterdir():
+    ini = account_dir / "Widgets/Automation/Bots/Vanquish/PyQuishAI_BT/PyQuishAI_BT.ini"
+    ...  # the account whose [Settings] is populated is the one with history
+```
+
+## Response envelope
+
+A relayed answer is an envelope around the client's own answer. Read the inner
+one: the outer one only says who replied.
+
+```json
+{
+  "type": "response",
+  "request_id": "5fbbfee9...",
+  "ok": true,
+  "result": {
+    "target": {"session_id": "...", "hwnd": 123456, "pid": 4567,
+               "character_name": "Example Hero"},
+    "bridge_response": {
+      "type": "response",
+      "ok": true,
+      "result": {"name": "PyQuishAI_BT", "config": {}}
+    }
+  }
+}
+```
+
+- `result.target` — which client answered, from the daemon's records.
+- `result.bridge_response.result` — **the data**. Everything the client reports
+  lives here, and nowhere else.
+- `list_clients` is the exception: the daemon answers it itself, from its own
+  records, so it has no `bridge_response` and its `result` is the client list.
+- `result.bridge_response` is absent when the client never answered (timeout,
+  disconnect); `ok` is then `false` and `error.code` says which, usually
+  `client_not_found` or `timeout`.
+- A refusal keeps the same envelope with `ok: false` and
+  `error: {code, message, retryable}`. `guard_map_loading` carries
+  `retryable: true`; a validation error does not.
+
+The MCP tools return this envelope as-is, as JSON text in the tool result. So a
+caller that reads `result.config` finds nothing; the config sits at
+`result.bridge_response.result.config`.
 
 ## Typical workflow
 
@@ -527,6 +626,170 @@ These are explicitly implemented and useful for common tasks.
 - `map.skip_cinematic`
 - `ops.get_status`
 - `shmem.send_command`
+- `widgets.list`
+- `widgets.status`
+- `widgets.enable`
+- `widgets.disable`
+- `widgets.start`
+- `widgets.stop`
+- `widgets.reload`
+- `widgets.config.get`
+- `widgets.config.set`
+
+### Widgets, and running a widget's botting tree
+
+A widget is owned by `WidgetManager`: it has its own module instance, its own
+callbacks and its own settings. The manager is the only owner that can start it,
+record that it is enabled and keep its state, so everything that touches a widget
+goes through `widgets.*`:
+
+- `widgets.list` — every widget the manager knows, with its enabled state and the
+  state of the botting tree it owns.
+- `widgets.status` — the same record for one widget.
+- `widgets.enable` / `widgets.disable` — what ticking the box in the widget
+  manager does. Enabling loads the module and registers its callbacks;
+  disabling pauses them and runs the widget's `on_disable` hook, which is how a
+  bot stands itself down on purpose. Enabling is refused while a map is loading,
+  because the module runs its first frame against a half-loaded map. Disabling
+  the bridge widget itself closes the socket that would carry the answer, so that
+  one call ends without a reply.
+- `widgets.start` / `widgets.stop` — the widget's own Start/Stop buttons, for
+  widgets that own a botting tree. `widgets.start` requires the widget to be
+  enabled and refuses while a map is loading; `widgets.stop` restores what
+  starting took over (widget states, account isolation, the HeroAI hand-off).
+  A widget without a botting tree answers `widget_has_no_botting_tree`, and one
+  whose module is not loaded answers `widget_module_missing`.
+- `widgets.reload` — the manager's own "reload widgets" action: every enabled
+  widget is disabled, its file re-imported, and it is enabled again if it was
+  enabled before. It refuses while a map is loading, and a botting tree that was
+  running is stopped by the reload, not restarted after it.
+- `widgets.config.get` / `widgets.config.set` — the settings a widget declares
+  for the bridge. Nothing generic can read a widget's configuration: it lives in
+  the widget's own module and INI, not in the manager. So a widget opts in by
+  declaring `bridge_config_get()` and `bridge_config_set(values)`, exactly as it
+  declares `ensure_botting_tree()` for `widgets.start`. One that declares neither
+  answers `widget_config_unavailable`.
+
+The target is the **plain name**: the script file stem, as the manager indexes it,
+not the window title. `Widgets/Automation/Bots/Vanquish/PyQuishAI_BT.py` is
+`PyQuishAI_BT`.
+
+Each of these commands acts on the one client you target, and both the enabled
+state and a widget's own settings are **per account**: a multibox rig needs one
+call per client, and enabling a widget on the main says nothing about the alts.
+
+`widgets.status` reports `botting_tree: null` until the widget has built its tree,
+which a freshly enabled widget does on its first frame. Reading status never
+creates one.
+
+The MCP server exposes them as `list_widgets`, `get_widget_status`,
+`enable_widget`, `disable_widget`, `start_widget` and `stop_widget`, each taking
+the usual `hwnd`/`pid` plus `name`; `reload_widgets` takes only `hwnd`/`pid`.
+
+### Reloading widgets to pick up code changes
+
+`widgets.reload` is the supported way to get a change under `Widgets/` or
+`Py4GWCoreLib/` into a client that is already running. The manager imports a
+widget file fresh on every load, but a plain `import` of a support package
+resolves from `sys.modules`, so the widget file has to drop its own package
+first: `Bridge Client.py` clears `py4gw_bridge` before importing it. Any other
+widget that wraps a package needs the same treatment, or a reload only rebinds
+the module it already had.
+
+Two behaviours follow from how the manager reloads, and both surprise the first
+time:
+
+- The reload is **deferred to the next frame**. `reload_widgets()` disables every
+  enabled widget before rediscovering them, and this widget's `on_disable` closes
+  the bridge socket. A command's reply is queued after its handler returns and
+  the socket loop is what flushes it, so a reload run inside the handler would
+  answer into a closed socket. The command answers `scheduled: true` and the
+  `main()` of the next frame does the work.
+- The bridge **reconnects under a new session id**. Give it a moment before the
+  next call, or `client.request` will still be resolving the session that just
+  closed. `started_before` in the reply lists the botting trees the reload
+  stopped, so a run is not lost silently.
+
+The response also carries the `note` that says all of this, for clients that read
+the payload instead of this file.
+
+### Configuring a widget
+
+`widgets.config.get` reports what a widget exposes; `widgets.config.set` writes
+through the widget's own setter, so the widget keeps ownership of its state and
+of the rules around it. Nothing is written behind the widget's back: it decides
+what it accepts, and answers with the reason when it refuses.
+
+`PyQuishAI_BT` is the first widget to declare the surface:
+
+```text
+get_widget_config {"hwnd": 123456, "name": "PyQuishAI_BT"}
+  -> config: {"automatic_zquest": false, "take_zquest": true, "loop_runs": false,
+              "queue": [], "regions": ["Proph_Ascalon", ...], "locked": false,
+              "writable": true,
+              "writable_keys": ["automatic_zquest", "queue_add_map", "queue_add_region",
+                                "queue_add", "queue_remove_map", "clear_queue"]}
+
+set_widget_config {"hwnd": 123456, "name": "PyQuishAI_BT", "values": {"automatic_zquest": true}}
+set_widget_config {"hwnd": 123456, "name": "PyQuishAI_BT",
+                   "values": {"queue_add_map": {"region": "Proph_Ascalon", "map": "The_Great_Northern_Wall"}}}
+set_widget_config {"hwnd": 123456, "name": "PyQuishAI_BT", "values": {"queue_add_region": "Proph_Ascalon"}}
+set_widget_config {"hwnd": 123456, "name": "PyQuishAI_BT",
+                   "values": {"queue_add": [{"region": "Proph_Ascalon"},
+                                            {"region": "Proph_NorthernShiverpeaks",
+                                             "map": "Ice_Tooth_Cave"}]}}
+set_widget_config {"hwnd": 123456, "name": "PyQuishAI_BT",
+                   "values": {"queue_remove_map": {"region": "Proph_Ascalon", "map": "The_Great_Northern_Wall"}}}
+set_widget_config {"hwnd": 123456, "name": "PyQuishAI_BT", "values": {"clear_queue": true}}
+```
+
+Its queue keys accept the names the catalogue uses, which is what `regions`
+reports and what the widget's own combos show:
+
+- `queue_add_map` takes one `{region, map}`; `queue_add_region` appends every map
+  of a region in catalogue order.
+- `queue_add` takes a **list** of additions and is the one to use for more than
+  one: an entry with a `map` queues that map, an entry with only a `region`
+  queues the whole region, and both shapes can be mixed in the same list. The
+  batch is validated as a whole — one bad entry adds nothing and the error names
+  it — because a queue half-applied by a typo is worse than one that refused.
+- `queue_remove_map` drops one queued `{region, map}` and is deliberately not
+  validated against the catalogue: the queue is the authority on what it holds.
+- `clear_queue` empties it.
+
+The adds answer `added` and the removals answer `removed`, both counting what
+actually changed. A map that was already queued (or was never there) comes back
+`0` instead of an error: repeating is an intent a caller holds in a loop across
+clients, and "already done" is not a failure.
+
+Its refusals are the ones its own Config panel already enforces:
+
+| Error | Why |
+|---|---|
+| `guard_widget_running` | that panel is disabled while the botting tree is started |
+| `guard_queue_not_empty` | automatic ZQuest handling cannot be switched on with a queued run: a queue picks its own maps and `take_zquest` would be forced off anyway |
+| `guard_automatic_zquest` | and the mirror of it: nothing is queued while automatic handling is on, because its own queue buttons are disabled too. Switching it off in the same call is allowed — the keys apply in the order listed above |
+| `unknown_setting` | the key is not in `writable_keys` |
+| `unknown_region` / `unknown_map` | the name is not in the catalogue; the message lists what is |
+| `invalid_value` | `clear_queue` only accepts `true`, `queue_add_map` and `queue_remove_map` need both names, and `queue_add` needs a non-empty list |
+
+A widget that is not enabled yet answers `widget_module_missing`: there is no
+module to ask, so enable it first.
+
+The writes go through the same helpers the panel uses, so switching automatic
+handling on clears `loop_runs`, re-derives `take_zquest`, drops the stale
+auto-definition, rebuilds the plan and persists the change to the widget's own
+INI. That is the whole reason the surface exists: a caller that set the module
+global itself would leave every one of those behind.
+
+Typical run of a bot widget, end to end:
+
+```text
+enable_widget  {"hwnd": 123456, "name": "PyQuishAI_BT"}
+start_widget   {"hwnd": 123456, "name": "PyQuishAI_BT"}   -> botting_tree.started = true
+get_widget_status {"hwnd": 123456, "name": "PyQuishAI_BT"}
+stop_widget    {"hwnd": 123456, "name": "PyQuishAI_BT"}
+```
 
 `system.list_namespaces` now returns both:
 
@@ -549,6 +812,74 @@ The daemon also exposes:
 The daemon also exposes:
 
 - `client.list_commands` for normalized command metadata at the control layer
+
+## From an instruction to the calls
+
+A request of the shape *"connect to this account, enable that widget with this
+setting, start it"* always needs the same handful of calls, in the same order.
+The vocabulary maps like this:
+
+| The instruction says | The call is | What it needs |
+|---|---|---|
+| "connect to `<account>`" | `list_clients`, then match `character_name` or `account_email` | the bridge has no "current" client |
+| "enable `<widget>`" | `enable_widget` | the plain name, exact case; refused while a map loads |
+| "with `<setting>`" | `set_widget_config` | **before** starting |
+| "start it" | `start_widget` | enabled, and it must own a botting tree |
+| "stop it" / "disable it" | `stop_widget` / `disable_widget` | stopping does not disable; disabling does not stop |
+| "reload it" | `reload_widgets` | stops whatever was running |
+| just "tell me its configuration" | `get_widget_config` | read only, no side effects |
+
+The sequence, with the check each step gives back:
+
+```text
+1. list_clients                  -> the hwnd, matched by character or account
+2. enable_widget                 -> enabled: true, module_loaded: true
+3. get_widget_config             -> writable_keys: what step 4 will accept
+4. set_widget_config             -> applied: [...], config: {...}
+5. start_widget                  -> botting_tree.started: true
+```
+
+Step 3 is not ceremony: the settings belong to the widget, not to the bridge, so
+`writable_keys` is the only authority on what a given widget takes. Step 4 must
+come before step 5 because `bridge_config_set` refuses while the tree runs — a
+running plan was already built from the old settings, and half-applying new ones
+would leave the two disagreeing.
+
+When a step is refused, the bridge names the reason (`guard_map_loading`,
+`guard_queue_not_empty`, `unknown_setting`, `widget_not_found`…). Only the ones
+carrying `retryable: true` are worth retrying; the rest need a different
+decision, not a second attempt.
+
+### Names that have to be exact
+
+- The widget is its **file stem, exact case**: `PyQuishAI_BT`, not `PyQuishAI`
+  and not `pyquishai_bt`. A near miss answers `widget_not_found`, and no amount
+  of fuzzy matching on the caller's side fixes a name the manager does not index.
+- The settings use the names `writable_keys` reports, in their own casing:
+  `automatic_zquest`, not the label its window shows (`Automatic ZQuest
+  handling`). The label is for humans, the key is for the bridge.
+- The account can be named by character or by account email — both are in the
+  `list_clients` record. The character name is shorter and is what the daemon
+  shows; the email is the only stable key across renames.
+
+Worked example, instruction first:
+
+```text
+"connect to Example Hero, enable PyQuishAI_BT with automatic zquest on, start it"
+
+list_clients                    -> hwnd 123456, character_name "Example Hero"
+enable_widget    123456         -> enabled: true, module_loaded: true
+get_widget_config 123456        -> writable_keys: [automatic_zquest, clear_queue]
+set_widget_config automatic_zquest = true
+                                -> applied: [automatic_zquest], take_zquest: false -> true
+start_widget     123456         -> botting_tree.started: true, was_started: false
+get_widget_status 123456        -> started: true, paused: false
+```
+
+That last line is worth insisting on: `start_widget` answers with the tree as it
+is *after* the call (`botting_tree.started`) and, separately, `was_started` with
+what it was before — so one response already tells you both, and a follow-up
+`get_widget_status` is only there to confirm nothing dropped it back.
 
 ## Bridge Namespaces (generic access)
 
@@ -711,7 +1042,30 @@ An AI tool (later MCP adapter) can:
 
 ### Multi-client orchestration
 
-One daemon can manage multiple clients and route by `HWND`.
+One daemon can manage multiple clients and route by `HWND`. There is no fan-out:
+the loop is yours, and it is small.
+
+```python
+# Each tool(...) is one tools/call. The client list is resolved per run.
+clients = tool("list_clients")["result"]["clients"]
+for client in clients:
+    tool("enable_widget", {"hwnd": client["hwnd"], "name": "PyQuishAI_BT"})
+    tool("get_widget_config", {"hwnd": client["hwnd"], "name": "PyQuishAI_BT"})
+```
+
+Two rules keep that loop honest:
+
+- Resolve the list **per run**, never from a cached file: a restarted client
+  answers to a new `hwnd`, and the old one answers `client_not_found`.
+- Do not assume the clients share a state. One that is mid-map-load refuses
+  `enable_widget`, `start_widget` and `set_widget_config` with
+  `guard_map_loading` and `retryable: true`: retry that client, do not abort the
+  loop.
+
+`shmem.send_command` is the exception worth knowing: it is the only thing that
+reaches another account in a single call, because it writes to shared memory
+instead of asking the daemon to route somewhere else. The receiver's Messaging
+widget is what acts on it.
 
 ### Stress testing (live)
 
@@ -746,6 +1100,22 @@ You can script repeated calls via CLI or a future adapter and collect structured
 - Some return values are complex native/Python objects
 - Use curated endpoints for stable structured output where available
 - Or call smaller methods that return primitives/lists
+
+### `player.get_state` reports `player: null`
+
+- Map transitions and loading screens have no player to read
+- Treat `player` as optional: `player = state.get("player") or {}`
+- The same applies to `position` inside it, and to any monitor that samples while
+  the party crosses a portal
+- `map.get_state` also reports `Unknown Map ID`, `map_id: 0` and `(0, 0)` in that
+  window
+
+### A poller gets no output back
+
+- `client.request` answers with the call's payload, never with the script's
+  stdout: the console text stays in the client
+- Write results to a file and read it, or expose them through a namespace method
+  and call it
 
 ## Next steps (recommended)
 
