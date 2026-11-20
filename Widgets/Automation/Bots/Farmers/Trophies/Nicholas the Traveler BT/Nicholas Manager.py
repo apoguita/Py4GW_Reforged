@@ -144,6 +144,7 @@ from _modules.NicholasFarmBase import (
     build_execution_steps,
     check_target_item_count,
     configure_tree,
+    reset_exchange_prepare_session,
     reset_prepare_session,
 )
 from _modules.NicholasFarms import FARMS, FarmDefinition
@@ -642,18 +643,27 @@ def _create_tree_for_farm(farm: FarmDefinition) -> BottingTree:
 
 
 def _create_exchange_tree_for_farm(farm: FarmDefinition) -> BottingTree:
-    return BottingTree.Create(
+    holder: dict[str, BottingTree] = {}
+
+    def _get_tree() -> BottingTree:
+        return holder["tree"]
+
+    tree = BottingTree.Create(
         f"{BOT_NAME} - Exchange",
-        main_routine=build_exchange_steps(farm),
+        main_routine=build_exchange_steps(farm, tree_getter=_get_tree),
         routine_name=f"NicholasExchange_{farm.key}",
         repeat=False,
         multi_account=True,
-        auto_loot=False,
+        # Looting policy belongs to configure_tree, which runs ConfigureUpkeep
+        # and would overwrite an auto_loot value passed here on both trees.
         auto_resurrection_scroll=False,
         isolation_enabled=False,
         pause_on_combat=True,
         configure_fn=configure_tree,
     )
+
+    holder["tree"] = tree
+    return tree
 
 
 def ensure_exchange_tree() -> BottingTree:
@@ -689,6 +699,69 @@ def ensure_botting_tree() -> BottingTree:
         _tree_farm_key = farm.key
 
     return botting_tree
+
+
+def _active_routine() -> str:
+    """Which routine currently owns the party: 'farm', 'exchange', or ''."""
+    try:
+        if botting_tree is not None and botting_tree.IsStarted():
+            return "farm"
+        if exchange_tree is not None and exchange_tree.IsStarted():
+            return "exchange"
+    except Exception:
+        return ""
+    return ""
+
+
+def _refuse_start(requested: str) -> bool:
+    """True, and logged, when another routine already owns the party."""
+    active = _active_routine()
+    if not active or active == requested:
+        return False
+    PySystem.Console.Log(
+        MODULE_NAME,
+        (
+            f"Start refused: the {active} routine is running. "
+            f"Stop it before starting the {requested} routine."
+        ),
+        PySystem.Console.MessageType.Warning,
+    )
+    return True
+
+
+def start_exchange() -> bool:
+    """Start the exchange routine unless the farm owns the party."""
+    if _refuse_start("exchange"):
+        return False
+
+    tree = ensure_exchange_tree()
+    if not tree.IsStarted():
+        tree.Start()
+    return True
+
+
+def _enforce_single_routine() -> None:
+    """Keep one owner of the party.
+
+    The farm's Start button belongs to the BottingTree UI and the bridge starts
+    the farm tree straight from this module, so no click can be intercepted. The
+    invariant is therefore checked once per frame, before either tree ticks. The
+    farm wins because it is the long-lived routine and the exchange can simply
+    be started again; stopping it is logged rather than silent.
+    """
+    if botting_tree is None or exchange_tree is None:
+        return
+
+    try:
+        if botting_tree.IsStarted() and exchange_tree.IsStarted():
+            exchange_tree.Stop()
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "Exchange stopped: the farm routine is running and owns the party.",
+                PySystem.Console.MessageType.Warning,
+            )
+    except Exception:
+        return
 
 
 def _starting_outpost_name(farm: FarmDefinition) -> str:
@@ -863,9 +936,7 @@ def _draw_config_tab() -> None:
             PyImGui.begin_disabled(True)
 
         if PyImGui.button("Exchange with Nicholas"):
-            ex_tree = ensure_exchange_tree()
-            if not ex_tree.IsStarted():
-                ex_tree.Start()
+            start_exchange()
 
         if farming or exchanging:
             PyImGui.end_disabled()
@@ -1046,9 +1117,13 @@ def main() -> None:
     if not tree.IsStarted():
         reset_prepare_session(tree)
 
+    _enforce_single_routine()
+
     tree.tick()
 
     ex_tree = ensure_exchange_tree()
+    if not ex_tree.IsStarted():
+        reset_exchange_prepare_session(ex_tree)
     ex_tree.tick()
 
     farm = selected_farm()
