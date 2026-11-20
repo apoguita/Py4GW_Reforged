@@ -31,6 +31,7 @@ from .NicholasFarms import (
 MODULE_NAME = "Nicholas Farm Base"
 
 _PREPARED_ATTR = "_nicholas_manager_prepared_farm_key"
+_PREPARED_EXCHANGE_ATTR = "_nicholas_manager_prepared_exchange_key"
 _PORTAL_READY_KEY = "__nicholas_manager_portal_ready"
 _TARGET_REACHED_FARM_KEY = ""
 
@@ -858,25 +859,77 @@ def reset_prepare_session(tree: BottingTree) -> None:
     _TARGET_REACHED_FARM_KEY = ""
 
 
+def reset_exchange_prepare_session(tree: BottingTree) -> None:
+    """
+    Forget the one-time exchange party preparation.
+
+    Kept separate from reset_prepare_session on purpose: that one also clears the
+    farm's target-reached marker, which has to survive an exchange stop while the
+    farm routine is still running.
+    """
+    setattr(tree, _PREPARED_EXCHANGE_ATTR, "")
+
+
+def party_setup_steps(
+    tree: BottingTree,
+    target_map_id: int,
+) -> list[BehaviorTree]:
+    """
+    Party setup shared by the farm and the exchange.
+
+    Leave the current party, travel to the outpost the routine starts from, then
+    summon and invite the multibox accounts through CreateParty. The aggressive
+    HeroAI profile goes first so the followers fight along the route; Hard Mode
+    is turned off because Nicholas routes assume Normal Mode.
+    """
+    return [
+        tree.Config.Aggressive(
+            multi_account=True,
+            account_isolation=False,
+            auto_loot=True,
+            resurrection_scroll=False,
+            reset_hero_ai=True,
+        ),
+        BT.LeaveParty(),
+        BT.Travel(
+            target_map_id=int(target_map_id),
+            random_travel=True,
+            log=True,
+        ),
+        BT.CreateParty(
+            multibox_invite=True,
+            timeout_ms=20_000,
+            log=True,
+        ),
+        BT.SetHardMode(
+            hard_mode=False,
+            log=False,
+        ),
+    ]
+
+
 def _is_prepare_session_ready(
     tree: BottingTree,
     farm: FarmDefinition,
+    attr: str = _PREPARED_ATTR,
 ) -> bool:
-    return str(getattr(tree, _PREPARED_ATTR, "") or "") == str(farm.key)
+    return str(getattr(tree, attr, "") or "") == str(farm.key)
 
 
 def _prepared_session_check(
     tree: BottingTree,
     farm: FarmDefinition,
+    attr: str = _PREPARED_ATTR,
+    name: str = "Farm Party Already Prepared",
 ) -> BehaviorTree:
     def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        if _is_prepare_session_ready(tree, farm):
+        if _is_prepare_session_ready(tree, farm, attr):
             return BehaviorTree.NodeState.SUCCESS
         return BehaviorTree.NodeState.FAILURE
 
     return BehaviorTree(
         BehaviorTree.ActionNode(
-            name="Farm Party Already Prepared",
+            name=name,
             action_fn=_check,
             aftercast_ms=0,
         )
@@ -886,14 +939,16 @@ def _prepared_session_check(
 def _mark_prepare_session_ready(
     tree: BottingTree,
     farm: FarmDefinition,
+    attr: str = _PREPARED_ATTR,
+    name: str = "Remember Farm Party Preparation",
 ) -> BehaviorTree:
     def _mark(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        setattr(tree, _PREPARED_ATTR, str(farm.key))
+        setattr(tree, attr, str(farm.key))
         return BehaviorTree.NodeState.SUCCESS
 
     return BehaviorTree(
         BehaviorTree.ActionNode(
-            name="Remember Farm Party Preparation",
+            name=name,
             action_fn=_mark,
             aftercast_ms=0,
         )
@@ -935,34 +990,50 @@ def prepare_farm(
                 name="Initial Farm Setup",
                 children=[
                     disable_merchant_rules_all_accounts(),
-                    tree.Config.Aggressive(
-                        multi_account=True,
-                        account_isolation=False,
-                        auto_loot=True,
-                        resurrection_scroll=False,
-                        reset_hero_ai=True,
-                    ),
-                    BT.LeaveParty(),
-                    BT.Travel(
-                        target_map_id=farm.outpost_map_id,
-                        random_travel=True,
-                        log=True,
-                    ),
-                    BT.CreateParty(
-                        multibox_invite=True,
-                        timeout_ms=20_000,
-                        log=True,
-                    ),
-                    BT.SetHardMode(
-                        hard_mode=False,
-                        log=False,
-                    ),
+                    *party_setup_steps(tree, farm.outpost_map_id),
 
                     # Party first: farm_party_accounts() can now identify every
                     # farming client before we push/verify the LIVE loot model.
                     whitelist_farm_item_all_accounts(farm),
 
                     _mark_prepare_session_ready(tree, farm),
+                ],
+            ),
+        ],
+    )
+
+
+def prepare_exchange_party(tree: BottingTree, farm: FarmDefinition) -> BehaviorTree:
+    """
+    One-time setup per manual exchange Start.
+
+    The exchange walks into an explorable map, and only accounts already in the
+    leader's party follow it through the portal. Without this step the leader
+    would exchange alone while the rest of the multibox kept their trophies.
+
+    Same party steps as the farm, aimed at the exchange outpost instead of the
+    farm outpost. The prepared marker lives on the tree under its own attribute,
+    so a named-step recovery does not disband and rebuild the party mid-route.
+    """
+    return BT.Selector(
+        name="Prepare Exchange Party",
+        children=[
+            _prepared_session_check(
+                tree,
+                farm,
+                attr=_PREPARED_EXCHANGE_ATTR,
+                name="Exchange Party Already Prepared",
+            ),
+            BT.Sequence(
+                name="Initial Exchange Setup",
+                children=[
+                    *party_setup_steps(tree, farm.exchange_town_map_id),
+                    _mark_prepare_session_ready(
+                        tree,
+                        farm,
+                        attr=_PREPARED_EXCHANGE_ATTR,
+                        name="Remember Exchange Party Preparation",
+                    ),
                 ],
             ),
         ],
@@ -1238,9 +1309,12 @@ def handle_target_reached(
 
     The count step only marks the target as reached. This step then:
       - does nothing when the target is not pending;
-      - if already in the configured outpost, stops directly;
-      - otherwise waits for combat to settle, resigns the multibox party,
-        waits for the starting outpost to load, then stops the BottingTree.
+      - if already in the configured outpost, skips straight to the guild hall;
+      - otherwise waits for combat to settle, resigns the multibox party and
+        waits for the starting outpost to load;
+      - travels the party to its guild hall so the accounts are not left standing
+        exposed in the outpost;
+      - then stops the BottingTree.
 
     Stopping only after the resign/map-load sequence prevents BottingTree.Stop()
     from cancelling the cleanup before /resign can be dispatched.
@@ -1287,6 +1361,7 @@ def handle_target_reached(
                         )
                     ),
                     return_to_outpost_if_needed(farm),
+                    travel_to_guild_hall(),
                     BehaviorTree(
                         BehaviorTree.ActionNode(
                             name=f"Stop After Target Cleanup - {farm.name}",
@@ -1359,6 +1434,75 @@ def return_to_outpost_if_needed(farm: FarmDefinition) -> BehaviorTree:
                 ],
             ),
         ],
+    )
+
+
+_GH_TRAVEL_TIMEOUT_MS = 30_000
+
+
+def _has_guild() -> bool:
+    """False when the local account has no guild and therefore no guild hall."""
+    try:
+        return int(Agent.GetGuildID(Player.GetAgentID())) > 0
+    except Exception:
+        return False
+
+
+def travel_to_guild_hall(timeout_ms: int = _GH_TRAVEL_TIMEOUT_MS) -> BehaviorTree:
+    """
+    Move the party out of the outpost and into its guild hall.
+
+    Only the party leader travels: the rest of the party moves with it, so one
+    request is enough. This is best effort -- an account without a guild has no
+    hall to travel to, and the cleanup must still stop the tree -- so every
+    failure only logs and lets the stop happen.
+    """
+    state: dict[str, float] = {"requested_at": 0.0}
+
+    def _travel(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if Map.IsMapReady() and Map.IsGuildHall():
+            return BehaviorTree.NodeState.SUCCESS
+
+        if not state["requested_at"]:
+            if not _has_guild():
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        "Target cleanup: this account has no guild, so there is no "
+                        "guild hall to travel to. The party stays in the outpost."
+                    ),
+                    PySystem.Console.MessageType.Warning,
+                )
+                return BehaviorTree.NodeState.SUCCESS
+
+            state["requested_at"] = time.monotonic()
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "Target cleanup: travelling the party to the guild hall.",
+                PySystem.Console.MessageType.Info,
+            )
+            Map.TravelGH()
+            return BehaviorTree.NodeState.RUNNING
+
+        if (time.monotonic() - state["requested_at"]) * 1000.0 >= timeout_ms:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    "Guild hall travel did not complete in time. The party stays "
+                    "where it is; the cleanup continues."
+                ),
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.SUCCESS
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Travel To Guild Hall",
+            action_fn=_travel,
+            aftercast_ms=0,
+        )
     )
 
 
@@ -2467,6 +2611,7 @@ def build_nicholas_exchange(farm: FarmDefinition) -> BehaviorTree:
 
 def build_exchange_steps(
     farm: FarmDefinition,
+    tree_getter: Callable[[], BottingTree],
 ) -> list[tuple[str, Callable[[], BehaviorTree]]]:
     """
     Build the Nicholas exchange as granular planner steps.
@@ -2474,6 +2619,9 @@ def build_exchange_steps(
     Every route waypoint is a separate step. Zone changes remain explicit
     MoveAndExitMap steps and every route point is guarded by the map on which it
     belongs.
+
+    The party is assembled first: the exchange leaves the outpost through a
+    portal, so the accounts have to be grouped before the route starts.
     """
     if not farm.exchange_available:
         return [
@@ -2490,6 +2638,10 @@ def build_exchange_steps(
         (
             "Disable MerchantRules",
             disable_merchant_rules_all_accounts,
+        ),
+        (
+            "Prepare Exchange Party",
+            lambda: prepare_exchange_party(tree_getter(), farm),
         ),
     ]
 

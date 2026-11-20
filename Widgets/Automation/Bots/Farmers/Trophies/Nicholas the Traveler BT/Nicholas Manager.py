@@ -7,7 +7,7 @@ import sys
 import PyImGui
 import PySystem
 
-from Py4GWCoreLib import ImGui, Map, get_texture_for_model
+from Py4GWCoreLib import ImGui, Map, Utils, get_texture_for_model
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
@@ -131,11 +131,20 @@ _MANAGER_WIDGET_DIR = os.path.dirname(_MANAGER_MODULE_DIR)
 if _MANAGER_WIDGET_DIR not in sys.path:
     sys.path.insert(0, _MANAGER_WIDGET_DIR)
 
+# A running client keeps imported packages in sys.modules, so re-running this
+# widget re-executes the imports below but receives the modules loaded earlier:
+# an edit to a support file would then never reach the client until a restart.
+# Drop this package's entries first so the imports read the files on disk.
+for _support_module in ("_modules.NicholasFarmBase", "_modules.NicholasFarms"):
+    Utils.ClearSubModules(_support_module, log=False)
+importlib.invalidate_caches()
+
 from _modules.NicholasFarmBase import (
     build_exchange_steps,
     build_execution_steps,
     check_target_item_count,
     configure_tree,
+    reset_exchange_prepare_session,
     reset_prepare_session,
 )
 from _modules.NicholasFarms import FARMS, FarmDefinition
@@ -234,16 +243,47 @@ def _target_for_farm(farm: FarmDefinition) -> int:
     )
 
 
+def _current_week_iso() -> str:
+    """ISO date of the Monday that starts the current week."""
+    from datetime import date, timedelta
+
+    today = date.today()
+    return (today - timedelta(days=today.weekday())).isoformat()
+
+
+def _follow_weekly_farm() -> bool:
+    """Whether a new week should re-point the selection at its own trophy."""
+    return bool(_settings.get_bool("Config", "FollowWeeklyFarm", True))
+
+
+def _set_follow_weekly_farm(enabled: bool) -> None:
+    _settings.set("Config", "FollowWeeklyFarm", bool(enabled))
+
+
 def _load_selection() -> None:
     global _loaded_selection, _selected_index
 
     if _loaded_selection:
         return
 
-    saved_key = str(
-        _settings.get("Config", "SelectedFarm", "forgotten_seal")
-        or "forgotten_seal"
-    )
+    saved_key = str(_settings.get("Config", "SelectedFarm", "") or "")
+    week_now = _current_week_iso()
+
+    # Default behaviour: every load and every enable start on the farm of the
+    # current week, even after a manual pick earlier in the same session. The
+    # saved key is only the fallback for a week that has no registered farm.
+    if _follow_weekly_farm():
+        weekly_farm = _farm_for_week(0)
+        weekly_index = _farm_index(weekly_farm) if weekly_farm is not None else -1
+        if weekly_index >= 0 and weekly_farm is not None:
+            _selected_index = weekly_index
+            _settings.set("Config", "SelectedFarm", weekly_farm.key)
+            _settings.set("Config", "SelectedFarmWeek", week_now)
+            _loaded_selection = True
+            return
+
+    if not saved_key:
+        saved_key = "forgotten_seal"
 
     for index, farm in enumerate(FARMS):
         if farm.key == saved_key:
@@ -265,6 +305,106 @@ def selected_farm() -> FarmDefinition:
         raise RuntimeError("Nicholas farm registry is empty.")
     return FARMS[max(0, min(int(_selected_index), len(FARMS) - 1))]
 
+
+def _week_entry(weeks_ahead: int = 0) -> dict | None:
+    """The Nicholas cycle entry for this week or a later one.
+
+    The schedule lives in the loot-filter module, which already resolves it by
+    modular arithmetic over the Monday-aligned cycle. Importing it here keeps one
+    source of truth instead of a second copy of the calendar in this widget.
+    """
+    try:
+        from datetime import date, timedelta
+
+        from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.nicholas import entry_for_day
+
+        return entry_for_day(date.today() + timedelta(weeks=int(weeks_ahead)))
+    except Exception:
+        return None
+
+
+def _farm_for_week(weeks_ahead: int = 0) -> FarmDefinition | None:
+    """The registered farm matching the trophy of that week, if one exists."""
+    entry = _week_entry(weeks_ahead)
+    if not entry:
+        return None
+    model_id = entry.get("model_id")
+    if model_id is None:
+        return None
+    for farm in FARMS:
+        if int(farm.model_id) == int(model_id):
+            return farm
+    return None
+
+
+def _farm_index(farm: FarmDefinition) -> int:
+    for index, candidate in enumerate(FARMS):
+        if candidate is farm:
+            return index
+    return -1
+
+
+def _apply_farm_selection(index: int) -> None:
+    """Select a farm and drop the trees so the next frame rebuilds them.
+
+    Shared by the combo and the weekly buttons: one place that knows what
+    changing the farm means.
+    """
+    global _selected_index, botting_tree, _tree_farm_key
+    global exchange_tree, _exchange_farm_key
+
+    _selected_index = max(0, min(int(index), len(FARMS) - 1))
+    new_farm = selected_farm()
+
+    _settings.set("Config", "SelectedFarm", new_farm.key)
+    _settings.set("Config", "SelectedFarmWeek", _current_week_iso())
+    _clear_count_result()
+
+    botting_tree = None
+    _tree_farm_key = ""
+    exchange_tree = None
+    _exchange_farm_key = ""
+
+
+def _draw_weekly_row(busy: bool, label: str, weeks_ahead: int) -> None:
+    """One line: a button that selects that week's farm, then what it is."""
+    entry = _week_entry(weeks_ahead)
+    farm = _farm_for_week(weeks_ahead)
+
+    index = _farm_index(farm) if farm is not None else -1
+    already = index >= 0 and index == _selected_index
+    can_click = (not busy) and (not already) and index >= 0
+
+    if not can_click:
+        PyImGui.begin_disabled(True)
+    clicked = bool(PyImGui.button(f"Select {label.lower()}##nicholas_week_{weeks_ahead}"))
+    if not can_click:
+        PyImGui.end_disabled()
+
+    PyImGui.same_line(0, 8)
+    if entry is None:
+        PyImGui.text_disabled("no schedule data")
+    elif farm is None:
+        item = str(entry.get("item") or "unknown item")
+        PyImGui.text_disabled(f"no registered farm for {item}")
+    else:
+        location = str(entry.get("location") or "")
+        PyImGui.text(f"{farm.name} ({location})" if location else farm.name)
+
+    if clicked and can_click:
+        _apply_farm_selection(index)
+
+
+def _draw_weekly_suggestions(busy: bool) -> None:
+    _draw_weekly_row(busy, "This week", 0)
+    _draw_weekly_row(busy, "Next week", 1)
+
+    follow = _follow_weekly_farm()
+    new_follow = bool(PyImGui.checkbox("Start on this week's farm", follow))
+    if new_follow != follow:
+        _set_follow_weekly_farm(new_follow)
+
+    PyImGui.separator()
 
 
 # =============================================================================
@@ -503,18 +643,27 @@ def _create_tree_for_farm(farm: FarmDefinition) -> BottingTree:
 
 
 def _create_exchange_tree_for_farm(farm: FarmDefinition) -> BottingTree:
-    return BottingTree.Create(
+    holder: dict[str, BottingTree] = {}
+
+    def _get_tree() -> BottingTree:
+        return holder["tree"]
+
+    tree = BottingTree.Create(
         f"{BOT_NAME} - Exchange",
-        main_routine=build_exchange_steps(farm),
+        main_routine=build_exchange_steps(farm, tree_getter=_get_tree),
         routine_name=f"NicholasExchange_{farm.key}",
         repeat=False,
         multi_account=True,
-        auto_loot=False,
+        # Looting policy belongs to configure_tree, which runs ConfigureUpkeep
+        # and would overwrite an auto_loot value passed here on both trees.
         auto_resurrection_scroll=False,
         isolation_enabled=False,
         pause_on_combat=True,
         configure_fn=configure_tree,
     )
+
+    holder["tree"] = tree
+    return tree
 
 
 def ensure_exchange_tree() -> BottingTree:
@@ -550,6 +699,69 @@ def ensure_botting_tree() -> BottingTree:
         _tree_farm_key = farm.key
 
     return botting_tree
+
+
+def _active_routine() -> str:
+    """Which routine currently owns the party: 'farm', 'exchange', or ''."""
+    try:
+        if botting_tree is not None and botting_tree.IsStarted():
+            return "farm"
+        if exchange_tree is not None and exchange_tree.IsStarted():
+            return "exchange"
+    except Exception:
+        return ""
+    return ""
+
+
+def _refuse_start(requested: str) -> bool:
+    """True, and logged, when another routine already owns the party."""
+    active = _active_routine()
+    if not active or active == requested:
+        return False
+    PySystem.Console.Log(
+        MODULE_NAME,
+        (
+            f"Start refused: the {active} routine is running. "
+            f"Stop it before starting the {requested} routine."
+        ),
+        PySystem.Console.MessageType.Warning,
+    )
+    return True
+
+
+def start_exchange() -> bool:
+    """Start the exchange routine unless the farm owns the party."""
+    if _refuse_start("exchange"):
+        return False
+
+    tree = ensure_exchange_tree()
+    if not tree.IsStarted():
+        tree.Start()
+    return True
+
+
+def _enforce_single_routine() -> None:
+    """Keep one owner of the party.
+
+    The farm's Start button belongs to the BottingTree UI and the bridge starts
+    the farm tree straight from this module, so no click can be intercepted. The
+    invariant is therefore checked once per frame, before either tree ticks. The
+    farm wins because it is the long-lived routine and the exchange can simply
+    be started again; stopping it is logged rather than silent.
+    """
+    if botting_tree is None or exchange_tree is None:
+        return
+
+    try:
+        if botting_tree.IsStarted() and exchange_tree.IsStarted():
+            exchange_tree.Stop()
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "Exchange stopped: the farm routine is running and owns the party.",
+                PySystem.Console.MessageType.Warning,
+            )
+    except Exception:
+        return
 
 
 def _starting_outpost_name(farm: FarmDefinition) -> str:
@@ -609,6 +821,15 @@ def _draw_config_tab() -> None:
     PyImGui.text("Nicholas Farm Selection")
     PyImGui.separator()
 
+    selection_before = _selected_index
+    _draw_weekly_suggestions(busy)
+    if _selected_index != selection_before:
+        # A weekly button changed the farm; refresh what the rest of the tab draws.
+        farm = selected_farm()
+        tree = ensure_botting_tree()
+        ex_tree = ensure_exchange_tree()
+        busy = bool(tree.IsStarted()) or bool(ex_tree.IsStarted())
+
     farm_names = [entry.name for entry in FARMS]
 
     if busy:
@@ -626,18 +847,9 @@ def _draw_config_tab() -> None:
         PyImGui.end_disabled()
 
     if not busy and new_index != _selected_index:
-        _selected_index = max(0, min(new_index, len(FARMS) - 1))
-        new_farm = selected_farm()
+        _apply_farm_selection(new_index)
 
-        _settings.set("Config", "SelectedFarm", new_farm.key)
-        _clear_count_result()
-
-        botting_tree = None
-        _tree_farm_key = ""
-        exchange_tree = None
-        _exchange_farm_key = ""
-
-        farm = new_farm
+        farm = selected_farm()
         tree = ensure_botting_tree()
         ex_tree = ensure_exchange_tree()
 
@@ -724,9 +936,7 @@ def _draw_config_tab() -> None:
             PyImGui.begin_disabled(True)
 
         if PyImGui.button("Exchange with Nicholas"):
-            ex_tree = ensure_exchange_tree()
-            if not ex_tree.IsStarted():
-                ex_tree.Start()
+            start_exchange()
 
         if farming or exchanging:
             PyImGui.end_disabled()
@@ -862,6 +1072,31 @@ def tooltip():
     PyImGui.end_tooltip()
 
 
+def on_enable() -> None:
+    """Every enable starts from the current week's farm.
+
+    The manager keeps the module alive across an enable/disable cycle, so the
+    one-time init in main() does not run again. Clearing the loaded flag here
+    makes the next selected_farm() resolve the week again.
+
+    A tree that is still running keeps its own farm: the selection is not
+    re-pointed under it, because the manager returns the started tree and the
+    window would otherwise show a farm the tree is not executing.
+    """
+    global _loaded_selection
+
+    try:
+        running = botting_tree is not None and botting_tree.IsStarted()
+        running = running or (exchange_tree is not None and exchange_tree.IsStarted())
+    except Exception:
+        running = False
+
+    if running:
+        return
+
+    _loaded_selection = False
+
+
 def main() -> None:
     global _initialized
 
@@ -882,9 +1117,13 @@ def main() -> None:
     if not tree.IsStarted():
         reset_prepare_session(tree)
 
+    _enforce_single_routine()
+
     tree.tick()
 
     ex_tree = ensure_exchange_tree()
+    if not ex_tree.IsStarted():
+        reset_exchange_prepare_session(ex_tree)
     ex_tree.tick()
 
     farm = selected_farm()
