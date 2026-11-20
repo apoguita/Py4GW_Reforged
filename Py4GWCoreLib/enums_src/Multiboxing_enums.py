@@ -89,6 +89,8 @@ class SharedCommandType(IntEnum):
     # IMPORTANT: append only; persisted/shared enum values must never shift.
     AccountSettingsSync = auto()
     AccountSettingsSyncResult = auto()
+    # Generic per-item restock. Append-only: existing shared command values must never shift.
+    RestockItem = auto()
     #endregion
 
 class ReloadType(IntEnum):

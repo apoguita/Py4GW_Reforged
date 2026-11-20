@@ -232,6 +232,16 @@ class LootFilters:
 
         from Py4GWCoreLib.Item import Item
 
+        # Trick-or-Treat Bags (28434) have inconsistent item-type metadata:
+        # ItemHandling catalog: Usable (9); LootEx catalog: Present (33).
+        # Accept either reported type for this exact hand-list entry only.
+        # The global blacklist/type veto in wants() still takes precedence.
+        if model_id == 28434:
+            try:
+                return int(Item.GetItemType(item_id)[0]) in (9, 33)
+            except Exception:
+                return True
+
         from . import catalog as catalog_data
         from .expected_types import expected_type
 

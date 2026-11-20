@@ -150,69 +150,92 @@ class _EVENTS:
         from ...enums import Range
         from ..helpers_src.HeroAICombatRange import hero_ai_combat_detected
         bot = self.parent
-        
-        if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
-                    print("Party wiped, aborting OnPartyMemberBehind")
-                    return
-                
-        print ("Party Member dead behind")
-        # Find a dead party member
-        dead_player = Routines.Party.GetDeadPartyMemberID()
-        if dead_player == 0:
-            bot.config.FSM.resume()
-            return
-        if not Agent.IsValid(dead_player):
-            bot.config.FSM.resume()
-            return
 
-        # If we're in danger, end combat first (wait until safe)
-        while Routines.Checks.Agents.InDanger():
-            # You can replace with your combat reset routine if you have one
-            #print ("In danger, waiting to be safe before moving to dead party member")
+        def _combat_active() -> bool:
+            return bool(hero_ai_combat_detected(include_party=True))
+
+        def _recovery_must_abort() -> bool:
+            return bool(
+                not Routines.Checks.Map.MapValid()
+                or Routines.Checks.Party.IsPartyWiped()
+                or GLOBAL_CACHE.Party.IsPartyDefeated()
+                or _combat_active()
+            )
+
+        try:
             if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
-                    print("Party wiped, aborting OnPartyMemberBehind")
-                    return
-                
-            yield from Routines.Yield.wait(1000)  
+                print("Party wiped, aborting OnPartyMemberDeadBehind")
+                return
 
-        print ("Safe now, moving to dead party member")
-        # Now safe → move to the dead party member
-        dead_player = Routines.Party.GetDeadPartyMemberID()
-        if dead_player == 0:
-            print("All party members alive!")
+            # The event is already gated on HeroAI combat state, but check it
+            # again here to close the race between event detection and callback
+            # execution.  Never start corpse regrouping during combat.
+            if _combat_active():
+                print("Combat active, postponing dead-party-member recovery")
+                return
+
+            print("Party Member dead behind")
+            dead_player = Routines.Party.GetDeadPartyMemberID()
+            if dead_player == 0 or not Agent.IsValid(dead_player):
+                return
+
+            print("Combat is over, moving to a safe regroup point near dead party member")
+            dead_pos = Agent.GetXY(dead_player)
+            player_pos = Player.GetXY()
+            dead_distance = Utils.Distance(dead_pos, player_pos)
+            if dead_distance <= Range.Spellcast.value:
+                print("Dead party member already within spellcast range")
+                return
+
+            # Keep the regroup flag away from the corpse itself.  If the player
+            # died inside a trap or another hazardous area, stacking directly on
+            # the body can kill the rest of the party.  Approach from the current
+            # leader side and stop 500 units short of the corpse.
+            regroup_distance = 500.0
+            scale = regroup_distance / dead_distance
+            regroup_pos = (
+                dead_pos[0] + (player_pos[0] - dead_pos[0]) * scale,
+                dead_pos[1] + (player_pos[1] - dead_pos[1]) * scale,
+            )
+
+            print(
+                f"Dead party member at ({dead_pos[0]:.0f}, {dead_pos[1]:.0f}); "
+                f"safe regroup point=({regroup_pos[0]:.0f}, {regroup_pos[1]:.0f}) "
+                f"({regroup_distance:.0f} units from corpse)"
+            )
+
+            path = [regroup_pos]
+            result = yield from Routines.Yield.Movement.FollowPath(
+                path,
+                custom_exit_condition=_recovery_must_abort,
+                tolerance=100.0,
+                timeout=30000,
+            )
+            yield from Routines.Yield.wait(100)
+
+            if _recovery_must_abort():
+                print("Dead-party-member recovery interrupted before regroup")
+                return
+
+            # The target may have been resurrected while the leader was moving.
+            if not Agent.IsValid(dead_player) or not Agent.IsDead(dead_player):
+                print("Dead party member was revived before regroup")
+                return
+
+            if not result:
+                print("Failed to move to safe regroup point")
+                return
+
+            print("Arrived at safe regroup point, regrouping for revival")
+
+            # This is the multibox regroup order.  It is deliberately the last
+            # action and only runs after all combat/wipe checks have passed.
+            yield from bot.helpers.Multibox._pixel_stack()
+        finally:
+            # The callback pauses the FSM before starting this coroutine.  A
+            # wipe/combat abort must therefore resume it too, not just success.
             bot.config.FSM.resume()
-            return
-        if not Agent.IsValid(dead_player):
-            bot.config.FSM.resume()
-            return
-
-        dead_pos = Agent.GetXY(dead_player)
-        if Utils.Distance(dead_pos, Player.GetXY()) <= Range.Spellcast.value:
-            print("Dead party member already within spellcast range")
-            bot.config.FSM.resume()
-            return
-
-        exit_movement_condition = lambda: Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated()
-
-        path = [(dead_pos[0], dead_pos[1])]
-        result = (yield from Routines.Yield.Movement.FollowPath(
-            path,
-            custom_exit_condition=exit_movement_condition,
-            tolerance=Range.Spellcast.value,
-            timeout=30000,
-        ))
-        yield from Routines.Yield.wait(100)
-        if not result:
-            print("Failed to move to dead party member")
-            bot.config.FSM.resume()
-            return
-        else:
-            print("Arrived at dead party member, waiting for revival")
-            
-        yield from bot.helpers.Multibox._pixel_stack()
-
-        bot.config.FSM.resume()
-            
+            yield
 
     def OnDeathCallback(self, callback: Callable[[], None]) -> None:
         self._config.events.on_death.set_callback(callback)

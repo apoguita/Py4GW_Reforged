@@ -133,10 +133,7 @@ def is_follow_recovery_active(cached_data: CacheData, state: FollowExecutionStat
 
     state.recovery_active = True
     state.recovery_detour_attempted = False
-    try:
-        _notify_recovery_console_message("Hey, Wait for me!")
-    except Exception:
-        pass
+
     return True
 
 

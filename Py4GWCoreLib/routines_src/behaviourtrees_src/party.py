@@ -930,6 +930,56 @@ class BTParty:
         )
 
     @staticmethod
+    def WaitForQuestState(
+        quest_id: int,
+        state: str,
+        timeout_ms: int = 10_000,
+        throttle_interval_ms: int = 250,
+        log: bool = False,
+    ) -> BehaviorTree:
+        """Wait for a specific quest state without relying on the active quest.
+
+        Supported states: completed, active, in_log, absent.
+        A completed quest is checked via Quest.IsQuestCompleted, not
+        by testing whether the player selected another active quest.
+        """
+        normalized = str(state).strip().lower()
+        valid_states = ("completed", "active", "in_log", "absent")
+        if normalized not in valid_states:
+            raise ValueError(
+                f"Unsupported quest state {state!r}. Expected one of {valid_states}."
+            )
+
+        def _check_state() -> BehaviorTree.NodeState:
+            if normalized == "completed":
+                matched = bool(Quest.IsQuestCompleted(quest_id))
+            elif normalized == "active":
+                matched = int(Quest.GetActiveQuest() or 0) == int(quest_id)
+            else:
+                in_log = int(quest_id) in (
+                    int(qid) for qid in (Quest.GetQuestLogIds() or [])
+                )
+                matched = in_log if normalized == "in_log" else not in_log
+
+            if matched:
+                _log(
+                    "BTParty.WaitForQuestState",
+                    f"Quest {int(quest_id)} reached state {normalized}.",
+                    log=log,
+                )
+                return BehaviorTree.NodeState.SUCCESS
+            return BehaviorTree.NodeState.RUNNING
+
+        return BehaviorTree(
+            BehaviorTree.WaitUntilNode(
+                name=f"WaitForQuestState({int(quest_id)}, {normalized})",
+                condition_fn=_check_state,
+                timeout_ms=max(0, int(timeout_ms)),
+                throttle_interval_ms=max(1, int(throttle_interval_ms)),
+            )
+        )
+
+    @staticmethod
     def WaitForActiveQuest(quest_id: int, timeout_ms: int = 10000, throttle_interval_ms: int = 250, log: bool = False) -> BehaviorTree:
         """
         Build a tree that waits until the requested quest becomes the active quest.

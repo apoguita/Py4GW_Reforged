@@ -193,7 +193,16 @@ class BottingTreeHeroAIMixin:
         self.headless_heroai_enabled = enabled
         self._last_heroai_state = None
         self.ApplyAccountIsolation()
-        self._sync_multibox_heroai_widget(bool(enabled and self.started and not self.paused))
+        # ApoBottingLib pauses local headless HeroAI while interacting with
+        # NPCs. This is NOT a request to turn off the HeroAI widget on every
+        # follower. Only explicit, non-guarded state changes may sync widgets.
+        bb = self.blackboard
+        local_action_pause = bool(bb.get('__apobottinglib_heroai_local_pause', False))
+        if not local_action_pause:
+            self._sync_multibox_heroai_widget(bool(enabled and self.started and not self.paused))
+        elif bb.pop('__apobottinglib_heroai_local_resume_pending', False):
+            # Clear only after the queued restore request has been consumed.
+            bb.pop('__apobottinglib_heroai_local_pause', None)
         if reset_runtime:
             self.headless_heroai.reset()
             bb = self.blackboard
@@ -329,6 +338,89 @@ class BottingTreeHeroAIMixin:
             bool(shared_options.Targeting),
             bool(shared_options.Combat),
         ]) and all(bool(shared_options.Skills[skill_index]) for skill_index in range(SHMEM_MAX_NUMBER_OF_SKILLS))
+
+    def ReconcileMultiboxHeroAIAfterDialog(self: _BottingTreeHeroAIHost, dialog_visible: bool) -> None:
+        """Restore each follower's pre-dialog options after the NPC dialog closes.
+
+        Never unconditionally enable options: user-disabled flags must stay off.
+        The snapshot belongs to the active dialog and is cleared after recovery.
+        """
+        if not self.IsMultiAccountMode() or not self.IsHeadlessHeroAIEnabled() or not self.started or self.paused:
+            self._multibox_dialog_heroai_snapshot = None
+            self._multibox_dialog_was_visible = False
+            self._multibox_dialog_closed_at = None
+            return
+
+        sender_email = str(Player.GetAccountEmail() or '').strip()
+        if not sender_email:
+            return
+
+        def _snapshot():
+            result = {}
+            for account in GLOBAL_CACHE.ShMem.GetAllAccountData():
+                email = str(getattr(account, 'AccountEmail', '') or '').strip()
+                if not email or email == sender_email:
+                    continue
+                try:
+                    options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(email)
+                    if options is None:
+                        continue
+                    result[email] = {
+                        'flags': {name: bool(getattr(options, name, False)) for name in
+                                  ('Following', 'Avoidance', 'Looting', 'Targeting', 'Combat')},
+                        'skills': [bool(value) for value in options.Skills],
+                    }
+                except Exception:
+                    continue
+            return result
+
+        if dialog_visible:
+            # Keep the snapshot from BEFORE the dialog, not a possibly suspended state.
+            self._multibox_dialog_was_visible = True
+            self._multibox_dialog_closed_at = None
+            return
+
+        if bool(getattr(self, '_multibox_dialog_was_visible', False)):
+            # A remote SendDialogToTarget may finish shortly after the local UI
+            # closes; allow it to complete before restoring the saved options.
+            from time import monotonic
+            closed_at = getattr(self, '_multibox_dialog_closed_at', None)
+            if closed_at is None:
+                self._multibox_dialog_closed_at = monotonic()
+                return
+            if monotonic() - closed_at < 0.75:
+                return
+            snapshots = getattr(self, '_multibox_dialog_heroai_snapshot', None) or {}
+            outstanding = {}
+            for email, previous in snapshots.items():
+                try:
+                    options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(email)
+                    if options is None:
+                        outstanding[email] = previous
+                        continue
+                    changed = False
+                    for name, value in previous['flags'].items():
+                        if bool(getattr(options, name, False)) != value:
+                            setattr(options, name, value)
+                            changed = True
+                    for index, value in enumerate(previous['skills']):
+                        if index >= len(options.Skills):
+                            break
+                        if bool(options.Skills[index]) != value:
+                            options.Skills[index] = value
+                            changed = True
+                    if changed:
+                        GLOBAL_CACHE.ShMem.SetHeroAIOptionsByEmail(email, options)
+                except Exception:
+                    outstanding[email] = previous
+            self._multibox_dialog_heroai_snapshot = outstanding or None
+            self._multibox_dialog_was_visible = bool(outstanding)
+            if not outstanding:
+                self._multibox_dialog_closed_at = None
+            return
+
+        # Maintain the last known, unsuspended state until a dialog begins.
+        self._multibox_dialog_heroai_snapshot = _snapshot()
 
     def EnsureHeroAIOptionsEnabled(self: _BottingTreeHeroAIHost) -> bool:
         if self._heroai_options_match_runtime_policy():

@@ -120,18 +120,24 @@ class _INTERACT:
 
     def _coro_with_npc_at_xy(self, x: float, y: float, dialog_id: int = 0, step_name: str = ""):
         yield from self._coro_pause_hero_ai()
-        yield from self._coro_with_agent((x, y), dialog_id=dialog_id)
-        yield from self._coro_restore_hero_ai()
+        try:
+            yield from self._coro_with_agent((x, y), dialog_id=dialog_id)
+        finally:
+            yield from self._coro_restore_hero_ai()
         
     def _coro_with_gadget_at_xy(self, x: float, y: float, step_name: str=""):
         yield from self._coro_pause_hero_ai()
-        yield from self._coro_with_gadget((x, y))
-        yield from self._coro_restore_hero_ai()
+        try:
+            yield from self._coro_with_gadget((x, y))
+        finally:
+            yield from self._coro_restore_hero_ai()
         
     def _coro_with_item_at_xy(self, x: float, y: float, step_name: str=""):
         yield from self._coro_pause_hero_ai()
-        yield from self._coro_with_item((x, y))
-        yield from self._coro_restore_hero_ai()
+        try:
+            yield from self._coro_with_item((x, y))
+        finally:
+            yield from self._coro_restore_hero_ai()
 
     def _coro_with_model(self, model_id: int, dialog_id: int=0):
         from ...Routines import Routines

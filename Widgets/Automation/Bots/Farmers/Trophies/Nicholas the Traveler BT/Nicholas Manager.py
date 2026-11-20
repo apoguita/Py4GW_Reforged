@@ -165,7 +165,7 @@ Features:
 • Displays the required starting outpost and Map ID for the selected farm
 • Uses a random district when travelling to the selected farm outpost on initial setup
 • Automatic farming target calculated from the number of accounts that should receive all 5 Gifts
-• Optional travel and exchange route to Nicholas when route data is available
+• Optional travel and exchange route to Nicholas when legacy route data is available
 • Automatic multibox collector conversion for supported indirect Nicholas items
 • MerchantRules is disabled on all active accounts during the current crash-isolation workflow
 • One planner step per route waypoint for precise movement-failure recovery
@@ -173,7 +173,7 @@ Features:
 • Shared setup, resign/reset safety and inventory-query logic instead of duplicated code in every farm
 
 Credits:
-• Farm paths and Nicholas exchange paths: BubbleTea — migrated/adapted from his original Nicholas the Traveler scripts
+• Farm paths and Nicholas exchange paths: BubbleTea — migrated/adapted from his original AutoIt Nicholas the Traveler scripts
 • Py4GW BottingTree manager architecture and multibox integration: Nicholas Farm Manager project
 """
 
@@ -183,6 +183,8 @@ _settings = Settings(_SETTINGS_FILE, "global")
 _initialized = False
 _selected_index = 0
 _loaded_selection = False
+_alpine_reminder_selection = None
+_alpine_reminder_pending = False
 
 botting_tree: BottingTree | None = None
 _tree_farm_key = ""
@@ -705,7 +707,7 @@ def _draw_config_tab() -> None:
                 "Manual collector conversion required before the Nicholas exchange."
             )
             PyImGui.text(
-                "No reliable Yajide route is currently available."
+                "BubbleTea's AutoIt source does not provide a reliable Yajide route."
             )
 
         PyImGui.text(
@@ -720,7 +722,11 @@ def _draw_config_tab() -> None:
     PyImGui.text("Nicholas exchange")
 
     if farm.exchange_available:
-        if farming or exchanging:
+        PyImGui.text(
+            f"Legacy route: {farm.exchange_source_file}"
+        )
+
+        if farming:
             PyImGui.begin_disabled(True)
 
         if PyImGui.button("Exchange with Nicholas"):
@@ -728,17 +734,14 @@ def _draw_config_tab() -> None:
             if not ex_tree.IsStarted():
                 ex_tree.Start()
 
-        if farming or exchanging:
+        if farming:
             PyImGui.end_disabled()
 
         if exchanging:
-            PyImGui.same_line()
-            if PyImGui.button("Stop Exchange"):
-                ex_tree.Stop()
             PyImGui.text("Exchange route running...")
     else:
         PyImGui.text(
-            "Exchange route unavailable for this farm."
+            "Exchange route unavailable in the legacy AutoIt source."
         )
 
     PyImGui.separator()
@@ -755,6 +758,45 @@ def _draw_config_tab() -> None:
         for email, count in _last_account_counts.items():
             label = _last_account_labels.get(email, email)
             PyImGui.text(f"{label}: {count}")
+
+
+def _draw_alpine_seed_reminder() -> None:
+    """Show the quest prerequisite once whenever Alpine Seed is selected.
+
+    This is informational only: do not claim to validate character origin or
+    quest acceptance through an unverified game API.
+    """
+    global _alpine_reminder_selection, _alpine_reminder_pending
+
+    farm_key = selected_farm().key
+    if farm_key != _alpine_reminder_selection:
+        _alpine_reminder_selection = farm_key
+        _alpine_reminder_pending = farm_key == "alpine_seed"
+
+    if farm_key != "alpine_seed":
+        return
+
+    popup_title = "Alpine Seed - Quest prerequisite"
+    if _alpine_reminder_pending:
+        PyImGui.open_popup(popup_title)
+        _alpine_reminder_pending = False
+
+    if PyImGui.begin_popup(popup_title):
+        PyImGui.text("Alpine Seed farm: prerequisite")
+        PyImGui.separator()
+        PyImGui.text_wrapped(
+            "Before starting this farm, take the quest 'Hungry Devourer' "
+            "from Master Saberlin in Beacon's Perch."
+        )
+        PyImGui.spacing()
+        PyImGui.text_wrapped(
+            "Important: this quest is only available to Tyrian "
+            "(Prophecies-origin) characters."
+        )
+        PyImGui.spacing()
+        if PyImGui.button("Understood"):
+            PyImGui.close_current_popup()
+        PyImGui.end_popup()
 
 
 def _draw_about_tab() -> None:
@@ -852,7 +894,7 @@ def tooltip():
     PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
     PyImGui.bullet_text(
         "Farm and Nicholas exchange paths: BubbleTea - migrated/adapted "
-        "from his original Nicholas the Traveler scripts."
+        "from his original AutoIt Nicholas the Traveler scripts."
     )
     PyImGui.bullet_text(
         "BottingTree manager and multibox integration: Sky."
@@ -900,6 +942,8 @@ def main() -> None:
             ("About", _draw_about_tab),
         ],
     )
+
+    _draw_alpine_seed_reminder()
 
 
 if __name__ == "__main__":
