@@ -1238,9 +1238,12 @@ def handle_target_reached(
 
     The count step only marks the target as reached. This step then:
       - does nothing when the target is not pending;
-      - if already in the configured outpost, stops directly;
-      - otherwise waits for combat to settle, resigns the multibox party,
-        waits for the starting outpost to load, then stops the BottingTree.
+      - if already in the configured outpost, skips straight to the guild hall;
+      - otherwise waits for combat to settle, resigns the multibox party and
+        waits for the starting outpost to load;
+      - travels the party to its guild hall so the accounts are not left standing
+        exposed in the outpost;
+      - then stops the BottingTree.
 
     Stopping only after the resign/map-load sequence prevents BottingTree.Stop()
     from cancelling the cleanup before /resign can be dispatched.
@@ -1287,6 +1290,7 @@ def handle_target_reached(
                         )
                     ),
                     return_to_outpost_if_needed(farm),
+                    travel_to_guild_hall(),
                     BehaviorTree(
                         BehaviorTree.ActionNode(
                             name=f"Stop After Target Cleanup - {farm.name}",
@@ -1359,6 +1363,75 @@ def return_to_outpost_if_needed(farm: FarmDefinition) -> BehaviorTree:
                 ],
             ),
         ],
+    )
+
+
+_GH_TRAVEL_TIMEOUT_MS = 30_000
+
+
+def _has_guild() -> bool:
+    """False when the local account has no guild and therefore no guild hall."""
+    try:
+        return int(Agent.GetGuildID(Player.GetAgentID())) > 0
+    except Exception:
+        return False
+
+
+def travel_to_guild_hall(timeout_ms: int = _GH_TRAVEL_TIMEOUT_MS) -> BehaviorTree:
+    """
+    Move the party out of the outpost and into its guild hall.
+
+    Only the party leader travels: the rest of the party moves with it, so one
+    request is enough. This is best effort -- an account without a guild has no
+    hall to travel to, and the cleanup must still stop the tree -- so every
+    failure only logs and lets the stop happen.
+    """
+    state: dict[str, float] = {"requested_at": 0.0}
+
+    def _travel(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if Map.IsMapReady() and Map.IsGuildHall():
+            return BehaviorTree.NodeState.SUCCESS
+
+        if not state["requested_at"]:
+            if not _has_guild():
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        "Target cleanup: this account has no guild, so there is no "
+                        "guild hall to travel to. The party stays in the outpost."
+                    ),
+                    PySystem.Console.MessageType.Warning,
+                )
+                return BehaviorTree.NodeState.SUCCESS
+
+            state["requested_at"] = time.monotonic()
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "Target cleanup: travelling the party to the guild hall.",
+                PySystem.Console.MessageType.Info,
+            )
+            Map.TravelGH()
+            return BehaviorTree.NodeState.RUNNING
+
+        if (time.monotonic() - state["requested_at"]) * 1000.0 >= timeout_ms:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    "Guild hall travel did not complete in time. The party stays "
+                    "where it is; the cleanup continues."
+                ),
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.SUCCESS
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Travel To Guild Hall",
+            action_fn=_travel,
+            aftercast_ms=0,
+        )
     )
 
 
