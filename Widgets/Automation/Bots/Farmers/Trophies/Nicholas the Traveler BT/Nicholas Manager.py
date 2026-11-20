@@ -7,7 +7,7 @@ import sys
 import PyImGui
 import PySystem
 
-from Py4GWCoreLib import ImGui, Map, get_texture_for_model
+from Py4GWCoreLib import ImGui, Map, Utils, get_texture_for_model
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
@@ -130,6 +130,14 @@ _MANAGER_WIDGET_DIR = os.path.dirname(_MANAGER_MODULE_DIR)
 # guaranteed to be on sys.path. Add it once, then use ordinary package imports.
 if _MANAGER_WIDGET_DIR not in sys.path:
     sys.path.insert(0, _MANAGER_WIDGET_DIR)
+
+# A running client keeps imported packages in sys.modules, so re-running this
+# widget re-executes the imports below but receives the modules loaded earlier:
+# an edit to a support file would then never reach the client until a restart.
+# Drop this package's entries first so the imports read the files on disk.
+for _support_module in ("_modules.NicholasFarmBase", "_modules.NicholasFarms"):
+    Utils.ClearSubModules(_support_module, log=False)
+importlib.invalidate_caches()
 
 from _modules.NicholasFarmBase import (
     build_exchange_steps,
