@@ -36,7 +36,10 @@ from Sources.Sky.DungeonParty import DungeonPartyConfig
 from Sources.Sky.Support import attach_botting_tree_support
 from Sources.Sky.ConsumableRestockUI import draw_restock_group_grid
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
-from Widgets.System.Messaging import get_inventory_state, reset_inventory_state
+from Widgets.System.Messaging import (
+    get_inventory_state, reset_inventory_state,
+    get_inventory_count, reset_inventory_count,
+)
 
 MODULE_NAME = "Underworld BT"
 MODULE_CATEGORY = "Automation"
@@ -1574,6 +1577,18 @@ UW_TRACKED_SECTIONS = (
 UW_LAST_MIGRATED_SECTION = "Dhuum"
 UW_STATS_MAX_HISTORY = 100
 
+# Underworld Chest rare weapons, resolved from this repository's Model_enums.
+UW_RARE_WEAPONS = (
+    ("Eternal Blade", int(ModelID.Eternal_Blade.value)),
+    ("Dhuum's Soul Reaper", int(ModelID.Dhumms_Soul_Reaper.value)),
+)
+UW_RARE_QUERY_TIMEOUT_MS = 10_000
+# Baseline is kept in memory: missing/restarted snapshots never count as zero drops.
+_uw_rare_baseline: dict[str, dict[int, int]] = {}
+_uw_rare_baseline_run_id = ""
+_uw_rare_session_counts: dict[int, int] = {}
+_uw_rare_session_chests = 0
+
 
 class UWRunTracker:
     """Non-blocking UW progress tracker; only writes JSON on milestones/end.
@@ -1596,6 +1611,9 @@ class UWRunTracker:
         self._last_map_in_uw = False
         self._finished_this_instance = False
         self._history: list[dict] = []
+        self.rare_drops: dict[str, dict[str, int]] = {}
+        self.rare_chests: int = 0
+        self.rare_processed_runs: list[str] = []
         self._path = self._get_path()
         self._read_history()
 
@@ -1611,8 +1629,17 @@ class UWRunTracker:
         try:
             with open(self._path, "r", encoding="utf-8") as handle:
                 data = json.load(handle)
-            if isinstance(data, dict) and isinstance(data.get("runs"), list):
-                self._history = [x for x in data["runs"] if isinstance(x, dict)][-UW_STATS_MAX_HISTORY:]
+            if isinstance(data, dict):
+                if isinstance(data.get("runs"), list):
+                    self._history = [x for x in data["runs"] if isinstance(x, dict)][-UW_STATS_MAX_HISTORY:]
+                drops = data.get("rare_drops", {})
+                if isinstance(drops, dict):
+                    self.rare_drops = {
+                        str(account): {str(mid): max(0, int(count)) for mid, count in items.items()}
+                        for account, items in drops.items() if isinstance(items, dict)
+                    }
+                self.rare_chests = max(0, int(data.get("rare_chests", 0) or 0))
+                self.rare_processed_runs = [str(x) for x in data.get("rare_processed_runs", []) if x][-200:]
         except (OSError, ValueError, TypeError):
             self._history = []
 
@@ -1621,8 +1648,13 @@ class UWRunTracker:
             os.makedirs(os.path.dirname(self._path), exist_ok=True)
             temp = self._path + ".tmp"
             with open(temp, "w", encoding="utf-8") as handle:
-                json.dump({"version": 1, "runs": self._history[-UW_STATS_MAX_HISTORY:]},
-                          handle, ensure_ascii=False, indent=2)
+                json.dump({
+                    "version": 2,
+                    "runs": self._history[-UW_STATS_MAX_HISTORY:],
+                    "rare_drops": self.rare_drops,
+                    "rare_chests": self.rare_chests,
+                    "rare_processed_runs": self.rare_processed_runs[-200:],
+                }, handle, ensure_ascii=False, indent=2)
             os.replace(temp, self._path)
         except OSError as exc:
             PySystem.Console.Log(MODULE_NAME, f"[Statistics] Save failed: {exc}",
@@ -1733,16 +1765,20 @@ class UWRunTracker:
         reappear when this script or the Statistics tab reloads.
         """
         previous = list(self._history)
+        old_rare = (self.rare_drops, self.rare_chests, self.rare_processed_runs)
         self._history = []
+        self.rare_drops, self.rare_chests, self.rare_processed_runs = {}, 0, []
         try:
             os.makedirs(os.path.dirname(self._path), exist_ok=True)
             temp = self._path + ".tmp"
             with open(temp, "w", encoding="utf-8") as handle:
-                json.dump({"version": 1, "runs": []}, handle,
-                          ensure_ascii=False, indent=2)
+                json.dump({"version": 2, "runs": [], "rare_drops": {},
+                           "rare_chests": 0, "rare_processed_runs": []},
+                          handle, ensure_ascii=False, indent=2)
             os.replace(temp, self._path)
         except OSError as exc:
             self._history = previous
+            self.rare_drops, self.rare_chests, self.rare_processed_runs = old_rare
             PySystem.Console.Log(MODULE_NAME,
                                  f"[Statistics] Reset failed: {exc}",
                                  PySystem.Console.MessageType.Warning)
@@ -1782,13 +1818,152 @@ def _stats() -> UWRunTracker:
     return _uw_tracker
 
 
+def _uw_rare_shared_count(account: object, model_id: int) -> int | None:
+    """Shards-style inventory mirror; None when the mirror is unavailable."""
+    bags = getattr(account, "InventoryBags", None)
+    if bags is None:
+        return None
+    try:
+        entries = list(bags.iter_bags())
+        if not entries:
+            return None
+        found_slots = False
+        total = 0
+        for bag in entries:
+            if int(getattr(bag, "BagID", 0) or 0) not in INVENTORY_BAG_IDS:
+                continue
+            slots = getattr(bag, "Slots", None)
+            if slots is None:
+                continue
+            found_slots = True
+            for slot in slots:
+                if int(getattr(slot, "ModelID", 0) or 0) == model_id:
+                    total += max(0, int(getattr(slot, "Quantity", 0) or 0))
+        return total if found_slots else None
+    except Exception:
+        return None
+
+
+def _uw_rare_inventory_node(*, after_chest: bool) -> BehaviorTree:
+    """Non-blocking BT snapshot, local + isolated multibox members only.
+
+    On timeout, do not credit a zero drop; never interrupt the chest sequence.
+    """
+    state: dict[str, object] = {"started": False, "pending": {}, "values": {}, "run_id": "", "at": 0.0}
+
+    def _reset() -> None:
+        state.update(started=False, pending={}, values={}, run_id="", at=0.0)
+
+    def _start() -> None:
+        tracker = _stats()
+        tracker.start_if_necessary()
+        run_id = tracker.run_id
+        values: dict[str, dict[int, int]] = {}
+        pending: dict[tuple[str, int], str] = {}
+        sender = str(Player.GetAccountEmail() or "").strip()
+        if not sender or not run_id:
+            _reset()
+            return
+        values[sender] = {}
+        for _label, mid in UW_RARE_WEAPONS:
+            values[sender][mid] = max(0, int(GLOBAL_CACHE.Inventory.GetModelCount(mid)))
+        seen = {sender}
+        for account in _inventory_accounts():
+            email = str(getattr(account, "AccountEmail", "") or "").strip()
+            if not email or email in seen:
+                continue
+            seen.add(email)
+            values[email] = {}
+            for _label, mid in UW_RARE_WEAPONS:
+                mirrored = _uw_rare_shared_count(account, mid)
+                if mirrored is not None:
+                    values[email][mid] = mirrored
+                else:
+                    reset_inventory_count(email, mid, mid)
+                    GLOBAL_CACHE.ShMem.SendMessage(
+                        sender, email, SharedCommandType.InventoryQuery,
+                        (float(mid), float(mid), 0.0, 0.0), ('report_inventory_count',),
+                    )
+                    pending[(email, mid)] = email
+        state.update(started=True, pending=pending, values=values,
+                     run_id=run_id, at=time.monotonic())
+
+    def _finish() -> None:
+        global _uw_rare_baseline, _uw_rare_baseline_run_id, _uw_rare_session_chests
+        tracker = _stats()
+        run_id = str(state["run_id"])
+        values = dict(state["values"])
+        if not after_chest:
+            _uw_rare_baseline = {email: dict(counts) for email, counts in values.items()}
+            _uw_rare_baseline_run_id = run_id
+            _uw_log(f"[Rare Drops] Pre-chest snapshot: {len(values)} account(s).")
+            return
+        if run_id != _uw_rare_baseline_run_id or not _uw_rare_baseline:
+            _uw_log("[Rare Drops] No matching pre-chest snapshot: skip drop count.")
+            return
+        if run_id in tracker.rare_processed_runs:
+            return
+        tracked = 0
+        for email, after in values.items():
+            before = _uw_rare_baseline.get(email, {})
+            if not all(mid in before and mid in after for _label, mid in UW_RARE_WEAPONS):
+                continue
+            tracked += 1
+            totals = tracker.rare_drops.setdefault(email, {})
+            for label, mid in UW_RARE_WEAPONS:
+                delta = max(0, int(after[mid]) - int(before[mid]))
+                totals[str(mid)] = int(totals.get(str(mid), 0)) + delta
+                _uw_rare_session_counts[mid] = _uw_rare_session_counts.get(mid, 0) + delta
+                if delta:
+                    _uw_log(f"[Rare Drops] {email}: {label} +{delta}")
+        if tracked:
+            tracker.rare_processed_runs.append(run_id)
+            tracker.rare_processed_runs = tracker.rare_processed_runs[-200:]
+            tracker.rare_chests += 1
+            _uw_rare_session_chests += 1
+            tracker._save_history()
+            _uw_log(f"[Rare Drops] Recorded {tracked} complete account snapshot(s).")
+        else:
+            _uw_log("[Rare Drops] No complete before/after data: no drop recorded.")
+
+    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if bool(node.blackboard.get("USER_INTERRUPT_ACTIVE", False)):
+            _reset()
+            return BehaviorTree.NodeState.FAILURE
+        try:
+            if not bool(state["started"]):
+                _start()
+                if not bool(state["started"]):
+                    return BehaviorTree.NodeState.SUCCESS
+            pending = state["pending"]
+            for (email, mid) in list(pending):
+                result = int(get_inventory_count(email, mid, mid))
+                if result >= 0:
+                    state["values"].setdefault(email, {})[mid] = result
+                    pending.pop((email, mid), None)
+            if pending and (time.monotonic() - float(state["at"])) * 1000 < UW_RARE_QUERY_TIMEOUT_MS:
+                return BehaviorTree.NodeState.RUNNING
+            if pending:
+                _uw_log(f"[Rare Drops] {len(pending)} inventory queries timed out; omitted.")
+            _finish()
+        except Exception as exc:
+            PySystem.Console.Log(MODULE_NAME, f"[Rare Drops] Snapshot failed: {exc}",
+                                 PySystem.Console.MessageType.Warning)
+        _reset()
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(BehaviorTree.ActionNode(
+        name="Record UW chest rare drops" if after_chest else "Snapshot UW rare weapons before chest",
+        action_fn=_tick, aftercast_ms=0))
+
+
 def _draw_statistics() -> None:
     """Render statistics as compact, readable native PyImGui tables.
 
     Presentation only: collection, timing, eligibility rules and JSON schema
     remain unchanged.
     """
-    global _uw_stats_reset_confirm
+    global _uw_stats_reset_confirm, _uw_rare_session_chests
     tracker = _stats()
     if not tracker.active and not tracker._history:
         tracker._read_history()
@@ -1822,6 +1997,8 @@ def _draw_statistics() -> None:
                               "The current run and its splits will be kept.")
         if PyImGui.button("Confirm reset##uw_stats_confirm"):
             if tracker.reset_saved_statistics():
+                _uw_rare_session_counts.clear()
+                _uw_rare_session_chests = 0
                 _uw_stats_reset_confirm = False
         PyImGui.same_line()
         if PyImGui.button("Cancel##uw_stats_cancel"):
@@ -1866,36 +2043,46 @@ def _draw_statistics() -> None:
         PyImGui.end_table()
 
     PyImGui.separator()
-    PyImGui.text("RECENT RUNS  |  latest first")
-    if PyImGui.begin_table("##uw_statistics_history", 5, table_flags, 0.0, 180.0):
-        PyImGui.table_setup_column("Date (UTC)", PyImGui.TableColumnFlags.WidthFixed, 118.0)
-        PyImGui.table_setup_column("Mode", PyImGui.TableColumnFlags.WidthFixed, 40.0)
-        PyImGui.table_setup_column("Result", PyImGui.TableColumnFlags.WidthFixed, 118.0)
-        PyImGui.table_setup_column("Duration", PyImGui.TableColumnFlags.WidthFixed, 78.0)
-        PyImGui.table_setup_column("Last Planner step", PyImGui.TableColumnFlags.WidthStretch, 0.0)
+    PyImGui.text("UNDERWORLD CHEST  |  RARE WEAPON DROPS")
+    PyImGui.text(f"Recorded chests: {tracker.rare_chests}   |   This session: {_uw_rare_session_chests}")
+    if PyImGui.begin_table("##uw_rare_weapons", 5, table_flags, 0.0, 145.0):
+        PyImGui.table_setup_column("Rare weapon", PyImGui.TableColumnFlags.WidthStretch, 0.0)
+        PyImGui.table_setup_column("Session", PyImGui.TableColumnFlags.WidthFixed, 70.0)
+        PyImGui.table_setup_column("All time", PyImGui.TableColumnFlags.WidthFixed, 70.0)
+        PyImGui.table_setup_column("Per chest", PyImGui.TableColumnFlags.WidthFixed, 85.0)
+        PyImGui.table_setup_column("ModelID", PyImGui.TableColumnFlags.WidthFixed, 70.0)
         PyImGui.table_headers_row()
-        for record in reversed(tracker._history[-20:]):
-            ended = str(record.get("ended_utc", ""))
-            pretty_date = ended[:16].replace("T", " ") if ended else "--"
-            outcome = str(record.get("outcome", "?"))
-            if record.get("debug_run"):
-                outcome += " (debug)"
+        for label, model_id in UW_RARE_WEAPONS:
+            total = sum(int(items.get(str(model_id), 0)) for items in tracker.rare_drops.values())
+            session = int(_uw_rare_session_counts.get(model_id, 0))
+            rate = (f"{total / tracker.rare_chests * 100:.1f}%"
+                    if tracker.rare_chests else "--")
             PyImGui.table_next_row()
-            for field in (pretty_date,
-                          str(record.get("mode", "?")),
-                          outcome,
-                          time_fmt(record.get("total_seconds")),
-                          str(record.get("last_planner_step", ""))):
+            for field in (label, str(session), str(total), rate, str(model_id)):
                 PyImGui.table_next_column()
                 PyImGui.text(field)
         PyImGui.end_table()
 
+    PyImGui.text("DROPS BY ACCOUNT")
+    if PyImGui.begin_table("##uw_rare_accounts", 3, table_flags, 0.0, 135.0):
+        PyImGui.table_setup_column("Account", PyImGui.TableColumnFlags.WidthStretch, 0.0)
+        PyImGui.table_setup_column("Eternal Blade", PyImGui.TableColumnFlags.WidthFixed, 110.0)
+        PyImGui.table_setup_column("Soul Reaper", PyImGui.TableColumnFlags.WidthFixed, 105.0)
+        PyImGui.table_headers_row()
+        for account, totals in sorted(tracker.rare_drops.items()):
+            PyImGui.table_next_row()
+            for field in (account,
+                          str(totals.get(str(UW_RARE_WEAPONS[0][1]), 0)),
+                          str(totals.get(str(UW_RARE_WEAPONS[1][1]), 0))):
+                PyImGui.table_next_column()
+                PyImGui.text(field)
+        PyImGui.end_table()
+    PyImGui.text_wrapped("Drops are counted from per-account inventory differences "
+                          "before and after the final chest, as in Shards. "
+                          "Missing inventory data is not treated as a zero drop. "
+                          "Per-chest figures are item counts / recorded chests, not a probability.")
     if not successful:
-        PyImGui.text_wrapped("Averages and records require a complete, non-debug "
-                              "UW clear through Dhuum; checkpoints do not qualify.")
-    PyImGui.text_wrapped("Dhuum success is recorded only after the chest and combat. "
-                          "Return to outpost can indicate a wipe or manual exit.")
-
+        PyImGui.text_wrapped("Timing averages require a complete, non-debug UW clear through Dhuum.")
 
 
 def _action(name: str, func: Callable[[], None]) -> BehaviorTree:
@@ -2103,6 +2290,18 @@ def _keeper2_tick_passage() -> None:
             _uw_keeper2_last_clear_at = now
             _uw_log(f'[Keeper 2] Cleared invulnerable Aatxe target {target}; leader Combat stays OFF.')
 
+
+def _keeper2_focus_fendi_style() -> BehaviorTree:
+    """Persistent, boss-only call-target inspired by Shards' Fendi focus.
+
+    Never selects a nearby fallback enemy. The leader remains in a passive
+    stance so the invulnerable Aatxes cannot steal its auto-attacks. Party
+    members still have HeroAI combat enabled and can engage the called Keeper.
+    """
+    state = {'started': None, 'seen': False, 'missing_since': None,
+             'last_call_at': 0.0, 'last_target': 0}
+    center_x, center_y = -8371.0, 4865.0
+    radius_sq = 3200.0 ** 2
 
     def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         now = time.monotonic()
@@ -2314,7 +2513,7 @@ def _horsemen_start_staging() -> None:
             options.FlagFacingAngle = 0.0
         except (AttributeError, TypeError, ValueError):
             pass
-    PySystem.Console.Log(MODULE_NAME, 'Following OFF, looting OFF; followers anchored in place.',
+    PySystem.Console.Log(MODULE_NAME, '[4H] Following OFF, looting OFF; followers anchored in place.',
                          PySystem.Console.MessageType.Info)
 
 
@@ -2334,7 +2533,7 @@ def _horsemen_restore_policy() -> None:
             options.Following, options.Looting = True, True
     _horsemen_options_snapshot.clear()
     _horsemen_policy = None
-    PySystem.Console.Log(MODULE_NAME, 'Original Following/Looting options restored.',
+    PySystem.Console.Log(MODULE_NAME, '[4H] Original Following/Looting options restored.',
                          PySystem.Console.MessageType.Info)
 
 
@@ -2834,31 +3033,20 @@ def _uw_servants_tick() -> None:
 
 def _uw_clear_servants() -> None:
     global _servants_policy_active
-
-    # Stop persistent HeroAI flag policy first.
     _servants_policy_active = False
     _servants_flag_cache.clear()
-
-    # Release individually flagged native heroes.
-    # UnflagHero expects a 1-based hero position, not an agent ID.
+    # FlagHero uses agent IDs, while UnflagHero expects 1-based hero positions.
+    # UnflagAllHeroes alone does not reliably release individually flagged heroes.
     hero_count = int(GLOBAL_CACHE.Party.GetHeroCount() or 0)
-
     GLOBAL_CACHE.Party.Heroes.UnflagAllHeroes()
-
     for position in range(1, hero_count + 1):
         GLOBAL_CACHE.Party.Heroes.UnflagHero(position)
-
-    # Release multibox HeroAI followers.
     for _account, opts in _horsemen_accounts():
         opts.IsFlagged = False
-        opts.FlagPos.x = 0.0
-        opts.FlagPos.y = 0.0
-        opts.AllFlag.x = 0.0
-        opts.AllFlag.y = 0.0
+        opts.FlagPos.x = opts.FlagPos.y = 0.0
+        opts.AllFlag.x = opts.AllFlag.y = 0.0
         opts.Following = True
         opts.Looting = True
-
-    _uw_log('[Servants] Native heroes and HeroAI followers unflagged.')
 
 
 def _dhuum_settings_load() -> None:
@@ -3426,7 +3614,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action("The Four Horsemen", "02 - Staging settle 10 seconds",
                         lambda: BT.Wait(10_000)),
         _planner_action("The Four Horsemen", "03 - Disable following and loot; anchor followers",
-                        lambda: _action("staging options", _horsemen_start_staging)),
+                        lambda: _action("4H staging options", _horsemen_start_staging)),
         _planner_action("The Four Horsemen", "03A - Flag ALL heroes",
                         lambda: BT.FlagAllHeroes(13473, -12091)),
         _planner_action("The Four Horsemen", "04 - Approach Chaos Reaper (11371, -17990)",
@@ -3434,15 +3622,15 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action("The Four Horsemen", "05 - Accept quest (106)",
                         lambda: _quest_npc(NPC_REAPER, 0x806A01,
                                            QUEST_FOUR_HORSEMEN, "Accept Four Horsemen")),
-        _planner_action("The Four Horsemen", "06 - Spawn settle 37 seconds",
-                        lambda: BT.Wait(37_000)),
+        _planner_action("The Four Horsemen", "06 - Spawn settle 32 seconds",
+                        lambda: BT.Wait(32_000)),
         _planner_action("The Four Horsemen", "07 - Return to Chaos Reaper",
                         lambda: BT.Move(Vec2f(11371, -17990), pause_on_combat=False, log=False)),
         _planner_action("The Four Horsemen", "08 - Clear staging flags",
                         lambda: BT.Sequence(
-                            name=" Resume Follow Before Lab Teleport",
+                            name="4H Resume Follow Before Lab Teleport",
                             children=[
-                                _action(" resume following before teleport", _horsemen_start_defense),
+                                _action("4H resume following before teleport", _horsemen_start_defense),
                                 BT.UnflagAllHeroes(log=False),
                             ],
                         )),                        
@@ -3451,7 +3639,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                             NPC_REAPER, dialog_id=0x8D, multi_account=False, log=False)),
 
         _planner_action("The Four Horsemen", "10 - Resume following, keep looting off",
-                        lambda: _action(" defense following", _horsemen_start_defense)),
+                        lambda: _action("4H defense following", _horsemen_start_defense)),
         _planner_action("The Four Horsemen", "11 - Move to Labyrinth Reaper (-5782, 12819)",
                         lambda: BT.Move(Vec2f(-5782, 12819), pause_on_combat=False, log=False)),
         _planner_action("The Four Horsemen", "12 - Teleport settle 1 second",
@@ -3497,7 +3685,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                         lambda: BT.MoveAndDialogByModelID(
                             NPC_REAPER, dialog_id=0x806A07, multi_account=False, log=False)),
         _planner_action("The Four Horsemen", "24 - Restore following and looting",
-                        lambda: _action(" restore options", _horsemen_restore_policy)),
+                        lambda: _action("4H restore options", _horsemen_restore_policy)),
         _planner_action("The Four Horsemen", "25 - Record completion",
                         lambda: _record("The Four Horsemen")),
 
@@ -3707,6 +3895,8 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action('Unwanted Guests', '09D - Keep leader passive while Keeper 2 alive',
                         lambda: _action('Verify Keeper 2 safety',
                                         lambda: _keeper2_set_leader_combat(True))),
+        _planner_action('Unwanted Guests', '09E - Focus Keeper 2 until defeat (Fendi style)',
+                        _keeper2_focus_fendi_style),
         _planner_action('Unwanted Guests','10 - Keeper 2 depart (-7589,6801)',
                         lambda: BT.Move(Vec2f(-7589,6801),log=False)),
         *_keeper_approach_steps(3, ((-4095,12964),)),
@@ -3729,9 +3919,10 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                         lambda: _blacklist('obsidian behemoth',False)),
         _planner_action('Unwanted Guests','16 - Record',lambda: _record('Unwanted Guests')),
 
-        *_uw_route('Restore Wastes', ((3891,7572),(6272,20899),(3451,16002),(4131,22310),(-1204,20975),(-361,18492),), '01 - Travel'),
-
-        _planner_action('Restore Wastes','02 - Record',lambda: _record('Restore Wastes')),
+        *_uw_route('Restore Wastes', ((3891,7572),(4106,16031),(2486,21723),
+             (-1452,21202),(542,18310)), '01 - Travel'),
+        _planner_action('Restore Wastes','02 - Settle 3s',lambda: BT.Wait(3000)),
+        _planner_action('Restore Wastes','03 - Record',lambda: _record('Restore Wastes')),
 
         # Servants of Grenth: spread 7 secondary members using their actual
         # roster positions, not BT.FlagHero's mixed hero/player numbering.
@@ -3745,8 +3936,9 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                         lambda: _quest_npc(NPC_REAPER,0x806601,UW_QUEST_SERVANTS,'Accept Servants of Grenth')),
         _planner_action('Servants of Grenth','05 - Return to defense (2700,19952)',
                         lambda: BT.Move(Vec2f(2700,19952),log=False)),
-        _planner_action('Servants of Grenth','06 - Unflag heroes and followers',
-                        lambda: _action('Clear Servants cache',_uw_clear_servants)),
+        # Stop the policy and clear ALL flags in one action, before the next tick.
+        _planner_action('Servants of Grenth','06A - Clear native hero and HeroAI flags',
+                        lambda: _action('Clear Servants flags',_uw_clear_servants)),
         _planner_action('Servants of Grenth','07 - Wait quest 102 completed',
                         lambda: _wait_quest_completed(UW_QUEST_SERVANTS,timeout_ms=360_000)),
         _planner_action('Servants of Grenth','08 - Reward settle 30 seconds',
@@ -3777,6 +3969,8 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                         lambda: _action('Flag Dhuum groups',_dhuum_flag_groups)),
         _planner_action('Dhuum','09 - Enable Dhuum Helper on sacrifice followers',
                         _dhuum_enable_helper),
+        _planner_action('Dhuum','09A - Snapshot rare weapon inventory before chest',
+                        lambda: _uw_rare_inventory_node(after_chest=False)),
         _planner_action('Dhuum','10 - Move into Dhuum fight (-14007,17287)',
                         lambda: BT.Move(Vec2f(-14007,17287),pause_on_combat=False,log=False)),
         _planner_action('Dhuum','12 - Wait for Underworld chest',
@@ -3794,8 +3988,13 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                         lambda: BT.Move(Vec2f(-14243,17017),log=False)),
         _planner_action('Dhuum','17 - Quest completion leader 0x846907',
                         lambda: BT.MoveAndDialogByModelID(UW_KING_ID,dialog_id=0x846907,log=False)),
-        _planner_action('Dhuum','18 - Record full UW completion',lambda: _record('Dhuum')),
-        _planner_action('Dhuum','19 - Resign party back to UW entry outpost',_dhuum_resign_to_next_run),
+        _planner_action('Dhuum','18 - Verify quest 1129 completed',
+                        lambda: _wait_quest_completed(UW_QUEST_NIGHTMARE,timeout_ms=30_000)),
+        _planner_action('Dhuum','19 - Record full UW completion',lambda: _record('Dhuum')),
+        _planner_action('Dhuum','20 - Final loot settle (15s)',lambda: BT.Wait(15_000)),
+        _planner_action('Dhuum','20A - Record rare chest drops across accounts',
+                        lambda: _uw_rare_inventory_node(after_chest=True)),
+        _planner_action('Dhuum','21 - Resign party back to UW entry outpost',_dhuum_resign_to_next_run),
 
     ]
 
