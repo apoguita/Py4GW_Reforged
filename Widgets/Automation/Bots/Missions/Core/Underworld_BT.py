@@ -2104,18 +2104,6 @@ def _keeper2_tick_passage() -> None:
             _uw_log(f'[Keeper 2] Cleared invulnerable Aatxe target {target}; leader Combat stays OFF.')
 
 
-def _keeper2_focus_fendi_style() -> BehaviorTree:
-    """Persistent, boss-only call-target inspired by Shards' Fendi focus.
-
-    Never selects a nearby fallback enemy. The leader remains in a passive
-    stance so the invulnerable Aatxes cannot steal its auto-attacks. Party
-    members still have HeroAI combat enabled and can engage the called Keeper.
-    """
-    state = {'started': None, 'seen': False, 'missing_since': None,
-             'last_call_at': 0.0, 'last_target': 0}
-    center_x, center_y = -8371.0, 4865.0
-    radius_sq = 3200.0 ** 2
-
     def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         now = time.monotonic()
         if state['started'] is None:
@@ -2326,7 +2314,7 @@ def _horsemen_start_staging() -> None:
             options.FlagFacingAngle = 0.0
         except (AttributeError, TypeError, ValueError):
             pass
-    PySystem.Console.Log(MODULE_NAME, '[4H] Following OFF, looting OFF; followers anchored in place.',
+    PySystem.Console.Log(MODULE_NAME, 'Following OFF, looting OFF; followers anchored in place.',
                          PySystem.Console.MessageType.Info)
 
 
@@ -2346,7 +2334,7 @@ def _horsemen_restore_policy() -> None:
             options.Following, options.Looting = True, True
     _horsemen_options_snapshot.clear()
     _horsemen_policy = None
-    PySystem.Console.Log(MODULE_NAME, '[4H] Original Following/Looting options restored.',
+    PySystem.Console.Log(MODULE_NAME, 'Original Following/Looting options restored.',
                          PySystem.Console.MessageType.Info)
 
 
@@ -3438,7 +3426,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action("The Four Horsemen", "02 - Staging settle 10 seconds",
                         lambda: BT.Wait(10_000)),
         _planner_action("The Four Horsemen", "03 - Disable following and loot; anchor followers",
-                        lambda: _action("4H staging options", _horsemen_start_staging)),
+                        lambda: _action("staging options", _horsemen_start_staging)),
         _planner_action("The Four Horsemen", "03A - Flag ALL heroes",
                         lambda: BT.FlagAllHeroes(13473, -12091)),
         _planner_action("The Four Horsemen", "04 - Approach Chaos Reaper (11371, -17990)",
@@ -3446,15 +3434,15 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action("The Four Horsemen", "05 - Accept quest (106)",
                         lambda: _quest_npc(NPC_REAPER, 0x806A01,
                                            QUEST_FOUR_HORSEMEN, "Accept Four Horsemen")),
-        _planner_action("The Four Horsemen", "06 - Spawn settle 32 seconds",
-                        lambda: BT.Wait(32_000)),
+        _planner_action("The Four Horsemen", "06 - Spawn settle 37 seconds",
+                        lambda: BT.Wait(37_000)),
         _planner_action("The Four Horsemen", "07 - Return to Chaos Reaper",
                         lambda: BT.Move(Vec2f(11371, -17990), pause_on_combat=False, log=False)),
         _planner_action("The Four Horsemen", "08 - Clear staging flags",
                         lambda: BT.Sequence(
-                            name="4H Resume Follow Before Lab Teleport",
+                            name=" Resume Follow Before Lab Teleport",
                             children=[
-                                _action("4H resume following before teleport", _horsemen_start_defense),
+                                _action(" resume following before teleport", _horsemen_start_defense),
                                 BT.UnflagAllHeroes(log=False),
                             ],
                         )),                        
@@ -3463,7 +3451,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                             NPC_REAPER, dialog_id=0x8D, multi_account=False, log=False)),
 
         _planner_action("The Four Horsemen", "10 - Resume following, keep looting off",
-                        lambda: _action("4H defense following", _horsemen_start_defense)),
+                        lambda: _action(" defense following", _horsemen_start_defense)),
         _planner_action("The Four Horsemen", "11 - Move to Labyrinth Reaper (-5782, 12819)",
                         lambda: BT.Move(Vec2f(-5782, 12819), pause_on_combat=False, log=False)),
         _planner_action("The Four Horsemen", "12 - Teleport settle 1 second",
@@ -3509,7 +3497,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                         lambda: BT.MoveAndDialogByModelID(
                             NPC_REAPER, dialog_id=0x806A07, multi_account=False, log=False)),
         _planner_action("The Four Horsemen", "24 - Restore following and looting",
-                        lambda: _action("4H restore options", _horsemen_restore_policy)),
+                        lambda: _action(" restore options", _horsemen_restore_policy)),
         _planner_action("The Four Horsemen", "25 - Record completion",
                         lambda: _record("The Four Horsemen")),
 
@@ -3719,8 +3707,6 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         _planner_action('Unwanted Guests', '09D - Keep leader passive while Keeper 2 alive',
                         lambda: _action('Verify Keeper 2 safety',
                                         lambda: _keeper2_set_leader_combat(True))),
-        _planner_action('Unwanted Guests', '09E - Focus Keeper 2 until defeat (Fendi style)',
-                        _keeper2_focus_fendi_style),
         _planner_action('Unwanted Guests','10 - Keeper 2 depart (-7589,6801)',
                         lambda: BT.Move(Vec2f(-7589,6801),log=False)),
         *_keeper_approach_steps(3, ((-4095,12964),)),

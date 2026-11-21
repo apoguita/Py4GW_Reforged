@@ -139,7 +139,8 @@ RETRY_MOVE = 1.5
 RETRY_INTERACT = 2.0
 state = dict(stage='Waiting', note='Widget initialized', npc=0, distance=-1.0,
              spirit=False, last_error='', since=time.monotonic(), last_action=0.0,
-             completed=False, override=False, heroai_backup=None, map_id=0)
+             completed=False, override=False, heroai_backup=None, map_id=0,
+             npc_scan_count=0, npc_scan_names='', last_scan_error='')
 
 
 def _set_stage(stage, note=''):
@@ -159,20 +160,33 @@ def _log(note, error=False):
 
 
 def _find_mayor():
+    """Find the loaded mayor, accepting a localized title (Maire/Mayor/etc.)."""
     try:
         player_xy = Player.GetXY()
         best, best_distance = 0, float('inf')
+        scanned = 0
+        nearby = []
         for raw in AgentArray.GetNPCMinipetArray():
             agent_id = int(raw)
             if not Agent.IsValid(agent_id):
                 continue
-            if (Agent.GetNameByID(agent_id) or '').strip().casefold() != MAYOR_NAME.casefold():
+            scanned += 1
+            name = str(Agent.GetNameByID(agent_id) or '').strip()
+            if name and len(nearby) < 8:
+                nearby.append(name)
+            # 'Mayor' is localized on non-English game clients.
+            # Do not select generic NPCs: the surname must still match.
+            if 'alegheri' not in name.casefold():
                 continue
             distance = Utils.Distance(player_xy, Agent.GetXY(agent_id))
             if distance < best_distance:
                 best, best_distance = agent_id, distance
+        state['npc_scan_count'] = scanned
+        state['npc_scan_names'] = ', '.join(nearby)
+        state['last_scan_error'] = ''
         return best, best_distance
     except Exception as exc:
+        state['last_scan_error'] = str(exc)
         _log('NPC scan failed: ' + str(exc), True)
         return 0, float('inf')
 
@@ -263,7 +277,7 @@ def _tick(_node):
         npc, dist = _find_mayor()
         state['npc'], state['distance'] = npc, dist
         if not npc:
-            _set_stage('Find mayor', 'Mayor not loaded / not found (no movement possible)')
+            _set_stage('Find mayor', f"Mayor not found among {state['npc_scan_count']} loaded NPCs; no movement sent")
             return BehaviorTree.NodeState.RUNNING
         now = time.monotonic()
         if state['stage'] not in ('Move', 'Interact', 'Dialog'):
@@ -388,6 +402,12 @@ def _draw_status():
         npc = int(state['npc'] or 0)
         _ui_kv('Mayor Alegheri:', 'FOUND' if npc else 'NOT LOADED', _UI_GREEN if npc else _UI_AMBER)
         _ui_kv('Agent ID:', str(npc) if npc else '--')
+        _ui_kv('NPCs scanned:', str(state['npc_scan_count']))
+        if not npc:
+            _ui_text('Sample NPC names:', _UI_MUTED)
+            PyImGui.text_wrapped(str(state['npc_scan_names'] or '(no names available)'))
+            if state['last_scan_error']:
+                _ui_text('Scan exception: ' + str(state['last_scan_error']), _UI_RED)
         distance = float(state['distance'])
         _ui_kv('Distance:', f'{distance:.0f} units' if 0 <= distance < float('inf') else '--')
         _ui_kv('Interaction range:', f'{INTERACT_RANGE:.0f} units')
