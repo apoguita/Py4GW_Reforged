@@ -18,6 +18,7 @@ from Py4GWCoreLib import (
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 import PyImGui
 import PyInventory
+from Py4GWCoreLib import Inventory
 import time
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 
@@ -140,7 +141,9 @@ RETRY_INTERACT = 2.0
 state = dict(stage='Waiting', note='Widget initialized', npc=0, distance=-1.0,
              spirit=False, last_error='', since=time.monotonic(), last_action=0.0,
              completed=False, override=False, heroai_backup=None, map_id=0,
-             npc_scan_count=0, npc_scan_names='', last_scan_error='')
+             npc_scan_count=0, npc_scan_names='', last_scan_error='',
+             had_spirit=False, armor_restore_pending=False, armor_last_attempt=0.0,
+             armor_started=0.0, armor_error='', armor_restored=False)
 
 
 def _set_stage(stage, note=''):
@@ -240,6 +243,78 @@ def _restore_heroai():
         _log('HeroAI restore failed: ' + str(exc), True)
 
 
+# Equipment restoration runs locally on the sacrificed character; it does not
+# depend on the leader Planner, which may be paused during Dhuum.
+_ARMOR_SLOTS = ('2', '3', '4', '5', '6')
+_ARMOR_RETRY_SECONDS = 1.25
+_ARMOR_RESTORE_TIMEOUT_SECONDS = 45.0
+
+
+def _equipped_armor_slots():
+    slots = {}
+    for item in PyInventory.Bag(22, 'Equipped_Items').GetItems():
+        slot = str(int(getattr(item, 'slot', 0) or 0))
+        if slot in _ARMOR_SLOTS:
+            slots[slot] = int(getattr(item, 'model_id', 0) or 0)
+    return slots
+
+
+def _restore_normal_armor_tick():
+    """Restore one missing piece per tick and verify the actual equipped items."""
+    if not state['armor_restore_pending']:
+        return
+    now = time.monotonic()
+    if now - state['armor_last_attempt'] < _ARMOR_RETRY_SECONDS:
+        return
+    state['armor_last_attempt'] = now
+    try:
+        email = str(Player.GetAccountEmail() or '').strip().lower()
+        _armor_doc.reload()
+        entry = _armor_doc.get_json(email, {})
+        saved = entry.get('normal', {}) if isinstance(entry, dict) else {}
+        if not isinstance(saved, dict) or any(int(saved.get(k, 0) or 0) <= 0 for k in _ARMOR_SLOTS):
+            raise RuntimeError('NORMAL armor profile incomplete (5 pieces required)')
+        equipped = _equipped_armor_slots()
+        missing = [k for k in _ARMOR_SLOTS if equipped.get(k) != int(saved[k])]
+        if not missing:
+            state['armor_restore_pending'] = False
+            state['armor_restored'] = True
+            state['armor_error'] = ''
+            _set_stage('Completed', 'Normal armor restored (5/5)')
+            _log('Normal armor restored and verified (5/5)')
+            return
+        if now - state['armor_started'] > _ARMOR_RESTORE_TIMEOUT_SECONDS:
+            state['armor_restore_pending'] = False
+            state['armor_error'] = f"Armor not restored: {len(missing)} missing piece(s)"
+            _set_stage('Error', state['armor_error'])
+            _log(state['armor_error'], True)
+            return
+        # Bag 22 reports currently equipped items; bags 1-4 carry spare armor.
+        needed_slot = missing[0]
+        model_id = int(saved[needed_slot])
+        matches = []
+        for bag_id in (1, 2, 3, 4):
+            for item in PyInventory.Bag(bag_id, f'Bag_{bag_id}').GetItems():
+                if int(getattr(item, 'model_id', 0) or 0) == model_id:
+                    item_id = int(getattr(item, 'item_id', 0) or 0)
+                    if item_id > 0:
+                        matches.append(item_id)
+        if not matches:
+            state['armor_error'] = f'Normal armor piece not found: slot {needed_slot}, model {model_id}'
+            _set_stage('Restore armor', state['armor_error'])
+            return
+        Inventory.EquipItem(matches[0], int(Player.GetAgentID()))
+        state['armor_error'] = ''
+        _set_stage('Restore armor', f'Re-equipping normal armor ({5 - len(missing)}/5)')
+    except Exception as exc:
+        state['armor_error'] = str(exc)
+        _set_stage('Restore armor', 'Armor: ' + state['armor_error'])
+        if now - state['armor_started'] > _ARMOR_RESTORE_TIMEOUT_SECONDS:
+            state['armor_restore_pending'] = False
+            _set_stage('Error', 'Armor restoration failed: ' + state['armor_error'])
+            _log(state['note'], True)
+
+
 def _reset(reason='Reset'):
     _restore_heroai()
     try:
@@ -264,12 +339,27 @@ def _tick(_node):
         pid = int(Player.GetAgentID())
         spirit = bool(GLOBAL_CACHE.Effects.HasEffect(pid, SPIRIT_ID))
         state['spirit'] = spirit
+        if spirit:
+            if not state['had_spirit']:
+                state['armor_restored'] = False
+            state['had_spirit'] = True
+        elif state['had_spirit'] and not state['armor_restored'] and not state['armor_restore_pending']:
+            state['had_spirit'] = False
+            state['armor_restore_pending'] = True
+            state['armor_started'] = time.monotonic()
+            state['armor_last_attempt'] = 0.0
+            _log('Spirit Form ended: restoring normal armor locally')
+        if state['armor_restore_pending']:
+            _restore_heroai()
+            _restore_normal_armor_tick()
+            return BehaviorTree.NodeState.RUNNING
         if not spirit and not state['override']:
             if state['heroai_backup']:
                 _restore_heroai()
             if state['completed']:
                 state['completed'] = False
-            _set_stage('Waiting', 'Spirit Form not detected')
+            if not state['armor_restored'] and state['stage'] != 'Error':
+                _set_stage('Waiting', 'Spirit Form not detected')
             return BehaviorTree.NodeState.RUNNING
         if state['completed']:
             _set_stage('Completed', 'Dialog command dispatched; waiting for Spirit Form to end')
@@ -357,87 +447,31 @@ def _ui_section(title):
 
 
 def _draw_status():
-    # The GUI remains visible even when idle or outside Underworld.
-    opened = PyImGui.begin('Dhuum Helper BT  |  Spirit Operations')
+    """Compact monitor: current action and BT progress only."""
+    opened = PyImGui.begin('Dhuum Helper BT')
     if opened:
-        _ui_text('D H U U M   /   S P I R I T   O P S', _UI_PURPLE)
-        _ui_text('BT DIAGNOSTICS  -  Mayor Alegheri', _UI_MUTED)
-        PyImGui.separator()
-
-        in_uw = state['map_id'] == UW_MAP
-        spirit = bool(state['spirit'])
         stage = str(state['stage'])
-        bad = stage == 'Error' or bool(state['last_error']) and stage == 'Error'
-        if bad:
-            status_text, status_color = 'ERROR  |  ACTION REQUIRED', _UI_RED
-        elif stage == 'Completed':
-            status_text, status_color = 'COMMAND SENT  |  VERIFY IN GAME', _UI_GREEN
-        elif spirit and in_uw:
-            status_text, status_color = 'SPIRIT FORM ACTIVE  |  RUNNING', _UI_AMBER
-        elif in_uw:
-            status_text, status_color = 'STANDBY  |  WAITING FOR SACRIFICE', _UI_MUTED
-        else:
-            status_text, status_color = 'OFF DUTY  |  OUTSIDE UNDERWORLD', _UI_MUTED
-        _ui_text(status_text, status_color)
-
-        _ui_section('01  /  CHARACTER')
-        _ui_kv('Character:', Player.GetName() or 'Unknown')
-        _ui_kv('Underworld:', 'CONNECTED' if in_uw else 'NOT IN UW', _UI_GREEN if in_uw else _UI_MUTED)
-        _ui_kv('Spirit Form [3134]:', 'DETECTED' if spirit else 'ABSENT', _UI_GREEN if spirit else _UI_MUTED)
-        _ui_kv('HeroAI takeover:', 'SUSPENDED' if state['heroai_backup'] else 'NORMAL', _UI_AMBER if state['heroai_backup'] else _UI_MUTED)
-
-        _ui_section('02  /  BEHAVIOR TREE')
-        _ui_kv('Current node:', stage, _UI_RED if bad else _UI_AMBER if stage not in ('Waiting', 'Completed') else _UI_GREEN if stage == 'Completed' else _UI_MUTED)
         if stage in _UI_STEPS:
-            index = _UI_STEPS.index(stage)
-            fraction = index / (len(_UI_STEPS) - 1)
+            fraction = _UI_STEPS.index(stage) / (len(_UI_STEPS) - 1)
+        elif stage == 'Restore armor':
+            fraction = 0.9
         else:
             fraction = 0.0
-        PyImGui.progress_bar(fraction, -1, 0, f'{int(fraction * 100)}%  |  {stage}')
-        _ui_text('WAIT  >  LOCATE  >  MOVE  >  INTERACT  >  DIALOG  >  DONE', _UI_MUTED)
-        elapsed = max(0.0, time.monotonic() - float(state['since']))
-        _ui_kv('Time at stage:', f'{elapsed:.1f} s')
-
-        _ui_section('03  /  TARGET TRACKING')
-        npc = int(state['npc'] or 0)
-        _ui_kv('Mayor Alegheri:', 'FOUND' if npc else 'NOT LOADED', _UI_GREEN if npc else _UI_AMBER)
-        _ui_kv('Agent ID:', str(npc) if npc else '--')
-        _ui_kv('NPCs scanned:', str(state['npc_scan_count']))
-        if not npc:
-            _ui_text('Sample NPC names:', _UI_MUTED)
-            PyImGui.text_wrapped(str(state['npc_scan_names'] or '(no names available)'))
-            if state['last_scan_error']:
-                _ui_text('Scan exception: ' + str(state['last_scan_error']), _UI_RED)
-        distance = float(state['distance'])
-        _ui_kv('Distance:', f'{distance:.0f} units' if 0 <= distance < float('inf') else '--')
-        _ui_kv('Interaction range:', f'{INTERACT_RANGE:.0f} units')
-
-        _ui_section('04  /  LIVE ACTIVITY')
-        _ui_text('Last event:', _UI_MUTED)
-        PyImGui.text_wrapped(str(state['note'] or 'No activity'))
-        if state['last_error']:
-            _ui_text('Last error:', _UI_RED)
-            PyImGui.text_wrapped(str(state['last_error']))
-
-        _ui_section('05  /  CONTROLS')
-        PyImGui.push_style_color(PyImGui.ImGuiCol.Button, (0.27, 0.19, 0.43, 1.0))
-        PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0.38, 0.27, 0.60, 1.0))
-        PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0.49, 0.36, 0.72, 1.0))
-        try:
-            if PyImGui.button('RESET / RETRY'):
-                _reset('Manual reset')
-            PyImGui.same_line()
-            if PyImGui.button('TEST SPIRIT FORM'):
-                if state['spirit']:
-                    state['override'] = True
-                    state['completed'] = False
-                    _set_stage('Find mayor', 'Manual test requested')
-                else:
-                    _log('Force test refused: no Spirit Form', True)
-        finally:
-            PyImGui.pop_style_color(3)
-        PyImGui.spacing()
-        _ui_text('Local account only  |  Does not restart Underworld BT', _UI_MUTED)
+        labels = {
+            'Waiting': 'Waiting for Spirit Form',
+            'Find mayor': 'Finding Mayor Alegheri',
+            'Move': 'Moving to Mayor Alegheri',
+            'Interact': 'Interacting with Mayor Alegheri',
+            'Dialog': 'Talking to Mayor Alegheri',
+            'Completed': 'Normal armor restored' if state['armor_restored'] else 'Dialog sent',
+            'Restore armor': 'Restoring normal armor',
+            'Error': 'Error: ' + str(state['note'] or state['last_error'] or 'Unknown'),
+        }
+        color = (_UI_RED if stage == 'Error' else
+                 _UI_GREEN if stage == 'Completed' else
+                 _UI_AMBER if stage not in ('Waiting',) else _UI_MUTED)
+        _ui_text(labels.get(stage, stage), color)
+        PyImGui.progress_bar(fraction, -1, 0, f'{int(fraction * 100)}%')
     PyImGui.end()
 
 
@@ -460,7 +494,11 @@ def main():
                 entry = _armor_doc.get_json(email, {}) if email else {}
                 if not isinstance(entry, dict):
                     entry = {}
-                if not entry.get('normal') and not entry.get('capture_request'):
+                # Never capture sacrifice gear as a new normal profile while a
+                # spirit is active or armor restoration is pending.
+                if (not entry.get('normal') and not entry.get('capture_request')
+                        and not state['had_spirit'] and not state['armor_restore_pending']
+                        and not GLOBAL_CACHE.Effects.HasEffect(int(Player.GetAgentID()), SPIRIT_ID)):
                     _write_equipped_armor_json()
                 _armor_written_this_map = True
         else:
