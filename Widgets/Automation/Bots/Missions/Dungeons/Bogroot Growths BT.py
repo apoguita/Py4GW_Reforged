@@ -43,9 +43,9 @@ PathPoint = Vec2f | tuple[float, float] | tuple[int, int]
 
 # region Metadata
 
-MODULE_NAME = "Frog Scepter BT"
-INI_PATH = "Widgets/Automation/Bots/Missions/Dungeons/Frog Scepter BT"
-INI_FILENAME = "Frog_Scepter_BT.ini"
+MODULE_NAME = "Bogroot Growths BT"
+INI_PATH = "Widgets/Automation/Bots/Missions/Dungeons/Bogroot Growths BT"
+INI_FILENAME = "Bogroot_Growths_BT.ini"
 
 TEXTURE = os.path.join(
     PySystem.Console.get_projects_path(),
@@ -2884,6 +2884,8 @@ def tooltip() -> None:
     PyImGui.bullet_text("Bogroot Growths / Frog Scepter BottingTree implementation: Sky.")
     PyImGui.bullet_text("Built on Py4GW and the BottingTree framework by Apo and contributors.")
 
+    PyImGui.separator()
+    PyImGui.text("Script by Sky (Oo SKY oO).")
     PyImGui.end_tooltip()
 
 # Temporary diagnostics for cases where the Core watcher starts but no stone fires.
@@ -2950,7 +2952,7 @@ def main() -> None:
         extra_tabs=[
             ("Statistics", _draw_statistics),
             ("Party", _dungeon_party.draw_tab),
-            ("Run Config", _draw_run_config),
+            ("Config", _draw_run_config),
             ("Restock", _draw_restock_config),
         ],
     )

@@ -17,6 +17,9 @@ from Py4GWCoreLib import (
     Routines,
 )
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib import ImGui
+from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.Context import GWContext
 from Py4GWCoreLib.Item import has_active_party_summon
 from Py4GWCoreLib.Listeners import Listeners
@@ -2091,6 +2094,49 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Defend Zhellix", DefendZhellix),
         ("Finish Run", FinishRun),
     ]
+
+def tooltip() -> None:
+    """Detailed module overview and author credits."""
+    PyImGui.set_next_window_size((600, 0))
+    PyImGui.begin_tooltip()
+
+    title_color = Color(255, 200, 100, 255)
+    ImGui.image(MODULE_ICON, (32, 32))
+    PyImGui.same_line(0, 10)
+    ImGui.push_font("Regular", 20)
+    ImGui.text_aligned(
+        MODULE_NAME,
+        alignment=Alignment.MidLeft,
+        color=title_color.color_tuple,
+        height=32,
+    )
+    ImGui.pop_font()
+
+    PyImGui.spacing()
+    PyImGui.spacing()
+    PyImGui.separator()
+    PyImGui.spacing()
+
+    PyImGui.text_wrapped('A repeatable BottingTree gemstone farm for the Domain of Anguish. Starts at the Gate of Anguish, enters the mission and defends Zhellix with a controlled formation before collecting the loot and preparing the next attempt.')
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text('Automates mission entry, defense setup, Zhellix protection and end-of-run cleanup.')
+    PyImGui.bullet_text('Uses a dedicated defense leash to keep combat positioning close to the chosen hold point.')
+    PyImGui.bullet_text('Validates mission-objective progress and requires a stable clear before counting a successful run.')
+    PyImGui.bullet_text('Includes summoning-stone recovery handling and a final loot sweep after the defense phase.')
+    PyImGui.bullet_text('Tracks wins, failed attempts and successful-run completion times.')
+    PyImGui.bullet_text('Records Margonite, Stygian, Titan and Torment Gemstone drops by account.')
+    PyImGui.bullet_text('Provides persistent statistics with session totals and per-account privacy controls.')
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text('Gemstone farming BottingTree, defense leash and statistics implementation: Sky.')
+    PyImGui.bullet_text('Built on Py4GW and the BottingTree framework by Apo and contributors.')
+
+    PyImGui.end_tooltip()
+
+
 
 def main() -> None:
     global initialized

@@ -6,6 +6,7 @@ from collections.abc import Callable, Sequence
 
 import PySkillbar
 import PySystem
+import PyImGui
 from Py4GWCoreLib import (
     Agent,
     ConsoleLog,
@@ -17,6 +18,9 @@ from Py4GWCoreLib import (
 )
 from Py4GWCoreLib.AgentArray import AgentArray
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib import ImGui
+from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.Context import GWContext
 from Py4GWCoreLib.enums_src.GameData_enums import Attribute, Profession, Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -3983,6 +3987,49 @@ def ensure_botting_tree() -> BottingTree:
         botting_tree.AddServiceTree("A Little Help Wipe Restart", _alittlehelp_wipe_restart_service)
 
     return botting_tree
+
+
+
+def tooltip() -> None:
+    """Detailed module overview and author credits."""
+    PyImGui.set_next_window_size((600, 0))
+    PyImGui.begin_tooltip()
+
+    title_color = Color(255, 200, 100, 255)
+    ImGui.image(MODULE_ICON, (32, 32))
+    PyImGui.same_line(0, 10)
+    ImGui.push_font("Regular", 20)
+    ImGui.text_aligned(
+        MODULE_NAME,
+        alignment=Alignment.MidLeft,
+        color=title_color.color_tuple,
+        height=32,
+    )
+    ImGui.pop_font()
+
+    PyImGui.spacing()
+    PyImGui.spacing()
+    PyImGui.separator()
+    PyImGui.spacing()
+
+    PyImGui.text_wrapped('A story-driven BottingTree automation for Guild Wars: Eye of the North. Guides a character through hero unlocks, major campaign missions and the Norn, Vanguard and Asura story arcs using a long, individually selectable sequence of Planner steps.')
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text('Handles early Eye of the North access, story book preparation and key hero unlocks, including MOX, Olias and Xandra.')
+    PyImGui.bullet_text('Includes Norn story progress such as Tracking the Nornbear, Curse of the Nornbear and Blood Washes Blood.')
+    PyImGui.bullet_text('Covers Ebon Vanguard missions, Asura-related quests and later Eye of the North storyline chapters.')
+    PyImGui.bullet_text('Prepares mission-specific hero parties and loads the appropriate hero skill templates.')
+    PyImGui.bullet_text('Provides dedicated handling for the Xandra tournament sequence and restoration of the previous player build.')
+    PyImGui.bullet_text('Uses granular BottingTree Planner checkpoints to follow and resume long mission sequences.')
+    PyImGui.bullet_text('Integrates HeroAI, loot diagnostics and party-wipe recovery where configured.')
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text('Eye of the North storyline BottingTree scripting and mission automation: Sky.')
+    PyImGui.bullet_text('Built on Py4GW and the BottingTree framework by Apo and contributors.')
+
+    PyImGui.end_tooltip()
 
 
 

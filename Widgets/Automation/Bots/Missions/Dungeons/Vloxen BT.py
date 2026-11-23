@@ -10,6 +10,9 @@ import PyImGui
 
 from Py4GWCoreLib import Agent, AgentArray, GLOBAL_CACHE, Inventory, Map, Player, SharedCommandType
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib import ImGui
+from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.Listeners import Listeners
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib import Routines
@@ -56,10 +59,11 @@ GLACIAL_BLADE_MODEL_ID = 2474
 MASTER_GEAR_MODEL_ID = 5717
 
 SUMMON_MODEL_IDS = (37810, 30209, 31155)
+MORALE_CON_MODEL_IDS = (int(ModelID.Four_Leaf_Clover.value), int(ModelID.Honeycomb.value))
 PCON_UPKEEPS = tuple(
     int(model_id)
     for model_id in ALL_CONSUMABLE_UPKEEPS
-    if int(model_id) not in CONSET_UPKEEPS
+    if int(model_id) not in CONSET_UPKEEPS and int(model_id) not in MORALE_CON_MODEL_IDS
 )
 CONSET_RESTOCK_ITEMS = tuple((int(model_id), 10) for model_id in CONSET_UPKEEPS)
 PCON_RESTOCK_ITEMS = tuple((int(model_id), 10) for model_id in PCON_UPKEEPS)
@@ -92,6 +96,8 @@ _restock_conset = True
 _activate_conset = True
 _restock_pcons = True
 _activate_pcons = True
+_restock_morale_cons = True
+_activate_morale_cons = True
 _use_summoning_stone = True
 _restock_quantities: dict[int, int] = dict(DEFAULT_RESTOCK_DEFAULTS)
 _auto_loot = True
@@ -166,7 +172,7 @@ def _load_settings() -> None:
     global _restock_quantities
     global _settings_loaded
     global _use_hard_mode, _restock_conset, _activate_conset
-    global _restock_pcons, _activate_pcons, _use_summoning_stone, _auto_loot
+    global _restock_pcons, _activate_pcons, _restock_morale_cons, _activate_morale_cons, _use_summoning_stone, _auto_loot
     global _inventory_maintenance_enabled, _inventory_min_free_slots
     global _inventory_min_id_kits, _inventory_min_salvage_kits
     global _runtime_looting_enabled
@@ -180,6 +186,8 @@ def _load_settings() -> None:
     _activate_conset = _settings.get_bool(_SETTINGS_SECTION, "ActivateConset", True)
     _restock_pcons = _settings.get_bool(_SETTINGS_SECTION, "RestockPcons", True)
     _activate_pcons = _settings.get_bool(_SETTINGS_SECTION, "ActivatePcons", True)
+    _restock_morale_cons = _settings.get_bool(_SETTINGS_SECTION, "RestockMoraleCons", _restock_pcons)
+    _activate_morale_cons = _settings.get_bool(_SETTINGS_SECTION, "ActivateMoraleCons", _activate_pcons)
     _use_summoning_stone = _settings.get_bool(_SETTINGS_SECTION, "UseSummoningStone", True)
     _auto_loot = _settings.get_bool(_SETTINGS_SECTION, "AutoLoot", True)
     _runtime_looting_enabled = _auto_loot
@@ -212,6 +220,8 @@ def _save_settings() -> None:
     _settings.set(_SETTINGS_SECTION, "ActivateConset", _activate_conset)
     _settings.set(_SETTINGS_SECTION, "RestockPcons", _restock_pcons)
     _settings.set(_SETTINGS_SECTION, "ActivatePcons", _activate_pcons)
+    _settings.set(_SETTINGS_SECTION, "RestockMoraleCons", _restock_morale_cons)
+    _settings.set(_SETTINGS_SECTION, "ActivateMoraleCons", _activate_morale_cons)
     _settings.set(_SETTINGS_SECTION, "UseSummoningStone", _use_summoning_stone)
     _settings.set(_SETTINGS_SECTION, "AutoLoot", _auto_loot)
     _settings.set(
@@ -882,11 +892,13 @@ def _tick_direct_pcon_upkeep() -> None:
     global _pcon_direct_index, _pcon_direct_last_dispatch_ms
     global _pcon_direct_runtime_logged, _pcon_direct_last_recipient_signature
 
-    if not _bot_is_started() or not _activate_pcons or not _consumables_allowed():
+    if not _bot_is_started() or not (_activate_pcons or _activate_morale_cons) or not _consumables_allowed():
         if _pcon_direct_runtime_logged or _pcon_direct_last_dispatch_ms:
             _reset_direct_pcon_runtime()
         return
-    if not PCON_UPKEEPS:
+    enabled_models = ((PCON_UPKEEPS if _activate_pcons else ()) +
+                      (MORALE_CON_MODEL_IDS if _activate_morale_cons else ()))
+    if not enabled_models:
         return
 
     now_ms = int(time.monotonic() * 1000.0)
@@ -903,12 +915,12 @@ def _tick_direct_pcon_upkeep() -> None:
         _pcon_direct_last_recipient_signature = recipient_signature
         PySystem.Console.Log(
             MODULE_NAME,
-            f"[PCons] Direct multibox upkeep active: models={len(PCON_UPKEEPS)}, accounts={len(recipients)}.",
+            f"[PCons] Direct multibox upkeep active: models={len(enabled_models)}, accounts={len(recipients)}.",
             PySystem.Console.MessageType.Info,
         )
 
-    model_id = int(PCON_UPKEEPS[_pcon_direct_index % len(PCON_UPKEEPS)])
-    _pcon_direct_index = (_pcon_direct_index + 1) % len(PCON_UPKEEPS)
+    model_id = int(enabled_models[_pcon_direct_index % len(enabled_models)])
+    _pcon_direct_index = (_pcon_direct_index + 1) % len(enabled_models)
     sender_email = str(Player.GetAccountEmail() or "").strip()
     if not sender_email:
         return
@@ -1039,12 +1051,11 @@ def _draw_restock_config() -> None:
     )
     PyImGui.text_wrapped("Hover an icon for the item name, ModelID and current restock state.")
 
-    # These bots historically treat Clover/Honeycomb as PCons, so the Morale
-    # display group intentionally follows the PCon restock switch.
+    # Morale and personal PCons are controlled independently.
     group_enabled = {
         "Conset": bool(_restock_conset),
         "Personal PCons": bool(_restock_pcons),
-        "Morale": bool(_restock_pcons),
+        "Morale": bool(_restock_morale_cons),
         "Summoning": bool(_use_summoning_stone),
     }
 
@@ -1082,6 +1093,8 @@ def _runtime_restock_node() -> BehaviorTree:
             enabled_models.update(int(model_id) for model_id in CONSET_UPKEEPS)
         if _restock_pcons:
             enabled_models.update(int(model_id) for model_id in PCON_UPKEEPS)
+        if _restock_morale_cons:
+            enabled_models.update(int(model_id) for model_id in MORALE_CON_MODEL_IDS)
         if _use_summoning_stone:
             enabled_models.update(int(model_id) for model_id in SUMMON_MODEL_IDS)
 
@@ -2350,7 +2363,7 @@ def _vanquish_point_steps(
 
 def _draw_run_config() -> None:
     global _use_hard_mode, _restock_conset, _activate_conset
-    global _restock_pcons, _activate_pcons, _use_summoning_stone, _auto_loot
+    global _restock_pcons, _activate_pcons, _restock_morale_cons, _activate_morale_cons, _use_summoning_stone, _auto_loot
     global _inventory_maintenance_enabled, _inventory_min_free_slots
     global _inventory_min_id_kits, _inventory_min_salvage_kits
 
@@ -2374,6 +2387,18 @@ def _draw_run_config() -> None:
             changed = True
             upkeep_changed = upkeep_changed or affects_upkeep
 
+
+    PyImGui.separator()
+    PyImGui.text("Morale consumables (party-wide)")
+    morale_restock = PyImGui.checkbox("Restock morale cons from storage", _restock_morale_cons)
+    if morale_restock != _restock_morale_cons:
+        _restock_morale_cons = morale_restock
+        changed = True
+    morale_active = PyImGui.checkbox("Activate / maintain morale cons", _activate_morale_cons)
+    if morale_active != _activate_morale_cons:
+        _activate_morale_cons = morale_active
+        changed = True
+    PyImGui.text_wrapped("Four-Leaf Clover below 100 morale; Honeycomb below 110. Independent of personal PCons.")
     PyImGui.separator()
     new = PyImGui.checkbox("Run MerchantRules when inventory is low", _inventory_maintenance_enabled)
     if new != _inventory_maintenance_enabled:
@@ -3097,6 +3122,49 @@ def ensure_botting_tree() -> BottingTree:
             log=True,
         )
     return botting_tree
+
+
+def tooltip() -> None:
+    """Detailed module overview and author credits."""
+    PyImGui.set_next_window_size((600, 0))
+    PyImGui.begin_tooltip()
+
+    title_color = Color(255, 200, 100, 255)
+    ImGui.image(MODULE_ICON, (32, 32))
+    PyImGui.same_line(0, 10)
+    ImGui.push_font("Regular", 20)
+    ImGui.text_aligned(
+        MODULE_NAME,
+        alignment=Alignment.MidLeft,
+        color=title_color.color_tuple,
+        height=32,
+    )
+    ImGui.pop_font()
+
+    PyImGui.spacing()
+    PyImGui.spacing()
+    PyImGui.separator()
+    PyImGui.spacing()
+
+    PyImGui.text_wrapped('A complete multibox BottingTree dungeon run for Vloxen Excavations. Prepares the party, enters the excavation and progresses through three levels to Zoldark, then opens the final chest and returns to collect the Dredging reward.')
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text('Automates the full Level 1, Level 2 and Level 3 excavation route.')
+    PyImGui.bullet_text('Handles dungeon progression, boss keys and the Master Gear mechanics.')
+    PyImGui.bullet_text('Clears the final Zoldark encounter, opens its chest and collects the quest reward.')
+    PyImGui.bullet_text('Supports configurable multibox parties, Normal/Hard Mode and synchronized dungeon progression.')
+    PyImGui.bullet_text('Offers independent PCon and morale usage, consets, summoning stones and per-item restock targets.')
+    PyImGui.bullet_text('Uses MerchantRules inventory maintenance with configurable free-slot and kit thresholds.')
+    PyImGui.bullet_text('Tracks run and floor times plus Glacial Blade drops across accounts.')
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text('Vloxen Excavations BottingTree implementation and multibox automation: Sky.')
+    PyImGui.bullet_text('Built on Py4GW and the BottingTree framework by Apo and contributors.')
+
+    PyImGui.end_tooltip()
+
 
 
 def main() -> None:

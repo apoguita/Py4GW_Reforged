@@ -18,6 +18,9 @@ from Py4GWCoreLib import (
     SharedCommandType,
 )
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib import ImGui
+from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.Listeners import Listeners
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
@@ -98,10 +101,11 @@ INSECTOID_SCYTHE_MODEL_ID = 2062
 
 SUMMON_MODEL_IDS = (37810, 30209, 31155)
 
+MORALE_CON_MODEL_IDS = (int(ModelID.Four_Leaf_Clover.value), int(ModelID.Honeycomb.value))
 PCON_UPKEEPS = tuple(
     int(model_id)
     for model_id in ALL_CONSUMABLE_UPKEEPS
-    if int(model_id) not in CONSET_UPKEEPS
+    if int(model_id) not in CONSET_UPKEEPS and int(model_id) not in MORALE_CON_MODEL_IDS
 )
 CONSET_RESTOCK_ITEMS = tuple(
     (int(model_id), 10)
@@ -307,6 +311,8 @@ _restock_conset = True
 _activate_conset = True
 _restock_pcons = True
 _activate_pcons = True
+_restock_morale_cons = True
+_activate_morale_cons = True
 _use_summoning_stone = True
 
 _restock_quantities: dict[int, int] = dict(DEFAULT_RESTOCK_DEFAULTS)
@@ -383,7 +389,7 @@ def _load_settings() -> None:
     global _settings_loaded
     global _use_hard_mode
     global _restock_conset, _activate_conset
-    global _restock_pcons, _activate_pcons
+    global _restock_pcons, _activate_pcons, _restock_morale_cons, _activate_morale_cons
     global _use_summoning_stone
     global _inventory_maintenance_enabled
     global _inventory_min_free_slots
@@ -419,6 +425,8 @@ def _load_settings() -> None:
         "ActivatePcons",
         True,
     )
+    _restock_morale_cons = _settings.get_bool(_SETTINGS_SECTION, "RestockMoraleCons", _restock_pcons)
+    _activate_morale_cons = _settings.get_bool(_SETTINGS_SECTION, "ActivateMoraleCons", _activate_pcons)
     _use_summoning_stone = _settings.get_bool(
         _SETTINGS_SECTION,
         "UseSummoningStone",
@@ -465,6 +473,8 @@ def _save_settings() -> None:
     _settings.set(_SETTINGS_SECTION, "ActivateConset", _activate_conset)
     _settings.set(_SETTINGS_SECTION, "RestockPcons", _restock_pcons)
     _settings.set(_SETTINGS_SECTION, "ActivatePcons", _activate_pcons)
+    _settings.set(_SETTINGS_SECTION, "RestockMoraleCons", _restock_morale_cons)
+    _settings.set(_SETTINGS_SECTION, "ActivateMoraleCons", _activate_morale_cons)
     _settings.set(
         _SETTINGS_SECTION,
         "UseSummoningStone",
@@ -525,12 +535,11 @@ def _draw_restock_config() -> None:
     )
     PyImGui.text_wrapped("Hover an icon for the item name, ModelID and current restock state.")
 
-    # These bots historically treat Clover/Honeycomb as PCons, so the Morale
-    # display group intentionally follows the PCon restock switch.
+    # Morale and personal PCons are controlled independently.
     group_enabled = {
         "Conset": bool(_restock_conset),
         "Personal PCons": bool(_restock_pcons),
-        "Morale": bool(_restock_pcons),
+        "Morale": bool(_restock_morale_cons),
         "Summoning": bool(_use_summoning_stone),
     }
 
@@ -568,6 +577,8 @@ def _runtime_restock_node() -> BehaviorTree:
             enabled_models.update(int(model_id) for model_id in CONSET_UPKEEPS)
         if _restock_pcons:
             enabled_models.update(int(model_id) for model_id in PCON_UPKEEPS)
+        if _restock_morale_cons:
+            enabled_models.update(int(model_id) for model_id in MORALE_CON_MODEL_IDS)
         if _use_summoning_stone:
             enabled_models.update(int(model_id) for model_id in SUMMON_MODEL_IDS)
 
@@ -632,7 +643,7 @@ def _sync_consumable_upkeeps() -> None:
 def _draw_run_config() -> None:
     global _use_hard_mode
     global _restock_conset, _activate_conset
-    global _restock_pcons, _activate_pcons
+    global _restock_pcons, _activate_pcons, _restock_morale_cons, _activate_morale_cons
     global _use_summoning_stone
     global _inventory_maintenance_enabled
     global _inventory_min_free_slots
@@ -692,6 +703,17 @@ def _draw_run_config() -> None:
         changed = True
 
     PyImGui.separator()
+    PyImGui.text("Morale consumables (party-wide)")
+    morale_restock = PyImGui.checkbox("Restock morale cons from storage", _restock_morale_cons)
+    if morale_restock != _restock_morale_cons:
+        _restock_morale_cons = morale_restock
+        changed = True
+    morale_active = PyImGui.checkbox("Activate / maintain morale cons", _activate_morale_cons)
+    if morale_active != _activate_morale_cons:
+        _activate_morale_cons = morale_active
+        changed = True
+    PyImGui.text_wrapped("Four-Leaf Clover below 100 morale; Honeycomb below 110. Independent of personal PCons.")
+
     PyImGui.text("Summoning stones")
 
     value = PyImGui.checkbox(
@@ -2680,6 +2702,87 @@ def _pcon_effect_name(model_id: int) -> str:
     )
 
 
+def _shared_party_min_morale_for_direct_pcons() -> int | None:
+    """Return the lowest valid shared party morale, or None while unavailable."""
+    try:
+        entries = GLOBAL_CACHE.ShMem.GetSharedPartyMorale() or []
+    except Exception:
+        return None
+
+    values: list[int] = []
+    for entry in entries:
+        try:
+            morale = int(entry[1] or 0)
+        except (TypeError, ValueError, IndexError):
+            continue
+        if morale > 0:
+            values.append(morale)
+    return min(values) if values else None
+
+
+def _dispatch_party_morale_pcon(model_id: int, recipients: list[str], sender_email: str) -> None:
+    """Use one party-wide morale PCon when the shared morale is below its target.
+
+    Only one account is allowed to attempt the party-wide item per service pass;
+    this prevents Four-Leaf Clover / Honeycomb from being consumed by several
+    multibox clients at the same time before SharedMemory reflects the new morale.
+    """
+    global _pcon_direct_morale_remote_index
+
+    target_morale = _PCON_PARTY_MORALE_TARGET_BY_MODEL.get(int(model_id))
+    if target_morale is None:
+        return
+
+    party_min_morale = _shared_party_min_morale_for_direct_pcons()
+    if party_min_morale is None or party_min_morale >= int(target_morale):
+        return
+
+    local_agent_id = int(Player.GetAgentID() or 0)
+    local_is_dead = bool(local_agent_id and Agent.IsDead(local_agent_id))
+    if (
+        not local_is_dead
+        and GLOBAL_CACHE.Inventory.GetModelCount(int(model_id)) > 0
+    ):
+        item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(int(model_id)) or 0)
+        if item_id > 0:
+            GLOBAL_CACHE.Inventory.UseItem(item_id)
+            return
+
+    remote_recipients = [
+        email for email in recipients
+        if email and email != sender_email
+    ]
+    if not remote_recipients:
+        return
+
+    # If the leader cannot consume it (dead/missing item), rotate the single
+    # remote attempt so another account gets a chance on the next service pass.
+    receiver_email = remote_recipients[
+        _pcon_direct_morale_remote_index % len(remote_recipients)
+    ]
+    _pcon_direct_morale_remote_index = (
+        _pcon_direct_morale_remote_index + 1
+    ) % max(1, len(remote_recipients))
+
+    try:
+        GLOBAL_CACHE.ShMem.SendMessage(
+            sender_email,
+            receiver_email,
+            SharedCommandType.PCon,
+            (int(model_id), 0, 0, 0),
+        )
+    except Exception:
+        return
+
+
+
+
+_PCON_PARTY_MORALE_TARGET_BY_MODEL = {
+    int(ModelID.Four_Leaf_Clover.value): 100,
+    int(ModelID.Honeycomb.value): 110,
+}
+_pcon_direct_morale_remote_index = 0
+
 def _tick_direct_pcon_upkeep() -> None:
     global _pcon_direct_index
     global _pcon_direct_last_dispatch_ms
@@ -2688,7 +2791,7 @@ def _tick_direct_pcon_upkeep() -> None:
         botting_tree is None
         or not botting_tree.IsStarted()
         or not _runtime_consumables_enabled
-        or not _activate_pcons
+        or not (_activate_pcons or _activate_morale_cons)
     ):
         return
 
@@ -2706,7 +2809,9 @@ def _tick_direct_pcon_upkeep() -> None:
     except Exception:
         return
 
-    if not PCON_UPKEEPS:
+    enabled_models = ((PCON_UPKEEPS if _activate_pcons else ()) +
+                      (MORALE_CON_MODEL_IDS if _activate_morale_cons else ()))
+    if not enabled_models:
         return
 
     now_ms = int(time.monotonic() * 1000.0)
@@ -2724,18 +2829,22 @@ def _tick_direct_pcon_upkeep() -> None:
         return
 
     model_id = int(
-        PCON_UPKEEPS[
-            _pcon_direct_index % len(PCON_UPKEEPS)
+        enabled_models[
+            _pcon_direct_index % len(enabled_models)
         ]
     )
     _pcon_direct_index = (
         _pcon_direct_index + 1
-    ) % len(PCON_UPKEEPS)
+    ) % len(enabled_models)
 
     sender_email = str(
         Player.GetAccountEmail() or ""
     ).strip()
     if not sender_email:
+        return
+
+    if model_id in _PCON_PARTY_MORALE_TARGET_BY_MODEL:
+        _dispatch_party_morale_pcon(model_id, recipients, sender_email)
         return
 
     effect_name = _pcon_effect_name(model_id)
@@ -4909,6 +5018,49 @@ def ensure_botting_tree() -> BottingTree:
         )
 
     return botting_tree
+
+
+def tooltip() -> None:
+    """Detailed module overview and author credits."""
+    PyImGui.set_next_window_size((600, 0))
+    PyImGui.begin_tooltip()
+
+    title_color = Color(255, 200, 100, 255)
+    ImGui.image(MODULE_ICON, (32, 32))
+    PyImGui.same_line(0, 10)
+    ImGui.push_font("Regular", 20)
+    ImGui.text_aligned(
+        MODULE_NAME,
+        alignment=Alignment.MidLeft,
+        color=title_color.color_tuple,
+        height=32,
+    )
+    ImGui.pop_font()
+
+    PyImGui.spacing()
+    PyImGui.spacing()
+    PyImGui.separator()
+    PyImGui.spacing()
+
+    PyImGui.text_wrapped("A multibox BottingTree dungeon run for Arachni's Haunt. Travels from Rata Sum through Magus Stones, takes Scrambled Reinforcements and clears both dungeon levels, handling the environmental puzzles before the final chest and quest reward.")
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text('Automates the Magus Stones approach and the complete two-level Arachni route.')
+    PyImGui.bullet_text('Handles the Asura Flame Staff, web crossings, Spider Eggs, dungeon locks and the final encounter.')
+    PyImGui.bullet_text('Supports multibox party setup, quest dialogs and step-based dungeon progression.')
+    PyImGui.bullet_text('Offers Normal/Hard Mode, consets, PCons, independent morale items and summoning stones.')
+    PyImGui.bullet_text('Integrates configurable per-item restock and multibox MerchantRules inventory maintenance.')
+    PyImGui.bullet_text('Tracks run and floor timings and Insectoid Scythe drops across accounts.')
+    PyImGui.bullet_text("Completes Hixx's reward flow and prepares for another run.")
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text("Arachni's Haunt BottingTree implementation and multibox automation: Sky.")
+    PyImGui.bullet_text('Built on Py4GW and the BottingTree framework by Apo and contributors.')
+
+    PyImGui.end_tooltip()
+
 
 
 def main() -> None:

@@ -6449,7 +6449,7 @@ def tooltip():
     PyImGui.spacing()
 
     PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
-    PyImGui.bullet_text("Shards of Orr BottingTree implementation: Sky.")
+    PyImGui.bullet_text("Script implementation by Sky (Oo SKY oO).")
     PyImGui.bullet_text("Built on Py4GW and the BottingTree framework by Apo and contributors.")
 
     PyImGui.end_tooltip()

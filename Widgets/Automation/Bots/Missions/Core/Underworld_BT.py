@@ -22,6 +22,9 @@ from Py4GWCoreLib import Agent, AgentArray, Map, GLOBAL_CACHE, Player, SharedCom
 from Py4GWCoreLib.Quest import Quest
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib import ImGui
+from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.native_src.internals.types import Vec2f
 from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
@@ -4034,6 +4037,49 @@ def ensure_botting_tree() -> BottingTree:
         )
         _sync_upkeeps(force=True)
     return botting_tree
+
+
+def tooltip() -> None:
+    """Detailed module overview and author credits."""
+    PyImGui.set_next_window_size((600, 0))
+    PyImGui.begin_tooltip()
+
+    title_color = Color(255, 200, 100, 255)
+    ImGui.image("Assets/Textures/Module_Icons/Underworld.png", (32, 32))
+    PyImGui.same_line(0, 10)
+    ImGui.push_font("Regular", 20)
+    ImGui.text_aligned(
+        MODULE_NAME,
+        alignment=Alignment.MidLeft,
+        color=title_color.color_tuple,
+        height=32,
+    )
+    ImGui.pop_font()
+
+    PyImGui.spacing()
+    PyImGui.spacing()
+    PyImGui.separator()
+    PyImGui.spacing()
+
+    PyImGui.text_wrapped('A multibox BottingTree expedition through the Underworld, from the first chamber to the final confrontation with Dhuum. Coordinates party movement, Reaper quests, difficult encounters and the final reward chest through a selectable, step-by-step Planner.')
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text('Planner checkpoints cover the Underworld itinerary, including Chamber, Mountains, Planes and the major Reaper quests.')
+    PyImGui.bullet_text('Coordinates multibox party progression with quest dialogs, target filters and encounter-specific combat policies.')
+    PyImGui.bullet_text('Includes dedicated party assignments for Imprisoned Spirits and the Four Horsemen encounter.')
+    PyImGui.bullet_text('Dhuum preparation supports designated sacrifice accounts, two recorded armor sets and post-sacrifice restoration.')
+    PyImGui.bullet_text('Configurable entry outposts, Normal/Hard Mode, consets, PCons, morale items and summoning stones.')
+    PyImGui.bullet_text('Provides multibox inventory maintenance, per-item restock targets and Underworld entry scroll handling.')
+    PyImGui.bullet_text('Tracks quest and run timings, chest rewards and rare drops by account.')
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text('Underworld BottingTree implementation and multibox encounter logic: Sky.')
+    PyImGui.bullet_text('Built on Py4GW and the BottingTree framework by Apo and contributors.')
+
+    PyImGui.end_tooltip()
+
 
 
 def main() -> None:
