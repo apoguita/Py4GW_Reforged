@@ -19,13 +19,17 @@ FOW_QUEST_ORDER: list[tuple[str, str]] = [
     ("reward_time", "Reward Time"),
 ]
 
+def build_fow_specs() -> list[RecipeSpec]:
+    """The FoW quest chain as runner specs, in order."""
+    return [RecipeSpec(kind="quest", key=f"FoW/{key}", title=title) for key, title in FOW_QUEST_ORDER]
+
+
 def create_modular_fow_bot(*, debug_hook=None) -> BTRecipeRunner:
     if debug_hook is not None:
         debug_hook("FoW BT runner initialized.")
-    specs = [RecipeSpec(kind="quest", key=f"FoW/{key}", title=title) for key, title in FOW_QUEST_ORDER]
     return BTRecipeRunner(
         name="ModularFow",
-        specs=specs,
+        specs=build_fow_specs(),
         loop=True,
         debug_hook=debug_hook,
     )

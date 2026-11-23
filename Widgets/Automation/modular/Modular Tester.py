@@ -16,6 +16,7 @@ from Py4GWCoreLib.botting_tree_src.ui import BottingTreeUIMovePathMixin
 from Py4GWCoreLib.modular import BTRecipeRunner
 from Py4GWCoreLib.modular import RecipeSpec
 from Py4GWCoreLib.modular.paths import modular_data_root
+from Py4GWCoreLib.modular.paths import project_root
 from Py4GWCoreLib.modular.ui_scope import child_scope
 from Py4GWCoreLib.modular.ui_scope import disabled_scope
 from Py4GWCoreLib.modular.ui_scope import group_scope
@@ -23,7 +24,6 @@ from Py4GWCoreLib.modular.ui_scope import tab_bar_scope
 from Py4GWCoreLib.modular.ui_scope import tab_item_scope
 from Py4GWCoreLib.modular.ui_scope import table_scope
 from Py4GWCoreLib.modular.ui_scope import tooltip_scope
-from Py4GWCoreLib.modular.ui_scope import window_scope
 from Py4GWCoreLib.modular.widget_runtime import guarded_widget_main
 
 
@@ -75,12 +75,37 @@ _draw_move_path_thickness = 4.0
 _draw_move_waypoint_radius = 15.0
 _draw_move_current_waypoint_radius = 20.0
 
+# Source selector: a single JSON recipe, or a prebuilt campaign of many recipes.
+_source_mode = "recipes"
+_prebuilt_index = 0
+_prebuilt_preview_row = 0
+_prebuilt_start_row = 0
+_prebuilt_last_start_spec = -1
+_prebuilt_open_override: bool | None = None
+_prebuilt_cache: dict[str, tuple[list[RecipeSpec], list[tuple[int, int, str, dict[str, object]]]]] = {}
+
+# Floating icon: the always-visible launcher that toggles the tester window.
+_FLOATING_ICON: ImGui.FloatingIcon | None = None
+_MAIN_INI_KEY = ""
+_FLOATING_INI_KEY = ""
+
+PREBUILT_CATALOG: tuple[tuple[str, str, bool], ...] = (
+    ("eotn", "Eye of the North", False),
+    ("nightfall", "Nightfall", False),
+    ("prophecies", "Prophecies", False),
+    ("fow", "Fissure of Woe", True),
+)
+
 
 class _TesterMovePathDrawer(BottingTreeUIMovePathMixin):
     def __init__(self) -> None:
         self.blackboard: dict = {}
         self.draw_move_path_enabled = True
         self.draw_move_path_labels = False
+        # DrawMovePathIfEnabled reads all four of these; the drawer is a host for
+        # the mixin, so they must exist even when the Tester never edits them.
+        self.draw_move_path_directx = False
+        self.draw_move_path_occluded = False
         self.draw_move_path_thickness = 4.0
         self.draw_move_waypoint_radius = 15.0
         self.draw_move_current_waypoint_radius = 20.0
@@ -201,6 +226,83 @@ def _recipe_steps_for_display(relative_path: str) -> list[dict[str, object]]:
     if not isinstance(steps, list):
         return []
     return [step for step in steps if isinstance(step, dict)]
+
+
+def _recipe_path_for_spec(spec: RecipeSpec) -> str:
+    """Repository-relative JSON path for a spec.
+
+    The library helper is preferred, but a running client keeps the
+    ``Py4GWCoreLib.modular`` package it imported at injection time, so an updated
+    runner is not visible until the game restarts. The local mapping is identical
+    and keeps the widget loadable against both versions.
+    """
+    try:
+        from Py4GWCoreLib.modular import recipe_path_for_spec as resolve
+
+        return str(resolve(spec))
+    except Exception:
+        folder_by_kind = {
+            "dungeon": "dungeons",
+            "farm": "farms",
+            "mission": "missions",
+            "quest": "quests",
+            "route": "routes",
+        }
+        folder = folder_by_kind.get(spec.kind, spec.kind)
+        return f"{folder}/{spec.key}.json"
+
+
+def _prebuilt_specs(key: str) -> list[RecipeSpec]:
+    """Specs of one prebuilt campaign, imported lazily so the widget loads offline."""
+    from Sources.modular_data import prebuilt
+
+    if key == "eotn":
+        return prebuilt.build_eotn_campaign_specs()
+    if key == "nightfall":
+        return prebuilt.build_nightfall_campaign_specs()
+    if key == "prophecies":
+        return prebuilt.build_prophecies_campaign_specs()
+    if key == "fow":
+        return prebuilt.build_fow_specs()
+    raise ValueError(f"Unknown prebuilt {key!r}.")
+
+
+def _prebuilt_data() -> tuple[list[RecipeSpec], list[tuple[int, int, str, dict[str, object]]]]:
+    """Specs plus the flat (spec index, step index, spec title, step) row list.
+
+    Building the rows reads every recipe JSON of the campaign, so the result is
+    cached per prebuilt: a widget frame must not pay that cost again.
+    """
+    global _prebuilt_index
+
+    index = max(0, min(int(_prebuilt_index), len(PREBUILT_CATALOG) - 1))
+    _prebuilt_index = index
+    key = PREBUILT_CATALOG[index][0]
+
+    cached = _prebuilt_cache.get(key)
+    if cached is not None:
+        return cached
+
+    specs = _prebuilt_specs(key)
+    rows: list[tuple[int, int, str, dict[str, object]]] = []
+    for spec_index, spec in enumerate(specs):
+        path = _recipe_path_for_spec(spec)
+        try:
+            steps = _recipe_steps_for_display(path)
+        except Exception as exc:
+            _debug(f"Prebuilt {key}: cannot read {path}: {exc}")
+            steps = []
+        if not steps:
+            # _read_recipe swallows a missing file and returns {}, so an empty
+            # phase is the only symptom. The runner compiles eagerly and raises
+            # there, which is why this is a warning here and not a hard failure.
+            _debug(f"Prebuilt {key}: {path} has no steps (missing or empty).")
+        for step_index, step in enumerate(steps):
+            rows.append((spec_index, step_index, spec.title, step))
+
+    cached = (specs, rows)
+    _prebuilt_cache[key] = cached
+    return cached
 
 
 def _step_label(step: dict[str, object], index: int) -> str:
@@ -331,6 +433,12 @@ def _start_selected_recipe() -> None:
     if not relative_path:
         _status = "No recipe selected."
         return
+    # A paused runner is still a started BottingTree. Replacing it without stopping
+    # it would leave that tree started forever, so its isolation and widget
+    # policies would never be restored.
+    if _runner is not None:
+        _runner.stop()
+        _runner = None
     try:
         runner = BTRecipeRunner(
             name=f"Modular Tester: {relative_path}",
@@ -348,25 +456,81 @@ def _start_selected_recipe() -> None:
         _status = f"Start failed: {exc}"
 
 
-def _stop_runner() -> None:
-    global _status
+def _start_prebuilt() -> None:
+    global _runner, _status, _last_recipe
+
+    specs, rows = _prebuilt_data()
+    index = max(0, min(int(_prebuilt_index), len(PREBUILT_CATALOG) - 1))
+    title = PREBUILT_CATALOG[index][1]
+    if not specs or not rows:
+        _status = f"No steps available for {title}."
+        return
+
+    row = max(0, min(int(_prebuilt_start_row), len(rows) - 1))
+    spec_index, step_index, spec_title, _step = rows[row]
     if _runner is not None:
         _runner.stop()
+        _runner = None
+    try:
+        runner = BTRecipeRunner(
+            name=f"Modular Tester: {title}",
+            specs=specs,
+            start_index=spec_index,
+            start_step_index=step_index,
+            loop=bool(_loop),
+            debug_hook=_debug,
+        )
+        runner.start()
+        _runner = runner
+        _last_recipe = ""
+        _status = (
+            f"Started {title}: {spec_title} step {step_index + 1} "
+            f"(prebuilt step {row + 1}/{len(rows)})."
+        )
+    except Exception as exc:
+        _runner = None
+        _status = f"Start failed: {exc}"
+
+
+def _start_current() -> None:
+    if _source_mode == "prebuilt":
+        _start_prebuilt()
+    else:
+        _start_selected_recipe()
+
+
+def _stop_runner() -> None:
+    global _runner, _status, _last_recipe
+    if _runner is not None:
+        _runner.stop()
+    # Drop the reference so progress and the timeline stop reporting a dead run.
+    _runner = None
+    _last_recipe = ""
     _status = "Stopped."
+
+
+def on_disable() -> None:
+    """Stop the run when the widget is switched off.
+
+    The manager stops calling main() on disable, so without this hook the
+    BottingTree would stay started and nothing would restore the state it took
+    over (account isolation, widget policies, the headless HeroAI swap).
+    """
+    _stop_runner()
 
 
 def _pause_runner() -> None:
     global _status
     if _runner is not None:
         _runner.pause()
-    _status = "Paused."
+    _status = "Paused." if _runner_is_paused() else "Nothing to pause."
 
 
 def _resume_runner() -> None:
     global _status
     if _runner is not None:
         _runner.resume()
-    _status = "Resumed."
+    _status = "Resumed." if _runner_is_running() else "Nothing to resume."
 
 
 def _runner_is_running() -> bool:
@@ -507,13 +671,15 @@ def _status_text() -> str:
 
 
 def _draw_top_bar() -> None:
-    global _loop, _debug_logging, _draw_move_path, _draw_move_path_labels
+    global _loop, _debug_logging, _draw_move_path, _draw_move_path_labels, _source_mode
     with group_scope():
         ImGui.text_scaled("Modular Tester", ACCENT, 1.22)
         PyImGui.text_colored("Browse json/modular, choose a JSON recipe, pick a start step, run it.", MUTED)
     PyImGui.same_line(max(0.0, PyImGui.get_content_region_avail()[0] - 84.0), 10)
     _draw_text(_status_text(), _status_color())
     PyImGui.separator()
+    _source_mode = "prebuilt" if PyImGui.checkbox("Prebuilt", _source_mode == "prebuilt") else "recipes"
+    PyImGui.same_line(0, 14)
     _loop = PyImGui.checkbox("Loop", _loop)
     PyImGui.same_line(0, 14)
     _debug_logging = PyImGui.checkbox("Debug logging", _debug_logging)
@@ -525,6 +691,9 @@ def _draw_top_bar() -> None:
 
 def _draw_recipe_picker() -> None:
     global _filter_text
+    if _source_mode == "prebuilt":
+        _draw_prebuilt_picker()
+        return
     if not _recipe_files:
         _refresh_recipe_files()
 
@@ -546,17 +715,21 @@ def _draw_recipe_picker() -> None:
 
 
 def _draw_selection_controls() -> None:
-    selected = _selected_recipe_path()
     running = _runner_is_running()
     paused = _runner_is_paused()
-    can_go_up = bool(_browser_path) and not _filter_text.strip()
+    if _source_mode == "prebuilt":
+        can_run = bool(_prebuilt_data()[1])
+        can_go_up = False
+    else:
+        can_run = bool(_selected_recipe_path())
+        can_go_up = bool(_browser_path) and not _filter_text.strip()
     with disabled_scope(not can_go_up):
         if _quiet_button("Up", 42):
             _go_up()
     PyImGui.same_line(0, 6)
-    with disabled_scope(not selected or running):
+    with disabled_scope(not can_run or running or paused):
         if _primary_button("Run", 58):
-            _start_selected_recipe()
+            _start_current()
     PyImGui.same_line(0, 6)
     with disabled_scope(not running):
         if _quiet_button("Pause", 58):
@@ -569,6 +742,42 @@ def _draw_selection_controls() -> None:
     with disabled_scope(not (running or paused)):
         if _danger_button("Stop", 52):
             _stop_runner()
+
+
+def _draw_prebuilt_picker() -> None:
+    global _prebuilt_index, _loop
+
+    labels = [title for _key, title, _loop_default in PREBUILT_CATALOG]
+    _draw_section_title("Prebuilts", f"{len(labels)} available")
+    _draw_selection_controls()
+    PyImGui.spacing()
+    PyImGui.set_next_item_width(max(160.0, PyImGui.get_content_region_avail()[0] - 8.0))
+    selected = int(PyImGui.combo("##modular_prebuilt", int(_prebuilt_index), labels))
+    selected = max(0, min(selected, len(labels) - 1))
+    if selected != _prebuilt_index:
+        _prebuilt_index = selected
+        # Switching prebuilt applies its own loop convention (FoW is a loop).
+        _loop = bool(PREBUILT_CATALOG[selected][2])
+
+    specs, rows = _prebuilt_data()
+    PyImGui.spacing()
+    PyImGui.text_colored(f"{len(specs)} recipes, {len(rows)} steps", MUTED)
+    if not rows:
+        PyImGui.text_colored("This prebuilt has no readable steps.", BAD)
+        return
+
+    row = max(0, min(int(_prebuilt_start_row), len(rows) - 1))
+    spec_index, step_index, spec_title, _step = rows[row]
+    PyImGui.text_wrapped(
+        f"Start: {spec_title} step {step_index + 1} "
+        f"(prebuilt step {row + 1}/{len(rows)}). Pick another row in the Timeline tab; "
+        "Run starts there."
+    )
+    PyImGui.spacing()
+    PyImGui.text_colored(
+        "Recipes resolve to json/modular/<kind>/<key>.json; a missing one aborts the start.",
+        MUTED,
+    )
 
 
 def _go_up() -> None:
@@ -764,7 +973,7 @@ def _draw_runtime_controls() -> None:
     selected = _selected_recipe_path()
     running = _runner_is_running()
     paused = _runner_is_paused()
-    with disabled_scope(not selected or running):
+    with disabled_scope(not selected or running or paused):
         if _primary_button("Run selected", 116):
             _start_selected_recipe()
     PyImGui.same_line(0, 6)
@@ -783,6 +992,9 @@ def _draw_runtime_controls() -> None:
 
 def _draw_step_timeline() -> None:
     global _preview_step_index, _start_step_index
+    if _source_mode == "prebuilt":
+        _draw_prebuilt_timeline()
+        return
     selected = _selected_recipe_path()
     steps = _recipe_steps_for_display(selected)
     if not steps:
@@ -819,6 +1031,9 @@ def _draw_step_timeline() -> None:
 
 def _draw_step_detail() -> None:
     global _start_step_index
+    if _source_mode == "prebuilt":
+        _draw_prebuilt_step_detail()
+        return
     selected = _selected_recipe_path()
     steps = _recipe_steps_for_display(selected)
     if not steps:
@@ -831,8 +1046,12 @@ def _draw_step_detail() -> None:
         if _primary_button("Start from this step", 170):
             _start_step_index = index
     PyImGui.spacing()
+    _draw_step_fields(step, "##modular_tester_step_detail")
+
+
+def _draw_step_fields(step: dict[str, object], table_id: str) -> None:
     with table_scope(
-        "##modular_tester_step_detail",
+        table_id,
         2,
         PyImGui.TableFlags.SizingStretchProp | PyImGui.TableFlags.RowBg,
     ) as table_visible:
@@ -844,6 +1063,124 @@ def _draw_step_detail() -> None:
         _draw_detail_row("Map", str(step.get("map_id") or step.get("target_map_id") or step.get("map") or ""))
         _draw_detail_row("Points", str(_points_count(step)))
         _draw_detail_row("Anchor", "yes" if bool(step.get("anchor")) else "no")
+
+
+def _draw_prebuilt_timeline() -> None:
+    global _prebuilt_preview_row, _prebuilt_start_row
+    global _prebuilt_last_start_spec, _prebuilt_open_override
+
+    _specs, rows = _prebuilt_data()
+    if not rows:
+        PyImGui.text_colored("This prebuilt has no readable steps.", MUTED)
+        return
+
+    active_row = -1
+    if _runner is not None:
+        phase_current, _phase_total, _phase_title = _runner.get_phase_progress()
+        step_current, _step_total, _recipe_title, _step_title = _runner.get_step_progress()
+        if phase_current > 0 and step_current > 0:
+            for index, (spec_index, step_index, _spec_title, _step) in enumerate(rows):
+                if spec_index == phase_current - 1 and step_index == step_current - 1:
+                    active_row = index
+                    break
+
+    _prebuilt_preview_row = max(0, min(int(_prebuilt_preview_row), len(rows) - 1))
+    _prebuilt_start_row = max(0, min(int(_prebuilt_start_row), len(rows) - 1))
+
+    rows_by_spec: dict[int, list[int]] = {}
+    for index, (spec_index, _step_index, _spec_title, _step) in enumerate(rows):
+        rows_by_spec.setdefault(spec_index, []).append(index)
+
+    start_spec = rows[_prebuilt_start_row][0]
+    force_open_spec = -1
+    if start_spec != _prebuilt_last_start_spec:
+        # Open the recipe holding the chosen start step once per change, so the
+        # user still decides afterwards whether it stays open.
+        _prebuilt_last_start_spec = start_spec
+        force_open_spec = start_spec
+
+    PyImGui.text_colored("Select a step before running to start from there.", MUTED)
+    if _quiet_button("Expand all", 84):
+        _prebuilt_open_override = True
+    PyImGui.same_line(0, 6)
+    if _quiet_button("Collapse all", 92):
+        _prebuilt_open_override = False
+
+    header_flags = int(PyImGui.TreeNodeFlags.SpanAvailWidth) | int(PyImGui.TreeNodeFlags.Framed)
+    open_always = int(PyImGui.ImGuiCond.Always)
+
+    with child_scope(
+        "##modular_tester_prebuilt_steps",
+        (0, 0),
+        True,
+        PyImGui.WindowFlags.HorizontalScrollbar,
+    ) as child_visible:
+        if not child_visible:
+            _prebuilt_open_override = None
+            return
+        last_spec = -1
+        expanded = False
+        for index, (spec_index, step_index, spec_title, step) in enumerate(rows):
+            if spec_index != last_spec:
+                last_spec = spec_index
+                indices = rows_by_spec.get(spec_index, [])
+                first_row = indices[0] + 1 if indices else 0
+                last_row = indices[-1] + 1 if indices else 0
+                if _prebuilt_open_override is not None:
+                    PyImGui.set_next_item_open(bool(_prebuilt_open_override), open_always)
+                elif spec_index == force_open_spec:
+                    PyImGui.set_next_item_open(True, open_always)
+                tags = "  [start]" if _prebuilt_start_row in indices else ""
+                if active_row >= 0 and active_row in indices:
+                    tags += "  [running]"
+                header = (
+                    f"{spec_title}  ({len(indices)} steps, {first_row}-{last_row}){tags}"
+                    f"##prebuilt_recipe_{spec_index}"
+                )
+                expanded = PyImGui.collapsing_header(header, header_flags)
+                continue
+            if not expanded:
+                continue
+            active = index == active_row
+            start_step = index == _prebuilt_start_row
+            selected_step = index == _prebuilt_preview_row
+            if active:
+                row_color = ACCENT
+            elif active_row >= 0 and index < active_row:
+                row_color = GOOD
+            else:
+                row_color = TEXT
+            if bool(step.get("anchor")) and not active:
+                row_color = WARN
+            start_prefix = "[start] " if start_step and not active else ""
+            label = f"{start_prefix}{_step_label(step, step_index)}"
+            if _selectable_row(f"{label}##prebuilt_step_{index}", selected_step):
+                _prebuilt_preview_row = index
+                if not (_runner_is_running() or _runner_is_paused()):
+                    _prebuilt_start_row = index
+            PyImGui.text_colored(f"  {_step_type_label(step)}", row_color if active else MUTED)
+        _prebuilt_open_override = None
+
+
+def _draw_prebuilt_step_detail() -> None:
+    global _prebuilt_start_row
+
+    _specs, rows = _prebuilt_data()
+    if not rows:
+        PyImGui.text_colored("No step selected.", MUTED)
+        return
+
+    row = max(0, min(int(_prebuilt_preview_row), len(rows) - 1))
+    spec_index, step_index, spec_title, step = rows[row]
+    _draw_section_title(
+        _step_label(step, step_index),
+        f"{spec_title} step {step_index + 1} - prebuilt step {row + 1}/{len(rows)}",
+    )
+    with disabled_scope(_runner_is_running() or _runner_is_paused()):
+        if _primary_button("Start from this step", 170):
+            _prebuilt_start_row = row
+    PyImGui.spacing()
+    _draw_step_fields(step, "##modular_tester_prebuilt_step_detail")
 
 
 def _draw_detail_row(label: str, value: str) -> None:
@@ -895,26 +1232,74 @@ def _draw_main_layout() -> None:
                 _draw_right_panel()
 
 
-def _main_impl() -> None:
-    if _runner is not None and _runner.is_running():
-        _runner.update()
+def _ensure_tester_settings() -> None:
+    """Resolve the ini documents that persist window geometry and icon visibility."""
+    global _MAIN_INI_KEY, _FLOATING_INI_KEY
 
+    if _MAIN_INI_KEY and _FLOATING_INI_KEY:
+        return
+    from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+
+    _MAIN_INI_KEY = Settings("ModularBot/ModularTester.ini", "account").name
+    _FLOATING_INI_KEY = Settings("ModularBot/ModularTesterFloating.ini", "account").name
+
+
+def _tester_icon() -> ImGui.FloatingIcon:
+    """The always-present floating icon that shows and hides the tester window."""
+    global _FLOATING_ICON
+
+    if _FLOATING_ICON is None:
+        _FLOATING_ICON = ImGui.FloatingIcon(
+            icon_path=str(Path(project_root()) / MODULE_ICON),
+            window_id="##modular_tester_floating_icon",
+            window_name=MODULE_NAME,
+            tooltip_visible=f"Hide {MODULE_NAME}",
+            tooltip_hidden=f"Show {MODULE_NAME}",
+            toggle_ini_key=_FLOATING_INI_KEY,
+            toggle_var_name="show_window",
+            toggle_default=True,
+            draw_callback=_draw_full_ui,
+        )
+    return _FLOATING_ICON
+
+
+def _draw_full_ui() -> None:
+    """The tester window, drawn by ImGui.FloatingIcon while its UI is visible."""
+    icon = _tester_icon()
     PyImGui.set_next_window_size((880, 640), PyImGui.ImGuiCond.FirstUseEver)
     PyImGui.set_next_window_bg_alpha(1.0)
     theme_colors = _push_tester_theme()
     try:
-        with window_scope(MODULE_NAME) as window_visible:
-            if not window_visible:
-                return
+        expanded, open_ = ImGui.BeginWithClose(
+            ini_key=_MAIN_INI_KEY,
+            name=MODULE_NAME,
+            p_open=icon.visible,
+            flags=PyImGui.WindowFlags.NoFlag,
+        )
+        icon.sync_begin_with_close(open_)
+        if expanded:
             _draw_top_bar()
             _draw_main_layout()
-        _draw_move_path_overlay()
+        ImGui.End(_MAIN_INI_KEY)
     finally:
         PyImGui.pop_style_color(theme_colors)
 
 
+def _main_impl() -> None:
+    # The runner ticks whether or not the window is on screen.
+    if _runner is not None and _runner.is_running():
+        _runner.update()
+
+    _ensure_tester_settings()
+    _tester_icon().draw(_FLOATING_INI_KEY)
+
+    # Drawn outside FloatingIcon's callback so hiding the window keeps the route
+    # overlay on screen: it is a world overlay, not part of the window.
+    _draw_move_path_overlay()
+
+
 def main() -> None:
-    guarded_widget_main(MODULE_NAME, _main_impl, get_bot=lambda: _runner)
+    guarded_widget_main(MODULE_NAME, _main_impl)
 
 
 def tooltip() -> None:
