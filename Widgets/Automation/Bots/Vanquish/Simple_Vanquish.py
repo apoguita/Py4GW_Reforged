@@ -183,6 +183,8 @@ def _handle_keyword(bot, key, value):
         bot.Move.FollowModel(model_id, follow_range, _timeout)
     elif key == "path":
         bot.Move.FollowAutoPath(value)
+    elif key == "literal_path":
+        bot.Move.FollowPath(value)
 
 
 def _register_aggro_path(bot, path, header_name=None, detection_radius=2500.0, clear_radius=2500.0, on_enemy_detected=None):
