@@ -181,6 +181,7 @@ _KEY_RESTOCK_SCROLL_OF_RESURRECTION = 'RestockScrollOfResurrection'
 _KEY_RESTOCK_MULTI_ACCOUNT = 'RestockMultiAccount'
 _KEY_KEEP_GOLD_ON_ACCOUNTS = 'KeepGoldOnAccounts'
 _KEY_AUTOMATIC_ZQUEST = 'AutomaticZQuestHandling'
+_KEY_QUEUE_ITEMS = 'VanquishQueue'
 
 MAP_ROOT = os.path.join(
     PySystem.Console.get_projects_path(),
@@ -330,7 +331,11 @@ map_index = 0
 loaded_region_index = 0
 loaded_map_index = 0
 loop_runs = False
-auto_loot = True
+# Looting is not a choice in this widget: a vanquish leaves drops along the whole
+# route, and turning it off only leaves them on the ground.
+AUTO_LOOT = True
+# Taking the signpost quest only makes sense together with automatic handling, so
+# this is derived from it by `_sync_take_zquest` and has no switch of its own.
 take_zquest = True
 # Automatic ZQuest handling: the map is the one the signpost quest names, so the
 # plan is built from the quest text read after the dialog instead of from the
@@ -342,6 +347,14 @@ _pending_planner_swap = False
 forward_clear_radius = 3000
 reverse_clear_radius_1 = 10000
 reverse_clear_radius_2 = 10000
+# and switched on from Config. Off means nothing is sampled and nothing is written.
+# Vanquish queue: a list of (region, map name) walked one after another. Form
+# Party runs once, then every entry repeats Prepare, route, sweeps and Complete
+# with its resign, so the party lands in an outpost and travels to the next map.
+# There is no separate switch: a queue with maps in it is a queue run, and an
+# empty queue runs the map selected in the combos. Because the queue owns the plan
+# shape, the signpost flows are disabled whenever it has entries.
+vanquish_queue: list[tuple[str, str]] = []
 
 # Consumable upkeep state (persisted per account, same keys as the other BTs).
 _settings = Settings(f'{INI_PATH}/{INI_FILENAME}', 'account')
@@ -388,6 +401,58 @@ def _serialize_model_id_list(model_ids: set[int]) -> str:
     return ','.join(str(model_id) for model_id in sorted(int(value) for value in model_ids))
 
 
+def _parse_queue(raw: str) -> list[tuple[str, str]]:
+    """Queue entries from their stored form, dropping anything the pack cannot load.
+
+    The INI is user-editable and the map pack changes, so an entry that no longer
+    resolves is dropped here instead of failing the whole plan at build time.
+    """
+    entries: list[tuple[str, str]] = []
+    for chunk in str(raw or '').split(';'):
+        region, _, map_name = chunk.strip().partition('/')
+        if not region or not map_name:
+            continue
+        if map_name not in MAP_CATALOG.get(region, ()):
+            continue
+        if (region, map_name) in entries:
+            continue
+        entries.append((region, map_name))
+    return entries
+
+
+def _serialize_queue(entries: Sequence[tuple[str, str]]) -> str:
+    return ';'.join(f'{region}/{map_name}' for region, map_name in entries)
+
+
+def _append_region_to_queue(region: str) -> int:
+    """Append every map of a region to the queue, in catalog order.
+
+    Returns how many entries were added. A region already queued contributes
+    nothing, so the button can tell a no-op click from a real change and skip the
+    save and the tree rebuild. The catalog order is the combo order, so the plan
+    walks the region the way the list reads.
+    """
+    added = 0
+    for map_name in MAP_CATALOG.get(region, ()):
+        entry = (region, map_name)
+        if entry in vanquish_queue:
+            continue
+        vanquish_queue.append(entry)
+        added += 1
+    return added
+
+
+def _sync_take_zquest() -> None:
+    """Taking the signpost quest only makes sense with automatic handling.
+
+    The map comes from the quest the signpost hands over, so taking it without
+    reading it would stage the party for a quest the plan is not going to walk.
+    A queued run picks its maps from the list, so it never takes one either.
+    """
+    global take_zquest
+    take_zquest = automatic_zquest and not vanquish_queue
+
+
 def _load_settings() -> None:
     global _settings_loaded
     global _restock_conset, _activate_conset
@@ -398,6 +463,7 @@ def _load_settings() -> None:
     global _selected_conset, _selected_pcons
     global automatic_zquest
     global take_zquest, loop_runs
+    global vanquish_queue
 
     if _settings_loaded:
         return
@@ -409,12 +475,19 @@ def _load_settings() -> None:
     _restock_multi_account = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_MULTI_ACCOUNT, True)
     _keep_gold_on_accounts = _settings.get_bool(_SETTINGS_SECTION, _KEY_KEEP_GOLD_ON_ACCOUNTS, True)
     automatic_zquest = _settings.get_bool(_SETTINGS_SECTION, _KEY_AUTOMATIC_ZQUEST, False)
+    vanquish_queue = _parse_queue(_settings.get_str(_SETTINGS_SECTION, _KEY_QUEUE_ITEMS, ''))
+    if vanquish_queue:
+        # A queued run owns the plan shape, so the signpost flows cannot run with
+        # it: every entry has to be a map the party travels to, not the one the
+        # signpost happens to hand over. A stored combination from before the
+        # queue existed is corrected here instead of being trusted.
+        automatic_zquest = False
     if automatic_zquest:
         # A stored combination from an older build has to respect the rule the UI
         # enforces: the signpost feeds the resolution and a loop would have
         # nothing left to accept on its second pass.
-        take_zquest = True
         loop_runs = False
+    _sync_take_zquest()
 
     stored_conset = _settings.get_str(_SETTINGS_SECTION, _KEY_SELECTED_CONSET, '')
     if stored_conset.strip():
@@ -436,6 +509,7 @@ def _save_settings() -> None:
     _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_MULTI_ACCOUNT, _restock_multi_account)
     _settings.set(_SETTINGS_SECTION, _KEY_KEEP_GOLD_ON_ACCOUNTS, _keep_gold_on_accounts)
     _settings.set(_SETTINGS_SECTION, _KEY_AUTOMATIC_ZQUEST, automatic_zquest)
+    _settings.set(_SETTINGS_SECTION, _KEY_QUEUE_ITEMS, _serialize_queue(vanquish_queue))
     _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_CONSET, _serialize_model_id_list(_selected_conset))
     _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_PCONS, _serialize_model_id_list(_selected_pcons))
 
@@ -809,8 +883,17 @@ def _selected_map() -> str:
     return maps[max(0, min(map_index, len(maps) - 1))]
 
 
-def _load_transit_data(module: object, map_name: str) -> tuple[tuple[int, ...], tuple[list[object], ...]]:
-    ids = getattr(module, f'{map_name}_ids', {})
+def _load_transit_data(
+    module: object, map_name: str, ids: Mapping
+) -> tuple[tuple[int, ...], tuple[list[object], ...]]:
+    """Transit legs in walking order: the map each one exits into, and its path.
+
+    `ids` is the dictionary the caller already resolved. Reading it by name again
+    here would lose the transit ids of a legacy map file whose ID dictionary has an
+    unrelated variable name, while still finding its `<map>_transit_path`: the legs
+    stay but point at the final map, and the outpost exit can never reach the first
+    transit map.
+    """
     transit_ids: list[int] = []
     transit_paths: list[list[object]] = []
 
@@ -884,7 +967,7 @@ def load_definition(region: str, map_name: str) -> VanquishDefinition:
     explorable_id = int(ids.get('map_id', 0) or 0)
     outpost_path = list(getattr(module, f'{map_name}_outpost_path', ()) or ())
     vanquish_path = list(getattr(module, map_name, ()) or ())
-    transit_ids, transit_paths = _load_transit_data(module, map_name)
+    transit_ids, transit_paths = _load_transit_data(module, map_name, ids)
 
     if outpost_id <= 0:
         raise ValueError(f'Invalid outpost ID for {region}/{map_name}.')
@@ -1390,11 +1473,11 @@ def _build_outpost_exit(definition: VanquishDefinition) -> BehaviorTree:
     )
 
 
-def _mark_run_started() -> BehaviorTree.NodeState:
+def _mark_run_started(definition: VanquishDefinition) -> BehaviorTree.NodeState:
     stats.start_run()
     PySystem.Console.Log(
         MODULE_NAME,
-        f'Starting vanquish: {_selected_region()}/{_selected_map()}.',
+        f'Starting vanquish: {definition.region}/{definition.map_name}.',
         PySystem.Console.MessageType.Info,
     )
     return BehaviorTree.NodeState.SUCCESS
@@ -1427,8 +1510,36 @@ def _build_completion_fallback() -> BehaviorTree:
     )
 
 
+def _build_resign_if_in_explorable(definition: VanquishDefinition) -> BehaviorTree:
+    """Return to the outpost when the run starts inside an explorable.
+
+    A queue's last entry no longer resigns, so the party is left standing in the
+    map it cleared. Map travel only works from an outpost, so without this the
+    first travel of the next run would wait for a map load that never comes.
+    """
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not Map.IsExplorable():
+            return BT.Succeeder('AbleToTravel')
+        return BT.Resign(
+            wait_for_map_load=True,
+            target_map_id=definition.outpost_id,
+            multi_account=True,
+            log=True,
+        )
+
+    return BT.Subtree(name='ResignIfInExplorable', subtree_fn=_build)
+
+
 def _build_run_preparation(definition: VanquishDefinition) -> BehaviorTree:
     children: list[BehaviorTree] = [
+        # A finished queue leaves the party in the map it cleared, so the next run
+        # can start out here: resign first, because travel needs an outpost.
+        _build_resign_if_in_explorable(definition),
+        # The plan's own Form Party step forms in whatever outpost the run
+        # started in; this dissolves that group so every account reaches the
+        # vanquish outpost alone and nothing is left to travel together.
+        BT.LeaveParty(),
         # Travel first, with the same helper the staging and reward steps use, so
         # the outpost approach also picks a randomised low-traffic district. The
         # hard-mode switch that `BT.Sequence(map_id_or_name=...)` used to apply
@@ -1444,7 +1555,7 @@ def _build_run_preparation(definition: VanquishDefinition) -> BehaviorTree:
         BT.SetHardMode(hard_mode=True),
         ensure_botting_tree().Config.Aggressive(
             multi_account=True,
-            auto_loot=auto_loot,
+            auto_loot=AUTO_LOOT,
             resurrection_scroll=True,
         ),
     ]
@@ -1720,6 +1831,56 @@ def _route_resume_step(
     return min(eligible, key=_distance_sq).step_name
 
 
+def _active_definition(map_id: int) -> VanquishDefinition | None:
+    """Definition whose route is the map the party is standing on.
+
+    Automatic mode resolved a map the combos never selected, and a queue walks
+    several maps in one plan, so the combo is only right in single-map runs.
+    """
+    if automatic_zquest and _auto_definition is not None:
+        return _auto_definition
+    if vanquish_queue:
+        for region, map_name in vanquish_queue:
+            try:
+                candidate = load_definition(region, map_name)
+            except Exception:
+                continue
+            if _vanquish_route_map_id(candidate) == map_id:
+                return candidate
+        return None
+    return load_selected_definition()
+
+
+def _step_name_map_id(step_name: str) -> int:
+    """Map id carried by a `Point N (map M)` / `Action N: label (map M)` name."""
+    start = step_name.rfind('(map ')
+    if start < 0 or not step_name.endswith(')'):
+        return 0
+    raw = step_name[start + 5:-1].strip()
+    return int(raw) if raw.isdigit() else 0
+
+
+# Planner step name of the reverse passes; the phase of every other route step is
+# read from the map id its name carries.
+SWEEP_STEP_NAME = 'Cleanup sweeps'
+
+
+def _map_name_from_step(step_name: str) -> str:
+    """Queue map name carried by a planner step, empty when it carries none."""
+    for prefix in ('Prepare ', f'{SWEEP_STEP_NAME} ', 'Complete and return '):
+        if step_name.startswith(prefix):
+            return step_name[len(prefix):]
+    map_id = _step_name_map_id(step_name)
+    if map_id > 0 and vanquish_queue:
+        for region, map_name in vanquish_queue:
+            try:
+                if _vanquish_route_map_id(load_definition(region, map_name)) == map_id:
+                    return map_name
+            except Exception:
+                continue
+    return ''
+
+
 def ZQuestPartyWipeRecoveryService() -> BehaviorTree:
     """Resume a party wipe from the nearest waypoint to the shrine.
 
@@ -1861,7 +2022,13 @@ def ZQuestPartyWipeRecoveryService() -> BehaviorTree:
 
         if mode == "defeated":
             # From an outpost the route coordinates belong to another map, so the
-            # only step that can get the party back there is the preparation.
+            # only step that can get the party back there is the preparation. A
+            # queue has one preparation per entry, so the failed step names the
+            # map to return to instead of the first Prepare in the plan.
+            if vanquish_queue:
+                map_name = _map_name_from_step(failed_step_name)
+                if map_name and f'Prepare {map_name}' in names:
+                    return f'Prepare {map_name}'
             for step_name in names:
                 if step_name.startswith("Prepare "):
                     return step_name
@@ -1869,16 +2036,21 @@ def ZQuestPartyWipeRecoveryService() -> BehaviorTree:
 
         try:
             # Automatic mode resolved a map the combos never selected, so the plan
-            # that is running belongs to `_auto_definition`.
-            if automatic_zquest and _auto_definition is not None:
-                definition = _auto_definition
-            else:
-                definition = load_selected_definition()
+            # that is running belongs to `_auto_definition`. A queue walks several
+            # maps, so the one that matters is the map the party is standing on.
             player_id = Player.GetAgentID()
             position = Agent.GetXY(player_id)
             map_id = int(Map.GetMapID() or 0)
+            definition = _active_definition(map_id)
         except Exception as error:
             _log(f"Could not resolve the shrine resume point: {error}", PySystem.Console.MessageType.Warning)
+            return failed_step_name
+
+        if definition is None:
+            _log(
+                f"No queued map matches map {map_id}; restarting '{failed_step_name}' instead.",
+                PySystem.Console.MessageType.Warning,
+            )
             return failed_step_name
 
         step_name = _route_resume_step(definition, map_id, position, failed_step_name, names)
@@ -2070,13 +2242,27 @@ def _mark_recovery_suppression(value: bool) -> BehaviorTree:
     return _action(f'MarkResigning:{value}', _set)
 
 
-def _build_run_completion(definition: VanquishDefinition) -> BehaviorTree:
+def _build_run_completion(
+    definition: VanquishDefinition,
+    is_last_queue_entry: bool = True,
+) -> BehaviorTree:
+    """Record the run and resign only when the party still has to be in an outpost.
+
+    The trip back is needed by the repeat loop, which restarts from an outpost;
+    by the staging flow, whose reward step is claimed in the Great Temple and can
+    only map-travel from an outpost; and by every queue entry whose next Prepare
+    still has to travel.
+
+    The last entry of a queue is the exception: with nothing left to walk, the
+    party stays in the map it just cleared instead of being dragged back. The loop
+    keeps its resign even there, because its next pass starts from an outpost.
+    """
     children: list[BehaviorTree] = [_action('RecordRunCompletion', _mark_run_completed)]
 
-    # The trip back is needed by the repeat loop, which starts from an outpost,
-    # and by the staging flow, which ends in Embark Beach so the next run starts
-    # from a staged position.
-    if loop_runs or take_zquest:
+    # A queue needs the outpost only while another entry follows; the loop and the
+    # signpost flow need it every time.
+    needs_outpost = bool(loop_runs or take_zquest or (vanquish_queue and not is_last_queue_entry))
+    if needs_outpost:
         children.append(_mark_recovery_suppression(True))
         children.append(
             BT.Resign(
@@ -2229,6 +2415,94 @@ def get_execution_steps(definition: VanquishDefinition | None) -> list[tuple[str
     return steps
 
 
+def _queue_definitions() -> list[VanquishDefinition]:
+    """Definitions for the queue, in order, one per map id.
+
+    Two pack files can describe the same map (`DeldrimorBowl` lives under two
+    region folders), and a repeated map id would produce duplicate planner step
+    names, which is exactly what the restart-by-name logic cannot tell apart.
+    """
+    definitions: list[VanquishDefinition] = []
+    seen: set[int] = set()
+    for region, map_name in vanquish_queue:
+        definition = load_definition(region, map_name)
+        route_map_id = _vanquish_route_map_id(definition)
+        if route_map_id in seen:
+            continue
+        seen.add(route_map_id)
+        definitions.append(definition)
+    if not definitions:
+        raise ValueError('The vanquish queue is empty: add at least one map in Config.')
+    return definitions
+
+
+def _queue_entry_steps(
+    definition: VanquishDefinition,
+    is_last_queue_entry: bool,
+) -> list[tuple[str, Callable[[], BehaviorTree]]]:
+    """Prepare, walk, sweep and complete one queued map.
+
+    Every entry repeats the same four steps, and the planner restarts steps by
+    name, so the sweep and completion names carry the map name. The route steps
+    already carry theirs as `(map M)`.
+
+    `is_last_queue_entry` only reaches the completion step: the last entry leaves
+    the party in the map it cleared, every other one resigns so the next Prepare
+    can travel.
+    """
+    steps: list[tuple[str, Callable[[], BehaviorTree]]] = [
+        (
+            f'Prepare {definition.map_name}',
+            lambda definition=definition: _build_run_preparation(definition),
+        )
+    ]
+    for item in _vanquish_route_items(definition):
+        steps.append(
+            (
+                item.step_name,
+                lambda definition=definition, item=item: _build_route_item(definition, item),
+            )
+        )
+    steps.append(
+        (
+            f'{SWEEP_STEP_NAME} {definition.map_name}',
+            lambda definition=definition: _build_cleanup_sweeps(definition),
+        )
+    )
+    steps.append(
+        (
+            f'Complete and return {definition.map_name}',
+            lambda definition=definition, is_last_queue_entry=is_last_queue_entry: _build_run_completion(
+                definition,
+                is_last_queue_entry,
+            ),
+        )
+    )
+    return steps
+
+
+def get_queue_execution_steps(
+    definitions: Sequence[VanquishDefinition],
+) -> list[tuple[str, Callable[[], BehaviorTree]]]:
+    """One plan for the whole queue: one vanquish per entry, no Form Party.
+
+    A filled queue turns automatic ZQuest handling off (`take_zquest` is
+    `automatic_zquest and not vanquish_queue`), and Form Party exists only as
+    that flow's preparation. Each entry builds its own party inside Prepare, at
+    that map's outpost.
+    """
+    steps: list[tuple[str, Callable[[], BehaviorTree]]] = []
+    last_index = len(definitions) - 1
+    for index, definition in enumerate(definitions):
+        steps.extend(
+            _queue_entry_steps(
+                definition,
+                is_last_queue_entry=index == last_index,
+            )
+        )
+    return steps
+
+
 def _configure_upkeep(tree: BottingTree) -> None:
     """Push the run configuration and the consumable upkeep service.
 
@@ -2238,7 +2512,7 @@ def _configure_upkeep(tree: BottingTree) -> None:
     and Shards Of Orr BTs use).
     """
     tree.Config.ConfigureUpkeep(
-        looting_enabled=auto_loot,
+        looting_enabled=AUTO_LOOT,
         resurrection_scroll=True,
         # The widget installs its own recovery service below: it resumes at the
         # nearest waypoint to the shrine instead of the failed step, and a party
@@ -2261,17 +2535,23 @@ def ensure_botting_tree() -> BottingTree:
 
     if botting_tree is None:
         # Automatic mode starts from the discovery plan: the map is unknown until
-        # the signpost quest has been accepted and read.
-        definition = None if automatic_zquest else load_selected_definition()
+        # the signpost quest has been accepted and read. The queue replaces both
+        # with one plan built from its own list.
+        if vanquish_queue:
+            routine = get_queue_execution_steps(_queue_definitions())
+            definition: VanquishDefinition | None = None
+        else:
+            definition = None if automatic_zquest else load_selected_definition()
+            routine = get_execution_steps(definition)
         last_load_error = ''
         botting_tree = BottingTree.Create(
             MODULE_NAME,
-            main_routine=get_execution_steps(definition),
+            main_routine=routine,
             routine_name='PyQuishAISequence',
             repeat=loop_runs,
             reset=False,
             multi_account=True,
-            auto_loot=auto_loot,
+            auto_loot=AUTO_LOOT,
             configure_fn=_configure_upkeep,
         )
         botting_tree.UI.override_draw_help(_draw_help)
@@ -2828,7 +3108,7 @@ def _build_auto_zquest_resolver() -> BehaviorTree:
         if not state['deadline_ms']:
             state['deadline_ms'] = now + ZQUEST_QUEST_RESOLVE_TIMEOUT_MS
 
-        request = now - float(state['last_request_ms']) >= ZQUEST_QUEST_TEXT_POLL_MS
+        request = now - _as_float(state['last_request_ms']) >= ZQUEST_QUEST_TEXT_POLL_MS
         if request:
             state['last_request_ms'] = now
 
@@ -2862,7 +3142,7 @@ def _build_auto_zquest_resolver() -> BehaviorTree:
                 )
                 return BehaviorTree.NodeState.RUNNING
 
-        if now >= float(state['deadline_ms']):
+        if now >= _as_float(state['deadline_ms']):
             return _stop(
                 'Automatic ZQuest: no map matched the active quest after '
                 f'{ZQUEST_QUEST_RESOLVE_TIMEOUT_MS // 1000}s (active quest {quest_id}, '
@@ -2880,8 +3160,8 @@ def _build_zquest_staging() -> BehaviorTree:
     """Travel to Embark Beach and take the vanquish quest from the signpost.
 
     Runs before Prepare travels to the vanquish outpost. The step is only
-    included when `take_zquest` is on, and the UI keeps that toggle off while the
-    repeat loop is enabled.
+    included when automatic ZQuest handling is on, because that is the flow that
+    reads the map out of the quest this step accepts; a queued run never takes it.
     """
     return BT.Sequence(
         name='TakeZQuest',
@@ -3017,34 +3297,37 @@ def _draw_config() -> None:
     global region_index
     global map_index
     global loop_runs
-    global auto_loot
     global take_zquest
     global automatic_zquest
     global _auto_definition
     global forward_clear_radius
     global reverse_clear_radius_1
     global reverse_clear_radius_2
+    global vanquish_queue
 
     tree = botting_tree
     locked = bool(tree is not None and tree.IsStarted())
+    queued = bool(vanquish_queue)
     PyImGui.text('Region and map')
     PyImGui.separator()
     if locked:
         PyImGui.text_colored('Stop the bot before changing the map.', (255, 190, 80, 255))
 
     PyImGui.begin_disabled(locked)
+    PyImGui.begin_disabled(queued)
     new_automatic = PyImGui.checkbox('Automatic ZQuest handling', automatic_zquest)
     if new_automatic != automatic_zquest:
         automatic_zquest = new_automatic
         if automatic_zquest:
-            # The map comes from the quest the signpost hands over, so the staging
-            # step has to run, and a repeated pass would have nothing left to
-            # accept.
-            take_zquest = True
+            # The map comes from the quest the signpost hands over and a repeated
+            # pass would have nothing left to accept.
             loop_runs = False
+        # Taking the quest is derived from this switch, not toggled on its own.
+        _sync_take_zquest()
         _auto_definition = None
         _save_settings()
         _request_rebuild()
+    PyImGui.end_disabled()
 
     PyImGui.begin_disabled(automatic_zquest)
     new_region_index = PyImGui.combo('Region', region_index, list(REGIONS))
@@ -3066,23 +3349,44 @@ def _draw_config() -> None:
             (160, 160, 160, 255),
         )
 
+    PyImGui.begin_disabled(automatic_zquest)
+    if PyImGui.button('Add Map to queue'):
+        entry = (_selected_region(), _selected_map())
+        if entry not in vanquish_queue:
+            vanquish_queue.append(entry)
+            _save_settings()
+            _request_rebuild()
+    PyImGui.same_line(0, 16)
+    if PyImGui.button('Add Region to queue'):
+        if _append_region_to_queue(_selected_region()):
+            _save_settings()
+            _request_rebuild()
+    PyImGui.same_line(0, 16)
+    if PyImGui.button('Clear queue') and vanquish_queue:
+        vanquish_queue.clear()
+        _save_settings()
+        _request_rebuild()
+
+    if vanquish_queue:
+        PyImGui.text(f'Queued vanquishes: {len(vanquish_queue)}')
+    for position in range(len(vanquish_queue)):
+        region, map_name = vanquish_queue[position]
+        PyImGui.text(f'{position + 1:>2}. {region} / {map_name}')
+        PyImGui.same_line(0, 24)
+        if PyImGui.button(f'Remove##queue{position}'):
+            vanquish_queue.pop(position)
+            _save_settings()
+            _request_rebuild()
+            break
+    PyImGui.end_disabled()
+
     PyImGui.separator()
     PyImGui.begin_disabled(automatic_zquest)
     new_loop_runs = PyImGui.checkbox('Loop vanquish', loop_runs)
     if new_loop_runs != loop_runs:
         loop_runs = new_loop_runs
-        if loop_runs:
-            # A repeated full pass starts from the first step again, so staging
-            # would run on every cycle. Keeping both on makes no sense, and the
-            # pair is resolved here instead of guessing from the map at runtime.
-            take_zquest = False
         _request_rebuild()
     PyImGui.end_disabled()
-
-    new_auto_loot = PyImGui.checkbox('Automatic looting', auto_loot)
-    if new_auto_loot != auto_loot:
-        auto_loot = new_auto_loot
-        _request_rebuild()
 
     PyImGui.begin_disabled(loop_runs or automatic_zquest)
     new_take_zquest = PyImGui.checkbox('Take ZQuest', take_zquest)
@@ -3100,6 +3404,9 @@ def _draw_config() -> None:
             'Take ZQuest is off while Loop vanquish is enabled.',
             (160, 160, 160, 255),
         )
+        # Nothing in the plan depends on it: the log is sampled from the widget
+        # loop, so there is no tree to rebuild.
+        _save_settings()
 
     PyImGui.separator()
     PyImGui.text('Enemy sweep radius')
@@ -3323,7 +3630,9 @@ def _draw_help() -> None:
     PyImGui.text_wrapped('Form Party disbands, summons the other accounts to the leader map and invites them back before every run, and logs the shared-memory census first; it is skipped while Account Isolation is enabled.')
     PyImGui.text_wrapped('The quest dialogs wait for the other accounts to report the leader map and district before the order is sent, so no follower misses the quest because it was still loading.')
     PyImGui.text_wrapped('The bot performs the forward route, followed by up to two reverse sweeps if foes remain.')
-    PyImGui.text_wrapped('Take ZQuest travels to Embark Beach and takes the vanquish quest from the signpost before each run.')
+    PyImGui.text_wrapped('Automatic ZQuest handling travels to Embark Beach, takes the vanquish quest from the signpost, reads the map out of it and claims the reward at the end. It is the only flow that takes the quest: a manual run and a queued run never do.')
+    PyImGui.text_wrapped('The vanquish queue chains several maps in one plan: Form Party runs once per pass, then every entry repeats Prepare, route, sweeps and Complete with its resign. It and Automatic ZQuest handling exclude each other: turn the switch off to add maps.')
+    PyImGui.text_wrapped('Looting is always on: a vanquish leaves drops along the whole route.')
     PyImGui.text_wrapped('Consumable upkeep is configured in the Consumables tab: consets and pcons are separated.')
     PyImGui.text_wrapped('Enable Restock to pull consumables from storage into bags during each Prepare step.')
 
@@ -3336,7 +3645,13 @@ def _format_time(seconds: float) -> str:
 
 
 def _draw_run_status() -> None:
-    if automatic_zquest and _auto_definition is None:
+    if vanquish_queue:
+        # The combos do not drive a queued run, so listing a "selected" map here
+        # would name a map the plan is not going to walk. The loop re-runs Form
+        # Party, so the party clause has to follow the loop rather than the queue.
+        party_clause = 'party re-formed each pass' if loop_runs else 'party formed once'
+        PyImGui.text(f'Queue: {len(vanquish_queue)} vanquishes, {party_clause}')
+    elif automatic_zquest and _auto_definition is None:
         PyImGui.text('Selected: (pending quest)')
     elif automatic_zquest:
         PyImGui.text(f'Selected: {_active_map_name()} (from quest)')
