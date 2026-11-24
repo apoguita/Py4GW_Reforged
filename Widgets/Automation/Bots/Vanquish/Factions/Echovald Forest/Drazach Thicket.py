@@ -284,7 +284,7 @@ def _draw_help():
         PyImGui.text("Vanquish progress is available once the run is inside the explorable area.")
 
     PyImGui.separator()
-    PyImGui.bullet_text("PrepareForFarm already wires regroup and party-danger callbacks.")
+    PyImGui.bullet_text("Farm preparation wires regroup and party-danger callbacks.")
     PyImGui.bullet_text("Party wipe recovery now jumps to a stable return-to-outpost header.")
     PyImGui.bullet_text("The indoor path has several ambush rooms and pop-up groups.")
 
@@ -386,31 +386,67 @@ def _targeted_missing_patrol_cleanup(bot: "Botting"):
     return True
 
 
+def _take_kurzick_blessing(bot: Botting):
+    """Run the existing faction-blessing owner from this route state."""
+    from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
+    from Sources.ApoSource.ApoBottingLib import wrappers as BT
+
+    tree = BT.TakeBlessing(pos=COORDS_FOR_PRIEST, faction="kurzick", multi_account=True, log=True, verify_effect=True)
+    saved_pause = bool(bot.Properties.Get("hero_ai_paused", "active"))
+    bot.Properties.ApplyNow("hero_ai_paused", "active", True)
+    try:
+        yield from Routines.Yield.wait(100)
+        while True:
+            state = tree.tick()
+            if state == BehaviorTree.NodeState.SUCCESS:
+                return True
+            if state == BehaviorTree.NodeState.FAILURE:
+                bot.Stop()
+                raise RuntimeError("Kurzick blessing owner failed")
+            yield from Routines.Yield.wait(100)
+    finally:
+        try:
+            tree.reset()
+        finally:
+            if bool(bot.Properties.Get("hero_ai_paused", "active")):
+                bot.Properties.ApplyNow("hero_ai_paused", "active", saved_pause)
+
+
+def _prepare_for_farm(bot: Botting, map_id_to_travel: int, single_account: bool = True) -> None:
+    """Keep this widget's single-account party preparation out of shared templates."""
+    routines = bot.Templates.Routines
+    if not single_account:
+        routines.PrepareForFarm(map_id_to_travel=map_id_to_travel)
+        return
+    bot.States.AddHeader("Prepare For Farm")
+    bot.Events.OnPartyMemberBehindCallback(lambda: routines.OnPartyMemberBehind())
+    bot.Events.OnPartyMemberInDangerCallback(lambda: routines.OnPartyMemberInDanger())
+    bot.Events.OnPartyMemberDeadBehindCallback(lambda: routines.OnPartyMemberDeathBehind())
+    bot.Travel_To_Random_District(target_map_id=map_id_to_travel)
+
+
 def bot_routine(bot: Botting) -> None:
     bot.Events.OnPartyWipeCallback(lambda: OnPartyWipe(bot))
 
     bot.States.AddHeader(BOT_NAME)
     bot.Templates.Multibox_Aggressive()
-    bot.Templates.Routines.PrepareForFarm(map_id_to_travel=OUTPOST_TO_START)
+    _prepare_for_farm(bot, map_id_to_travel=OUTPOST_TO_START)
 
     bot.Party.SetHardMode(True)
     bot.Move.XYAndExitMap(*COORDS_TO_EXIT_OUTPOST, EXPLORABLE_TO_VANQUISH)
     bot.Wait.ForTime(4000)
 
-    current_luxon = Player.GetLuxonData()[0]
-    current_kurzick = Player.GetKurzickData()[0]
-
-    bot.Move.XYAndInteractNPC(*COORDS_FOR_PRIEST)
-    if current_luxon >= current_kurzick:
-        bot.Multibox.SendDialogToTarget(0x84)
-    bot.Multibox.SendDialogToTarget(DIALOG_FOR_PRIEST)
+    bot.States.AddCustomState(
+        lambda: _take_kurzick_blessing(bot),
+        "Take the Kurzick blessing",
+    )
 
     bot.States.AddHeader("Start Combat")
     bot.UI.PrintMessageToConsole(BOT_NAME, "Starting Drazach Thicket kill route.")
     bot.Items.UseAllConsumables()
     bot.States.AddManagedCoroutine("DrazachFollowerConsumables", lambda: _upkeep_multibox_consumables(bot))
     bot.States.AddManagedCoroutine("DrazachVanquishWatchdog", lambda: _vanquish_watchdog(bot))
-    bot.Move.FollowAutoPath(Vanquish_Path, "Kill Route")
+    bot.Move.FollowPath(Vanquish_Path, "Kill Route")
     bot.Wait.UntilOutOfCombat()
     bot.States.AddCustomState(
         lambda: _targeted_missing_patrol_cleanup(bot),
