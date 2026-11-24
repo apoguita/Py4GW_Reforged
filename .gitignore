@@ -37,12 +37,6 @@ Settings/*/
 # Ignore ALL Logs in root
 Logs/*
 
-# PyQuishAI_BT writes the run's encountered enemies next to the widget
-Widgets/Automation/Bots/Vanquish/PyQuishAI_BT_enemy_log.txt
-# Weekly route review: the local tooling and the reports it writes
-Tools/PyQuishAI/
-Widgets/Automation/Bots/Vanquish/PyQuishAI_route_review_*.md
-
 # Ignore generated modular tool widget config
 Sources/modular_data/tools/Widgets/Config/
 
