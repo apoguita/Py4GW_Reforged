@@ -1,5 +1,6 @@
 """Prebuilt BT recipe runner exports."""
 from .fow import FOW_QUEST_ORDER
+from .fow import build_fow_specs
 from .fow import create_modular_fow_bot
 from .modular_eotn import EOTN_PHASE_SPECS
 from .modular_eotn import EOTN_REGION_SPANS
@@ -25,6 +26,7 @@ from .modular_prophecies import derive_prophecies_region_spans
 
 __all__ = [
     "FOW_QUEST_ORDER",
+    "build_fow_specs",
     "create_modular_fow_bot",
     "EOTN_PHASE_SPECS",
     "EOTN_REGION_SPANS",

@@ -16,7 +16,6 @@ def guarded_widget_main(
     widget_name: str,
     run_fn: Callable[[], None],
     *,
-    get_bot: Callable[[], Any] | None = None,
     throttle_seconds: float = 2.0,
 ) -> None:
     try:

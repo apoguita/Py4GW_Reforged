@@ -319,3 +319,8 @@ def _recipe_path(spec: RecipeSpec) -> Path:
     }
     folder = folder_by_kind.get(spec.kind, spec.kind)
     return Path(folder) / f"{spec.key}.json"
+
+
+def recipe_path_for_spec(spec: RecipeSpec) -> str:
+    """Repository-relative JSON path a spec resolves to, e.g. 'quests/FoW/khobay.json'."""
+    return _recipe_path(spec).as_posix()

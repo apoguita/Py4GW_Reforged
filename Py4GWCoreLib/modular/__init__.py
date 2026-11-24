@@ -19,6 +19,7 @@ from .json_bt_compiler import load_recipe
 from .json_bt_compiler import recipe_step_metadata
 from .runner import BTRecipeRunner
 from .runner import RecipeSpec
+from .runner import recipe_path_for_spec
 from .runner import specs_from_campaign_rows
 
 __all__ = [
@@ -40,6 +41,7 @@ __all__ = [
     "recipe_step_metadata",
     "BTRecipeRunner",
     "RecipeSpec",
+    "recipe_path_for_spec",
     "specs_from_campaign_rows",
 ]
 
