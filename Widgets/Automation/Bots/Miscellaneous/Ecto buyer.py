@@ -20,16 +20,19 @@ order share the same routine and the same safeguards:
   - the request is the framework's own SharedCommandType.EnableWidget message,
     which makes each receiving client switch this widget on (the Messaging widget
     of that client handles the message);
-  - the terms travel in `Widgets/EctoBuyer/order.ini` (global scope), so every
-    client reads the same session, threshold and cap, and writes its own
-    `Widgets/EctoBuyer/status_<email>.ini` back;
-  - an account only obeys an order that is fresh, uncancelled, lists its email and
-    comes from an account of the same party; the account that issued the order is
-    never one of its executors, which keeps the purchase of the main behind its
-    own button;
-  - the account that started the run heartbeats the order; when it stops the order
+  - the terms travel in a SharedCommandType.EctoBuyerOrder message: session,
+    threshold, cap and the close flag. The message is addressed to one account, so
+    the list of targets is the addressing itself and never has to travel. Each
+    account answers with a status message back to the issuer;
+  - an account only obeys an order that arrives from an account of the same party
+    and keeps arriving; the account that issued the order is never one of its
+    executors, which keeps the purchase of the main behind its own button;
+  - the account that started the run heartbeats the order; when it stops, the order
     goes stale, and accounts that never started stand down. With the close option
     on, an account switches this widget off when its part is over.
+
+Nothing is written to disk for coordination: the terms are live data, and a file
+copy can be stale or half-written by the time the other account reads it.
 
 A click or an order that cannot run (not in an outpost, no trader nearby, storage
 at or below the threshold) reports the reason instead of spending anything, and a
@@ -40,8 +43,9 @@ outpost with the trader reachable. This file never moves gold itself; it only ca
 the routine that does.
 """
 
-import re
+import json
 import time
+from typing import Any
 
 import PyImGui
 import PySystem
@@ -76,21 +80,16 @@ TRADER_NAME = "Rare Material Trader"
 INI_PATH = "Widgets/Automation/Bots/Miscellaneous/EctoBuyer"
 INI_FILENAME = "EctoBuyer.ini"
 
-# Party coordination: global-scope documents, the same mechanism Party Trade
-# Collector uses. The account that starts the run writes the order; every
-# participating account writes its own status file.
-ORDER_PATH = "Widgets/EctoBuyer/order.ini"
-STATUS_PATH = "Widgets/EctoBuyer/status_{email}.ini"
-ORDER_SECTION = "Order"
-STATUS_SECTION = "Status"
-
-# An order is only obeyed while the issuer keeps refreshing it, so a client that
-# closes mid-run does not leave the party buying forever.
-ORDER_POLL_S = 0.5
+# Party coordination travels in shared-memory messages. The issuer heartbeats the
+# order, so a client that closes mid-run does not leave the party buying forever.
 ORDER_HEARTBEAT_S = 2.0
 ORDER_STALE_S = 20.0
 STATUS_REFRESH_S = 1.0
 PARTY_RUN_TIMEOUT_S = 900.0
+
+_ORDER_TAG = "order"
+_CANCEL_TAG = "cancel"
+_STATUS_TAG = "status"
 
 _MSG = PySystem.Console.MessageType
 
@@ -126,37 +125,55 @@ def _log(message: str, message_type: PySystem.Console.MessageType = PySystem.Con
     PySystem.Console.Log(MODULE_NAME, message, message_type)
 
 
-def _safe(email: str) -> str:
-    """Filesystem-safe file stem for the per-account status document."""
-    return re.sub(r"[^A-Za-z0-9._-]+", "_", email.strip().lower()) or "unknown"
-
-
-def _party_doc(path: str) -> Settings:
-    return Settings(path, "global")
-
-
-def _order_doc() -> Settings:
-    return _party_doc(ORDER_PATH)
-
-
-def _status_doc(email: str) -> Settings:
-    return _party_doc(STATUS_PATH.format(email=_safe(email)))
-
-
-def _publish(doc: Settings, values: dict[str, object], section: str) -> None:
-    """Write a shared document and flush it so the other clients see it now."""
-    for key, value in values.items():
-        doc.set(section, key, value)
-    doc.save()
-
-
-def _fresh(doc: Settings) -> Settings:
-    """Re-read a shared document before trusting it: another client wrote it."""
+def _extra(message: Any, index: int) -> str:
+    """Read one ExtraData slot of a shared message as text."""
     try:
-        doc.reload()
+        raw = message.ExtraData[index]
     except Exception:
-        pass
-    return doc
+        return ""
+    try:
+        return "".join(ch for ch in raw if ch != "\0").rstrip()
+    except Exception:
+        return ""
+
+
+def _as_int(value: object, default: int = 0) -> int:
+    """Coerce a JSON scalar to int without trusting its type."""
+    try:
+        return int(float(str(value)))
+    except Exception:
+        return default
+
+
+def _pack(payload: dict[str, object]) -> str:
+    try:
+        return json.dumps(payload, separators=(",", ":"))
+    except Exception:
+        return ""
+
+
+def _unpack(raw: str) -> dict[str, object]:
+    try:
+        value = json.loads(raw or "{}")
+    except Exception:
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _send(email: str, tag: str, payload: dict[str, object], note: str = "") -> bool:
+    """Send one coordination message to another account of the party."""
+    try:
+        GLOBAL_CACHE.ShMem.SendMessage(
+            _my_email(),
+            email,
+            SharedCommandType.EctoBuyerOrder,
+            (0.0, 0.0, 0.0, 0.0),
+            (tag, _pack(payload), str(note)[:60], ""),
+        )
+        return True
+    except Exception as exc:
+        _log(f"Could not message {email}: {exc}", _MSG.Warning)
+        return False
 
 
 def _my_email() -> str:
@@ -383,100 +400,115 @@ def _start_buy() -> bool:
 
 
 class _PartyOrder:
-    """Obeys the order published by the account that started the party run.
+    """Obeys the order another account of this party sends this one.
 
-    This is the only path that buys without a click, and it only obeys an order
-    that is fresh, uncancelled, lists this account by email, and comes from an
-    account of the same party. The issuer never obeys its own order: on the
-    coordinating account the purchase stays behind the Buy on main button.
+    The only path that buys without a click. It obeys an order that comes from an
+    account of the same party and stays alive: the issuer re-sends it every
+    heartbeat, and an order that stops arriving goes stale so this account stands
+    down. The issuer never obeys its own order, which keeps the coordinating
+    account's purchase behind its own button.
     """
 
     def __init__(self) -> None:
         self.session = ""
+        self.sender = ""
+        self.order: dict[str, object] | None = None
         self.done: set[str] = set()      # sessions this account already answered
         self.closed: set[str] = set()    # sessions this account already closed itself for
         self.active = False              # this account is executing an order right now
         self.close_after = False
-        self._last_poll = 0.0
+        self._order_at = 0.0
         self._last_status = 0.0
 
-    def tick(self) -> None:
-        now = time.monotonic()
-        if now - self._last_poll < ORDER_POLL_S:
-            return
-        self._last_poll = now
+    def handle_message(self, message: Any) -> bool:
+        """Feed one coordination message. True when it was an order or a cancel."""
+        tag = _extra(message, 0).strip().lower()
+        if tag not in (_ORDER_TAG, _CANCEL_TAG):
+            return False
 
-        doc = _fresh(_order_doc())
-        session = str(doc.get_str(ORDER_SECTION, "session", "")).strip()
+        payload = _unpack(_extra(message, 1))
+        session = str(payload.get("s") or "").strip()
+        sender = str(message.SenderEmail or "").strip().lower()
         me = _my_email()
         if not session or not me:
-            return
+            return True
 
-        cancelled = bool(doc.get_bool(ORDER_SECTION, "cancel", False))
-        close_after = bool(doc.get_bool(ORDER_SECTION, "close_after", False))
-        stale = time.time() - float(doc.get_float(ORDER_SECTION, "ts", 0.0)) > ORDER_STALE_S
+        if sender == me:
+            # The issuer never executes its own order: on the coordinating account
+            # the only purchase path is the "Buy on main" button.
+            self.done.add(session)
+            return True
 
+        if tag == _CANCEL_TAG:
+            self.done.add(session)
+            self.order = None
+            if session not in self.closed and not _running:
+                self.closed.add(session)
+                if self.close_after or bool(payload.get("c")):
+                    _close_self("the party run ended before this account started")
+            return True
+
+        if session in self.done:
+            return True
+
+        my_party = _my_party_id()
+        issuer_party = _account_party_id(_account(sender))
+        if not my_party or issuer_party != my_party:
+            self.done.add(session)
+            _log(
+                f"Party run ignored: issuer {sender or '?'} is in party {issuer_party},"
+                f" this account is in party {my_party}.",
+                _MSG.Warning,
+            )
+            return True
+
+        self.session = session
+        self.sender = sender
+        self.order = payload
+        self.close_after = bool(payload.get("c"))
+        self._order_at = time.monotonic()
+        self.tick()
+        return True
+
+    def tick(self) -> None:
+        """Follow an active run, and stand down when the order stops arriving."""
         if self.active:
-            self._watch(close_after)
+            # A purchase already in flight is never aborted by a cancel or a stale
+            # order; it is followed to its end so the issuer gets the final status.
+            self._watch()
             return
 
-        if me not in _emails(doc.get_str(ORDER_SECTION, "accounts", "")) or session in self.done:
+        if not self.order:
             return
 
-        main_email = str(doc.get_str(ORDER_SECTION, "main_email", "")).strip().lower()
-
-        if main_email == me:
-            # The issuer never executes its own order: on the coordinating account the
-            # only purchase path is the "Buy on main" button. Orders published by an
-            # older version listed the issuer among the accounts, so this also covers
-            # a document still lying around from a previous run.
+        if time.monotonic() - self._order_at > ORDER_STALE_S:
+            session = self.session
             self.done.add(session)
-            return
-
-        if cancelled or stale:
-            # The issuer gave up before this account started.
-            self.done.add(session)
-            if close_after and session not in self.closed and not _running:
+            self.order = None
+            _log(
+                f"Party run {session} stood down: the order stopped arriving.",
+                _MSG.Warning,
+            )
+            if self.close_after and not _running and session not in self.closed:
                 self.closed.add(session)
                 _close_self("the party run ended before this account started")
             return
 
-        main_acc = _account(main_email)
-        my_party = _my_party_id()
-        issuer_party = _account_party_id(main_acc)
-        if not my_party or issuer_party != my_party:
-            self.done.add(session)
-            _log(
-                f"Party run ignored: issuer {main_email or '?'} is in party {issuer_party},"
-                f" this account is in party {my_party}.",
-                _MSG.Warning,
-            )
+        if _running or self.session in self.done:
             return
 
-        self._start(session, doc, close_after)
+        self._start()
 
-    def _start(self, session: str, doc: Settings, close_after: bool) -> None:
+    def _start(self) -> None:
         global _threshold, _max_ecto, _last_outcome
-        if _running:
-            # A manual run is in flight. Leave the session unclaimed so the order is
-            # retried on the next poll instead of being reported as skipped.
-            return
-        # Reload safety: an account that already answered this session (its own status
-        # document says so) does not buy twice if the widget is reopened while the
-        # order is still being refreshed.
-        mine = _fresh(_status_doc(_my_email()))
-        if str(mine.get_str(STATUS_SECTION, "session", "")).strip() == session:
-            self.done.add(session)
-            _log(f"Party run {session}: already answered by this account.", _MSG.Info)
-            return
+        session = self.session
+        payload = self.order or {}
+        self.done.add(session)
         # The issuer's terms win: this run uses its threshold and cap.
-        _threshold = max(0, int(doc.get_int(ORDER_SECTION, "threshold", _threshold)))
-        _max_ecto = max(0, int(doc.get_int(ORDER_SECTION, "max_ecto", _max_ecto)))
+        _threshold = max(0, _as_int(payload.get("t"), _threshold))
+        _max_ecto = max(0, _as_int(payload.get("m"), _max_ecto))
         _save_settings()
 
-        self.session = session
-        self.close_after = close_after
-        self.done.add(session)
         self.active = True
         self._last_status = 0.0
 
@@ -487,8 +519,9 @@ class _PartyOrder:
             self._report("skipped", reason, 0)
             _last_outcome = {"state": "skipped", "bought": 0, "msg": reason}
             self.active = False
+            self.order = None
             _log(f"Party run {session} skipped: {_status}", _MSG.Warning)
-            if close_after:
+            if self.close_after:
                 self.closed.add(session)
                 _close_self("nothing to do for this account")
             return
@@ -496,7 +529,7 @@ class _PartyOrder:
         self._report("running", "buying", 0)
         _log(f"Party run {session}: buying (threshold {_threshold}).", _MSG.Success)
 
-    def _watch(self, close_after: bool) -> None:
+    def _watch(self) -> None:
         """Follow the local run. A purchase in flight is never aborted."""
         now = time.monotonic()
         if _running:
@@ -508,31 +541,38 @@ class _PartyOrder:
         outcome = _last_outcome or {}
         state = str(outcome.get("state", "done"))
         msg = str(outcome.get("msg", _status))
-        bought = int(outcome.get("bought", 0) or 0)
+        bought = _as_int(outcome.get("bought"), 0)
         self._report(state, msg, bought)
         self.active = False
+        self.order = None
         _log(f"Party run {self.session}: {state} ({msg}).")
-        if close_after or self.close_after:
+        if self.close_after:
             self.closed.add(self.session)
             _close_self("party run finished")
 
     def _report(self, state: str, msg: str, bought: int) -> None:
-        _publish(_status_doc(_my_email()), {
-            "session": self.session,
-            "state": state,
-            "msg": msg,
-            "bought": int(bought),
-            "storage_gold": _storage_gold(),
-            "ts": time.time(),
-        }, STATUS_SECTION)
+        if not self.sender:
+            return
+        _send(
+            self.sender,
+            _STATUS_TAG,
+            {
+                "s": self.session,
+                "st": state,
+                "b": int(bought),
+                "g": int(_storage_gold()),
+            },
+            note=msg,
+        )
 
 
 class _PartyLauncher:
     """Asks the alts of this party to buy, and follows what each one reports.
 
     The request is the framework's SharedCommandType.EnableWidget message, which
-    the receiving client handles in its Messaging widget; the terms travel in the
-    order document. This state only exists on the account that pressed the button.
+    the receiving client handles in its Messaging widget; the terms travel in an
+    EctoBuyerOrder message addressed to each account, and each account answers with
+    a status message. This state only exists on the account that pressed the button.
     """
 
     def __init__(self) -> None:
@@ -540,9 +580,9 @@ class _PartyLauncher:
         self.accounts: list[str] = []
         self.names: dict[str, str] = {}
         self.results: dict[str, str] = {}
+        self.gold: dict[str, int] = {}
         self.tracking = False
         self.started = 0.0
-        self._last_read = 0.0
         self._last_beat = 0.0
 
     def start(self) -> None:
@@ -568,6 +608,7 @@ class _PartyLauncher:
         self.accounts = []
         self.names = {}
         self.results = {}
+        self.gold = {}
         asked = 0
         for acc in peers:
             email = str(acc.AccountEmail or "").strip().lower()
@@ -594,71 +635,76 @@ class _PartyLauncher:
         self.session = f"e{int(time.time() * 1000)}"
         self.started = time.time()
         self.tracking = True
-        self._last_read = 0.0
-        self._publish_order(False)
+        self._beat(False)
         _log(
             f"Party run {self.session}: {len(self.accounts)} alt(s), {asked} asked to buy."
             " This account does not buy on this path.",
             _MSG.Info,
         )
 
-    def _publish_order(self, cancelled: bool) -> None:
-        _publish(_order_doc(), {
-            "session": self.session,
-            "main_email": _my_email(),
-            "accounts": "|".join(self.accounts),
-            "threshold": int(_threshold),
-            "max_ecto": int(_max_ecto),
-            "close_after": bool(_close_alts),
-            "cancel": bool(cancelled),
-            "ts": time.time(),
-        }, ORDER_SECTION)
+    def _beat(self, cancelled: bool) -> None:
+        """Send the order, or the cancel, to every account that still owes an answer."""
+        tag = _CANCEL_TAG if cancelled else _ORDER_TAG
+        payload = {
+            "s": self.session,
+            "t": int(_threshold),
+            "m": int(_max_ecto),
+            "c": 1 if _close_alts else 0,
+        }
+        for email in self.accounts:
+            if not cancelled and not _pending(self.results.get(email, "waiting")):
+                continue
+            _send(email, tag, payload)
         self._last_beat = time.monotonic()
 
     def tick(self) -> None:
-        """Heartbeat the order and keep the per-account results fresh."""
+        """Heartbeat the order and follow the answers."""
         if not self.tracking:
             return
-        now = time.monotonic()
         if time.time() - self.started > PARTY_RUN_TIMEOUT_S:
             self.stop("timed out")
             return
-        if now - self._last_beat >= ORDER_HEARTBEAT_S:
-            self._publish_order(False)
-        if now - self._last_read < STATUS_REFRESH_S:
-            return
-        self._last_read = now
-        self._read_results()
+        if time.monotonic() - self._last_beat >= ORDER_HEARTBEAT_S:
+            self._beat(False)
         if self._finished():
             self.tracking = False
             _log(f"Party run {self.session} finished.", _MSG.Success)
 
-    def _read_results(self) -> None:
-        """Collect what each alt reported for this session."""
-        for email in self.accounts:
-            doc = _fresh(_status_doc(email))
-            if str(doc.get_str(STATUS_SECTION, "session", "")) != self.session:
-                continue
-            state = str(doc.get_str(STATUS_SECTION, "state", "")).strip()
-            if state:
-                self.results[email] = _compose(state, str(doc.get_str(STATUS_SECTION, "msg", "")))
+    def handle_message(self, message: Any) -> bool:
+        """Feed one status message. True when it belonged to this run."""
+        if _extra(message, 0).strip().lower() != _STATUS_TAG:
+            return False
+        payload = _unpack(_extra(message, 1))
+        session = str(payload.get("s") or "").strip()
+        sender = str(message.SenderEmail or "").strip().lower()
+        if session != self.session or sender not in self.results:
+            return True
+        state = str(payload.get("st") or "").strip()
+        if not state:
+            return True
+        self.results[sender] = _compose(state, _extra(message, 2).strip())
+        self.gold[sender] = _as_int(payload.get("g"), 0)
+        if not _pending(self.results[sender]):
+            _log(
+                f"Party run {self.session}: {self.names.get(sender, sender)} ->"
+                f" {self.results[sender]} (storage {_format_gold(self.gold[sender])}).",
+                _MSG.Success if str(state).lower().startswith("done") else _MSG.Info,
+            )
+        return True
 
     def _finished(self) -> bool:
         if _running:
             return False
-        for result in self.results.values():
-            if str(result).lower().startswith(("waiting", "running", "buying", "starting")):
-                return False
-        return True
+        return not any(_pending(result) for result in self.results.values())
 
     def stop(self, reason: str = "stopped") -> None:
         """Tell the party to stand down. A purchase already in flight finishes."""
         if not self.session:
             return
         for email, result in list(self.results.items()):
-            if str(result).lower().startswith("waiting"):
+            if _pending(result):
                 self.results[email] = f"cancelled ({reason})"
-        self._publish_order(True)
+        self._beat(True)
         _log(f"Party run {self.session} stopped: {reason}.", _MSG.Warning)
         self.tracking = False
 
@@ -667,11 +713,31 @@ class _PartyLauncher:
         self.accounts = []
         self.names = {}
         self.results = {}
+        self.gold = {}
         self.tracking = False
 
 
 _order = _PartyOrder()
 _launcher = _PartyLauncher()
+
+
+def ecto_handle_shared_message(message: Any) -> None:
+    """Entry point the Messaging widget calls for an EctoBuyerOrder message.
+
+    Declared the way Pycons declares `pycons_handle_shared_message`: the dispatcher
+    owns the message lifecycle and this widget only reads the payload. A disabled
+    widget ignores orders: the module stays loaded after disable, so without this
+    guard an off account would still obey one.
+    """
+    try:
+        widget = get_widget_handler().get_widget_info(WIDGET_NAME)
+        if widget is None or not bool(getattr(widget, "enabled", False)):
+            return
+        if _order.handle_message(message):
+            return
+        _launcher.handle_message(message)
+    except Exception as exc:
+        _log(f"Coordination message failed: {exc}", _MSG.Error)
 
 
 def update() -> None:
