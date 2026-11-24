@@ -183,6 +183,19 @@ class BottingTreeTicksMixin:
     def _tick_planner(self: _BottingTreeTicksHost, node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         bb = node.blackboard
 
+        # Children cannot observe pauses while their planner ticks are withheld.
+        # Publish an edge so movement can rebase its existing resume/timeout state.
+        pause_reason = (
+            'inactive' if not self.started else
+            'manual_pause' if self.paused else
+            'party_wipe' if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated() else
+            'combat' if bb.get('COMBAT_ACTIVE', False) and self.pause_on_combat else
+            'looting' if bb.get('LOOTING_ACTIVE', False) else ''
+        )
+        if pause_reason:
+            bb['movement_scheduler_pause_serial'] = int(bb.get('movement_scheduler_pause_serial', 0)) + 1
+            bb['movement_scheduler_pause_reason'] = pause_reason
+
         if not self.started or self.paused:
             bb['PLANNER_STATUS'] = PlannerStatus.IDLE.value
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
@@ -198,11 +211,13 @@ class BottingTreeTicksMixin:
                 self._last_planner_gate_state = 'paused_on_combat'
             bb['PLANNER_STATUS'] = PlannerStatus.PAUSED_ON_COMBAT.value
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_HEROAI.value
+            return BehaviorTree.NodeState.RUNNING
         elif bb.get('LOOTING_ACTIVE', False):
             if self._last_planner_gate_state != 'paused_on_looting':
                 self._last_planner_gate_state = 'paused_on_looting'
             bb['PLANNER_STATUS'] = PlannerStatus.PAUSED_ON_LOOTING.value
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_HEROAI.value
+            return BehaviorTree.NodeState.RUNNING
 
         if self.planner_tree is None:
             if self._last_planner_gate_state != 'idle_no_planner':

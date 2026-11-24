@@ -166,6 +166,7 @@ class BTMovement:
         avoidance_no_detour_blocker_id: int
         avoidance_no_detour_last_log_ms: int | None
         avoidance_logged_ignored_target_ids: set[int]
+        scheduler_pause_serial: int | None
         combat_release_pending: bool
         combat_release_started_ms: int | None
         
@@ -254,6 +255,7 @@ class BTMovement:
             "avoidance_no_detour_blocker_id": 0,
             "avoidance_no_detour_last_log_ms": None,
             "avoidance_logged_ignored_target_ids": set(),
+            "scheduler_pause_serial": None,
             "combat_release_pending": bool(pause_on_combat and int(combat_release_delay_ms) > 0),
             "combat_release_started_ms": None,
         }
@@ -280,6 +282,7 @@ class BTMovement:
             state["last_move_point"] = None
             state["pause_logged"] = False
             state["was_paused"] = False
+            state["scheduler_pause_serial"] = None
             state["resume_recovery_active"] = False
             state["resume_recovery_reason"] = ""
             state["resume_recovery_restart_pending"] = False
@@ -1017,6 +1020,17 @@ class BTMovement:
                 if log:
                     _log("Move", f"Movement already failed ({state['result_reason']}).", message_type=Console.MessageType.Warning, log=log)
                 return BehaviorTree.NodeState.FAILURE
+
+            pause_serial = int(node.blackboard.get("movement_scheduler_pause_serial", 0))
+            previous_serial = state["scheduler_pause_serial"]
+            state["scheduler_pause_serial"] = pause_serial
+            if previous_serial is not None and pause_serial != previous_serial:
+                _stop_strafe()
+                _clear_avoidance()
+                _reset_timeout()
+                state["was_paused"] = True
+                state["current_pause_reason"] = str(node.blackboard.get("movement_scheduler_pause_reason", "scheduler"))
+                state["stall_retry_count"] = 0
 
             if state["path_gen"] is None and state["path_points"] is None:
                 _reset_result()
