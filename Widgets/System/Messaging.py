@@ -2763,6 +2763,13 @@ def UseSkillCombatPrep(index: int, message: SharedMessageStruct):
 #endregion
 
 # region Widget handling
+# Resolved once, and tolerant of a library that predates the command: a client
+# keeps the SharedCommandType it imported at injection time, so a `case` that
+# reads the member directly would raise for every unmatched message until the
+# client restarts.
+_ECTO_BUYER_ORDER_COMMAND = getattr(SharedCommandType, "EctoBuyerOrder", None)
+
+
 def EctoBuyerOrder(index: int, message: SharedMessageStruct):
     """Forward an Ecto Buyer coordination message to the widget that owns it.
 
@@ -3601,7 +3608,10 @@ def ProcessMessages():
             GLOBAL_CACHE.Coroutines.append(MerchantRules(index, message))
         case SharedCommandType.Pycons:
             GLOBAL_CACHE.Coroutines.append(Pycons(index, message))
-        case SharedCommandType.EctoBuyerOrder:
+        case command if (
+            _ECTO_BUYER_ORDER_COMMAND is not None
+            and command == int(_ECTO_BUYER_ORDER_COMMAND)
+        ):
             # Synchronous on purpose: the handler only hands the payload over.
             EctoBuyerOrder(index, message)
         case SharedCommandType.DisableHeroAI:
