@@ -36,39 +36,43 @@ def _draw_skillbar(controller: SkillbarPlusController) -> None:
         PyImGui.text_colored("Overlay hidden in game. The settings below are kept.", _MUTED)
     PyImGui.separator()
     PyImGui.begin_disabled(not config.skillbar_enabled)
-    value = PyImGui.slider_int("Recharge font size", config.skill_font_size, 10, 100)
-    if value != config.skill_font_size:
-        _set(controller, "skill_font_size", value)
-    enabled = PyImGui.checkbox("Draw background colors", config.draw_background)
-    if enabled != config.draw_background:
-        _set(controller, "draw_background", enabled)
-    if config.draw_background:
-        color = _edit_color("Under skill effect", config.background_color)
-        if color != config.background_color:
-            _set(controller, "background_color", color)
-        color = _edit_color("Skill effect nearly expired", config.near_expiry_color)
-        if color != config.near_expiry_color:
-            _set(controller, "near_expiry_color", color)
-        threshold = PyImGui.input_int("Nearly expired threshold (s)", config.near_expiry_threshold)
-        if threshold != config.near_expiry_threshold:
-            _set(controller, "near_expiry_threshold", threshold)
-    durations = PyImGui.checkbox("Draw effect durations on skillbar", config.draw_durations)
-    if durations != config.draw_durations:
-        _set(controller, "draw_durations", durations)
-    if config.draw_durations:
-        value = PyImGui.slider_int("Duration font size", config.duration_font_size, 4, 30)
-        if value != config.duration_font_size:
-            _set(controller, "duration_font_size", value)
-        color = _edit_color("Duration bar background", config.duration_background)
-        if color != config.duration_background:
-            _set(controller, "duration_background", color)
-        color = _edit_color("Duration bar foreground", config.duration_foreground)
-        if color != config.duration_foreground:
-            _set(controller, "duration_foreground", color)
-        offset = PyImGui.input_int("Duration bar Y offset", config.duration_offset)
-        if offset != config.duration_offset:
-            _set(controller, "duration_offset", offset)
-    PyImGui.end_disabled()
+    try:
+        value = PyImGui.slider_int("Recharge font size", config.skill_font_size, 10, 100)
+        if value != config.skill_font_size:
+            _set(controller, "skill_font_size", value)
+        enabled = PyImGui.checkbox("Draw background colors", config.draw_background)
+        if enabled != config.draw_background:
+            _set(controller, "draw_background", enabled)
+        if config.draw_background:
+            color = _edit_color("Under skill effect", config.background_color)
+            if color != config.background_color:
+                _set(controller, "background_color", color)
+            color = _edit_color("Skill effect nearly expired", config.near_expiry_color)
+            if color != config.near_expiry_color:
+                _set(controller, "near_expiry_color", color)
+            threshold = PyImGui.input_int("Nearly expired threshold (s)", config.near_expiry_threshold)
+            if threshold != config.near_expiry_threshold:
+                _set(controller, "near_expiry_threshold", threshold)
+        durations = PyImGui.checkbox("Draw effect durations on skillbar", config.draw_durations)
+        if durations != config.draw_durations:
+            _set(controller, "draw_durations", durations)
+        if config.draw_durations:
+            value = PyImGui.slider_int("Duration font size", config.duration_font_size, 4, 30)
+            if value != config.duration_font_size:
+                _set(controller, "duration_font_size", value)
+            color = _edit_color("Duration bar background", config.duration_background)
+            if color != config.duration_background:
+                _set(controller, "duration_background", color)
+            color = _edit_color("Duration bar foreground", config.duration_foreground)
+            if color != config.duration_foreground:
+                _set(controller, "duration_foreground", color)
+            offset = PyImGui.input_int("Duration bar Y offset", config.duration_offset)
+            if offset != config.duration_offset:
+                _set(controller, "duration_offset", offset)
+    finally:
+        # The disabled stack must close on every path: an exception in a settings
+        # widget would otherwise grey out unrelated windows for the rest of the frame.
+        PyImGui.end_disabled()
 
 
 def _draw_effects(controller: SkillbarPlusController) -> None:
@@ -81,13 +85,15 @@ def _draw_effects(controller: SkillbarPlusController) -> None:
         PyImGui.text_colored("Durations hidden in game. The settings below are kept.", _MUTED)
     PyImGui.separator()
     PyImGui.begin_disabled(not config.effects_enabled)
-    value = PyImGui.slider_int("Effects font size", config.effects_font_size, 5, 50)
-    if value != config.effects_font_size:
-        _set(controller, "effects_font_size", value)
-    color = _edit_color("Background", config.effects_background)
-    if color != config.effects_background:
-        _set(controller, "effects_background", color)
-    PyImGui.end_disabled()
+    try:
+        value = PyImGui.slider_int("Effects font size", config.effects_font_size, 5, 50)
+        if value != config.effects_font_size:
+            _set(controller, "effects_font_size", value)
+        color = _edit_color("Background", config.effects_background)
+        if color != config.effects_background:
+            _set(controller, "effects_background", color)
+    finally:
+        PyImGui.end_disabled()
 
 
 def _draw_autocast(controller: SkillbarPlusController) -> None:
