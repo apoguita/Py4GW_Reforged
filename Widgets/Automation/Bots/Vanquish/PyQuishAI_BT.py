@@ -1780,7 +1780,26 @@ def _condition(name: str, condition_fn: Callable[[], bool]) -> BehaviorTree:
     )
 
 
-def _action(name: str, action_fn: Callable[[], BehaviorTree.NodeState]) -> BehaviorTree:
+def _as_int(value: object, default: int = 0) -> int:
+    """Coerce a value coming out of a dict, a widget or shared memory to int."""
+    try:
+        return int(float(str(value)))
+    except Exception:
+        return default
+
+
+def _as_float(value: object, default: float = 0.0) -> float:
+    """Coerce a value coming out of a dict or shared memory to float."""
+    try:
+        return float(str(value))
+    except Exception:
+        return default
+
+
+def _action(
+    name: str,
+    action_fn: Callable[..., BehaviorTree.NodeState],
+) -> BehaviorTree:
     return BehaviorTree(
         BehaviorTree.ActionNode(
             name=name,
@@ -2345,7 +2364,7 @@ def _build_route_item(definition: VanquishDefinition, item: RouteItem) -> Behavi
 
     if item.kind == 'wait_map':
         return BT.WaitForMapLoad(
-            map_id=int(item.value or 0),
+            map_id=_as_int(item.value, 0),
             timeout_ms=TRANSIT_TIMEOUT_MS,
         )
 
@@ -2369,7 +2388,7 @@ def _build_route_item(definition: VanquishDefinition, item: RouteItem) -> Behavi
     if item.kind == 'exit':
         return BT.MoveAndExitMap(
             [point],
-            target_map_id=int(item.value or 0),
+            target_map_id=_as_int(item.value, 0),
             timeout_ms=TRANSIT_TIMEOUT_MS,
             log=True,
         )
@@ -2522,7 +2541,10 @@ def ZQuestPartyWipeRecoveryService() -> BehaviorTree:
         "suppressed_since_ms": 0.0,
     }
 
-    def _log(message: str, message_type: int = PySystem.Console.MessageType.Info) -> None:
+    def _log(
+        message: str,
+        message_type: PySystem.Console.MessageType = PySystem.Console.MessageType.Info,
+    ) -> None:
         PySystem.Console.Log("ZQuestWipeRecovery", message, message_type)
 
     def _current_step(node: BehaviorTree.Node) -> str:
@@ -2701,7 +2723,7 @@ def ZQuestPartyWipeRecoveryService() -> BehaviorTree:
         now = _now_ms()
         blocked, state["suppressed_since_ms"], timed_out = _recovery_suppression(
             bool(node.blackboard.get(_RESIGNING_KEY, False)),
-            float(state["suppressed_since_ms"]),
+            _as_float(state["suppressed_since_ms"]),
             now,
         )
         if timed_out:
@@ -2760,7 +2782,7 @@ def ZQuestPartyWipeRecoveryService() -> BehaviorTree:
             _reset_state(node)
             return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
 
-        if now - float(state["last_return_ms"]) >= 1000.0:
+        if now - _as_float(state["last_return_ms"]) >= 1000.0:
             state["last_return_ms"] = now
             try:
                 GLOBAL_CACHE.Party.ReturnToOutpost()
@@ -2975,7 +2997,10 @@ def _build_hero_load(hero_ids: Sequence[int]) -> BehaviorTree:
         present: set[int] = set()
         for hero in GLOBAL_CACHE.Party.GetHeroes() or []:
             raw_id = getattr(hero, 'hero_id', 0)
-            hero_id = int(raw_id.GetID() or 0) if hasattr(raw_id, 'GetID') else int(raw_id or 0)
+            # The hero id is an int or a wrapper that exposes GetID(); both shapes
+            # are in use across the library.
+            get_id = getattr(raw_id, 'GetID', None)
+            hero_id = _as_int(get_id(), 0) if callable(get_id) else _as_int(raw_id, 0)
             if hero_id > 0:
                 present.add(hero_id)
         missing = [hero_id for hero_id in expected if hero_id not in present]
