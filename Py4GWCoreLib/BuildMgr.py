@@ -420,6 +420,7 @@ class BuildMgr:
             TargetLowestAllyMelee,
             TargetLowestAllyRanged,
             TargetSplinterWeapon,
+            TargetStrengthOfHonor,
             TargetAllyNonEnchanted,
             TargetAllyNonWeaponSpelled,
             TargetMinionNonEnchanted,
@@ -458,6 +459,8 @@ class BuildMgr:
             return Player.GetAgentID() if TargetAllyNonWeaponSpelled(**range_kwargs) else 0
         if target_allegiance == Skilltarget.SplinterWeapon.value:
             return TargetSplinterWeapon(distance=ally_distance)
+        if target_allegiance == Skilltarget.StrengthOfHonor.value:
+            return TargetStrengthOfHonor(distance=ally_distance)
 
         if target_allegiance in (
             Skilltarget.Ally.value,
