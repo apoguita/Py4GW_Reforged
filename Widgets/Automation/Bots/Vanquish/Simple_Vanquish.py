@@ -48,7 +48,7 @@ class QueuedVanquish:
     def __init__(self, region, map_name, display,
                  outpost_id, explorable_id,
                  outpost_path, vanquish_path,
-                 transit_explorables, transit_paths):
+                 transit_explorables, transit_paths, departure_setup=None):
         self.region = region
         self.map_name = map_name
         self.display = display
@@ -58,6 +58,7 @@ class QueuedVanquish:
         self.vanquish_path = vanquish_path
         self.transit_explorables = transit_explorables
         self.transit_paths = transit_paths
+        self.departure_setup = departure_setup
 
 _queued_vanquishes: list[QueuedVanquish] = []
 _queue_version: int = 0
@@ -123,6 +124,76 @@ def _register_path(bot, path, header_name=None):
 
     else:
         bot.Move.FollowAutoPath(path)
+
+
+def _poj_stop(message):
+    bot.Stop()
+    raise RuntimeError(message)
+
+
+def _poj_party_matches(expected_henchmen):
+    from Py4GWCoreLib import Party
+    return (
+        Party.IsPartyLoaded()
+        and Party.GetPlayerCount() == 1
+        and Party.GetHeroCount() == 3
+        and Party.GetHenchmanCount() == 4
+        and {Agent.GetEncNameStrByID(member.agent_id, literal=True)
+             for member in Party.GetHenchmen()} == set(expected_henchmen)
+    )
+
+
+def _poj_hire_henchmen(setup):
+    """Resolve captured identities afresh; never reuse recorded agent IDs."""
+    import PyParty
+    from Py4GWCoreLib import Party
+    if Map.GetMapID() != 554 or Party.GetPlayerCount() != 1 or Party.GetHeroCount() != 3:
+        _poj_stop("Plains of Jarin requires one player and three heroes in Dajkah Inlet")
+        return False
+    identities = tuple(setup["henchmen"])
+    existing = {Agent.GetEncNameStrByID(member.agent_id, literal=True) for member in Party.GetHenchmen()}
+    if not existing.issubset(set(identities)):
+        _poj_stop("Remove unrelated henchmen before preparing Plains of Jarin")
+        return False
+    targets = {}
+    for identity in identities:
+        matches = [agent_id for agent_id in AgentArray.GetAgentArray()
+                   if Agent.GetEncNameStrByID(agent_id, literal=True) == identity]
+        if len(matches) != 1:
+            _poj_stop("Could not uniquely resolve a required Dajkah henchman")
+            return False
+        targets[identity] = matches[0]
+    for identity, agent_id in targets.items():
+        if identity not in existing:
+            if not PyParty.add_henchman(agent_id):
+                _poj_stop("Dajkah henchman invitation failed")
+                return False
+            yield from Routines.Yield.wait(250)
+    deadline = time.monotonic() + 10.0
+    while not _poj_party_matches(identities):
+        if time.monotonic() >= deadline or Map.GetMapID() != 554:
+            _poj_stop("Dajkah party did not reach the required three heroes and four henchmen")
+            return False
+        yield from Routines.Yield.wait(100)
+    return True
+
+
+def _poj_sail_to_kamadan(setup):
+    from Sources.aC_Scripts.PyQuishAI_map_entry import run_fixed_map_entry
+
+    if Map.GetMapID() != 554 or not _poj_party_matches(setup["henchmen"]):
+        _poj_stop("The full Plains of Jarin party must be ready before sailing")
+    yield from run_fixed_map_entry(bot, {
+        "name": "Sail to Kamadan with Dockmaster Dimedeh",
+        "encoded_name": setup["dockmaster"],
+        "button_positions": (0,),
+        "source_map_id": 554,
+        "expected_map_id": 449,
+        "timeout_ms": 120000,
+    })
+    if not _poj_party_matches(setup["henchmen"]):
+        _poj_stop("The required eight-person party was not retained in Kamadan")
+    return True
 
 
 def _take_blessing(bot: Botting, x: float, y: float):
@@ -415,6 +486,19 @@ def bot_routine(bot: Botting) -> None:
         if _restock_use_summoning_stones:
             bot.Multibox.RestockSummoningStones(10)
         bot.Multibox.WithdrawGold()
+
+        if vq.map_name == "PlainsofJarin" and vq.departure_setup:
+            bot.Map.Travel(target_map_id=554)
+            bot.Wait.ForMapLoad(target_map_id=554)
+            bot.States.AddCustomState(
+                lambda setup=vq.departure_setup: _poj_hire_henchmen(setup),
+                "Hire Gehraz, Sogolon, Herta and Kihm",
+            )
+            bot.Move.FollowPath(vq.departure_setup["path"])
+            bot.States.AddCustomState(
+                lambda setup=vq.departure_setup: _poj_sail_to_kamadan(setup),
+                "Sail to Kamadan with Dockmaster Dimedeh",
+            )
 
         # -- Travel to explorable --
         has_outpost_path = bool(vq.outpost_path)
@@ -751,6 +835,7 @@ def _load_vanquish_data(region_dir, map_name):
         vanquish_path=vanquish_path,
         transit_explorables=transit_explorables,
         transit_paths=transit_paths,
+        departure_setup=getattr(mod, f"{map_name}_departure_setup", None),
     )
 # endregion
 # =============================================================================
