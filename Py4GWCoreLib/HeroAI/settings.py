@@ -9,8 +9,20 @@ class Settings:
     COMBAT_RANGE_MODE_PARTY_AGGRO = "party_aggro"
     COMBAT_RANGE_MODE_LEGACY = "legacy"
     COMBAT_RANGE_MODE_LABELS = {
-        COMBAT_RANGE_MODE_PARTY_AGGRO: "Party aggro",
-        COMBAT_RANGE_MODE_LEGACY: "Legacy",
+        COMBAT_RANGE_MODE_PARTY_AGGRO: "Party-Wide Aggro",
+        COMBAT_RANGE_MODE_LEGACY: "Independent Aggro",
+    }
+    COMBAT_RANGE_MODE_DESCRIPTIONS = {
+        COMBAT_RANGE_MODE_PARTY_AGGRO: (
+            "When any player triggers aggro, every player enters combat. "
+            "Followers may move toward the enemy, potentially pulling backline players to the front."
+        ),
+        COMBAT_RANGE_MODE_LEGACY: (
+            "Each player triggers aggro independently. Players positioned far back may remain out of combat "
+            "while the rest of the party fights. Backline players generally stay back unless a nearby enemy "
+            "triggers their own aggro. To keep a backline player contributing, try setting Base Radius to 500 "
+            "in the Formation Editor. For a leech that should remain out of combat, try 1200."
+        ),
     }
 
     class HeroPanelInfo:
