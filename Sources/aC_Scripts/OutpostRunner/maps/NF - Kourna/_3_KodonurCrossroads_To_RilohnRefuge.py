@@ -29,9 +29,8 @@ _3_kodonurcrossroads_to_rilohnrefuge_outpost_path = [
 _3_kodonurcrossroads_to_rilohnrefuge_segments = [
     {
         "map_id": explorable_name_to_id["The Floodplain of Mahnkelon"],
-        # First captured position after the Rilohn boundary. This gives the
-        # transition an explicit crossing point instead of stopping at it.
-        "portal_exit_xy": (-15393.56, 9062.19),
+        # The shared portal owner extends the final captured heading by 450
+        # units. Do not override it with the shorter captured boundary point.
         "path": [
             (-22328.0, -16199.0),
             (-21981.55, -15837.14),

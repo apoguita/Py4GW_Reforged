@@ -504,6 +504,40 @@ class CapturedRouteTests(unittest.TestCase):
         self.assertEqual(segments[0]["portal_exit_xy"], (-4717.07, -13301.82))
         self.assertEqual(segments[-1]["path"], [])
 
+    def test_rilohn_uses_shared_450_unit_portal_extension(self) -> None:
+        route = KOURNA / "_3_KodonurCrossroads_To_RilohnRefuge.py"
+        segments = next(value for key, value in _route_assignments(route).items() if key.endswith("_segments"))
+        assert isinstance(segments, list)
+        floodplain = segments[0]
+        assert isinstance(floodplain, dict)
+        path = floodplain["path"]
+        assert isinstance(path, list)
+        self.assertNotIn("portal_exit_xy", floodplain)
+        self.assertEqual(path[-2:], [(-15288.94, 8208.61), (-15322.8, 8710.21)])
+        extended = _load_mechanics().extended_portal_path(path)
+        self.assertAlmostEqual(math.dist(extended[-2], extended[-1]), 450.0)
+
+    def test_explicit_outpost_portal_endpoints_are_never_shorter_than_450(self) -> None:
+        failures: list[str] = []
+        for route in (*CANHTA_ROUTE_EXPECTATIONS, *NIGHTFALL_ROUTE_EXPECTATIONS):
+            segments = next(value for key, value in _route_assignments(route).items() if key.endswith("_segments"))
+            assert isinstance(segments, list)
+            for segment_index, segment in enumerate(segments):
+                assert isinstance(segment, dict)
+                if "portal_exit_xy" not in segment:
+                    continue
+                path = segment.get("path", [])
+                assert isinstance(path, list)
+                if not path:
+                    failures.append(f"{route.name} segment {segment_index}: missing approach path")
+                    continue
+                distance = math.dist(path[-1], segment["portal_exit_xy"])
+                if distance < 450.0:
+                    failures.append(
+                        f"{route.name} segment {segment_index}: explicit endpoint is {distance:.2f} units"
+                    )
+        self.assertEqual(failures, [])
+
     def test_camp_rankor_replacement_splice_is_preserved(self) -> None:
         data = _route_assignments(RANKOR_DWC_ROUTE)
         ids = next(value for key, value in data.items() if key.endswith("_ids"))
