@@ -787,7 +787,8 @@ def _flow_label(farm: FarmDefinition) -> str:
         "dialog": "NPC dialog entry",
         "fow": "Fissure of Woe entry",
     }
-    return labels.get(farm.flow, farm.flow)
+    flow = str(farm.flow or "")
+    return labels.get(flow, flow)
 
 
 def _draw_manager_main_summary() -> None:
