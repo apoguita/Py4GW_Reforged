@@ -112,6 +112,7 @@ class BottingClass:
                  ):
         #internal configuration
         self.bot_name = bot_name
+        self._operator_pause_owns_hero_ai_pause = False
 
         self.config = BotConfig(self, bot_name,
                                 config_log_actions=config_log_actions,
@@ -268,16 +269,66 @@ class BottingClass:
             self.Routine = routine
 
     def Start(self):
+        self.config.FSM.resume_by_operator()
         self.config.FSM.start()
         self.config.fsm_running = True
 
     def Stop(self):
+        self.config.FSM.resume_by_operator()
+        self._release_operator_pause()
         self.config.FSM.RemoveAllManagedCoroutines()
         self.config.FSM.stop()
         self.config.fsm_running = False
 
+    def _release_operator_pause(self) -> None:
+        if not self._operator_pause_owns_hero_ai_pause:
+            return
+        self.config.upkeep.hero_ai_paused.set_now("active", False)
+        self.helpers.Upkeepers.release_hero_ai_pause()
+        self._operator_pause_owns_hero_ai_pause = False
+
+    def Pause(self):
+        """Pause route progression and all automation-owned movement."""
+        if not self.config.fsm_running:
+            return
+        self.config.FSM.pause_by_operator()
+        if (
+            self.config.upkeep.hero_ai.is_active()
+            and not self.config.upkeep.hero_ai_paused.is_active()
+        ):
+            self.config.upkeep.hero_ai_paused.set_now("active", True)
+            self._operator_pause_owns_hero_ai_pause = True
+
+        # Apply the shared-memory pause now rather than waiting for the HeroAI
+        # upkeeper's next polling tick.
+        self.helpers.Upkeepers.apply_hero_ai_pause()
+
+        from .Player import Player
+        from .Routines import Routines
+
+        # Moving to our current position is not a reliable cancellation of an
+        # already-active click-to-move command. Queue the same short backwards
+        # key action used by the proven StopMovement routine. This runs once;
+        # it does not hold the player in place, so manual intervention remains
+        # possible while the route is paused.
+        Player.Move(*Player.GetXY())
+        self.config.FSM.AddManagedCoroutine(
+            "operator_pause_stop_movement",
+            Routines.Yield.Movement.StopMovement(),
+        )
+        self.config.state_description = "Paused"
+
+    def Resume(self):
+        """Resume a route paused explicitly by the operator."""
+        if not self.config.fsm_running:
+            return
+        self.config.FSM.resume_by_operator()
+        self._release_operator_pause()
+        self.config.state_description = "Running"
+
     def StartAtStep(self, step_name: str) -> None:
         self.Stop()
+        self.config.FSM.resume_by_operator()
         self.config.fsm_running = True
         self.config.FSM.reset()
         self.config.FSM.jump_to_state_by_name(step_name)
@@ -338,7 +389,7 @@ class BottingClass:
 
     def Update(self):
         if self.config.fsm_running:
-            self.config.state_description = "Running" if self.config.fsm_running else "Stopped"
+            self.config.state_description = "Paused" if self.config.FSM.is_operator_paused() else "Running"
             
         if not self.config.fsm_running:
             self.config.FSM.stop()

@@ -211,6 +211,9 @@ class _UI:
             self._config.fsm_running = True
             self._config.FSM.reset()
             self._config.FSM.jump_to_state_by_name(self._FSM_SELECTED_NAME_ORIG)
+            self._config.FSM.resume()
+            self._config.FSM.resume_by_operator()
+            self._config.state_description = "Running"
 
             
     def _draw_step_range_inputs(self):
@@ -433,6 +436,28 @@ class _UI:
 
 
             
+        if self._config.fsm_running:
+            PyImGui.same_line(0.0, 8.0)
+            operator_paused = self._config.FSM.is_operator_paused()
+            pause_icon = (
+                IconsFontAwesome5.ICON_PLAY_CIRCLE
+                if operator_paused
+                else IconsFontAwesome5.ICON_PAUSE_CIRCLE
+            )
+            pause_label = "  Continue" if operator_paused else "  Pause"
+            if PyImGui.button(pause_icon + pause_label + "##BotPause"):
+                try:
+                    if operator_paused:
+                        self.parent.Resume()
+                        ConsoleLog(self._config.bot_name, "Script continued", Console.MessageType.Info)
+                    else:
+                        self.parent.Pause()
+                        ConsoleLog(self._config.bot_name, "Script paused", Console.MessageType.Info)
+                except Exception as exc:
+                    ConsoleLog(self._config.bot_name, f"Pause/continue failed: {exc}", Console.MessageType.Error)
+
+
+
         if total_steps > 1:
             fraction = (total_steps - 1) and (current_step / float(total_steps - 1)) or 0.0
         else:
