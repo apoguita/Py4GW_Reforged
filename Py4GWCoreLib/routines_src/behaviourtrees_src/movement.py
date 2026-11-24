@@ -48,6 +48,7 @@ from __future__ import annotations
 from collections.abc import Callable
 import math
 import random
+import PySystem
 from typing import Any, TYPE_CHECKING, Callable, TypedDict, cast
 
 from ...Agent import Agent
@@ -1714,6 +1715,7 @@ class BTMovement:
         ignore_destination_npcs: bool = True,
         ignore_destination_gadgets: bool = True,
         avoid_obstacles: bool = True,
+        resume_key: str | None = None,
     ) -> BehaviorTree:
         """
         Build a tree that walks a path of one or more points.
@@ -1724,7 +1726,7 @@ class BTMovement:
           Display: Move Path
           Purpose: Move through a path of world coordinates in order.
           UserDescription: Use this when you want to walk through multiple points instead of a single destination.
-          Notes: A single point collapses to one move step; an empty path succeeds immediately. Local obstacle avoidance can be disabled for the whole path. Destination-obstacle exclusion uses the final path point, can filter NPCs and gadgets independently, and activates only during the configured final approach distance.
+          Notes: A single point collapses to one move step; an empty path succeeds immediately. When resume_key is supplied, completed waypoint progress survives subtree/planner reconstruction; map ID and non-rewinding uptime gate reuse. The caller must clear or change the key across a new run or instance. A retry resumes from the nearest remaining forward waypoint. Local obstacle avoidance can be disabled for the whole path. Destination-obstacle exclusion uses the final path point, can filter NPCs and gadgets independently, and activates only during the configured final approach distance.
         """
         from .player import BTPlayer
 
@@ -1738,6 +1740,98 @@ class BTMovement:
             float(final_point.x),
             float(final_point.y),
         )
+        if resume_key:
+            progress_key = f"bt_move_path_progress:{resume_key}"
+
+            def _mark_progress(index: int) -> BehaviorTree:
+                def _mark(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+                    node.blackboard[progress_key] = {
+                        "map_id": int(Map.GetMapID()),
+                        "instance_uptime": int(Map.GetInstanceUptime() or 0),
+                        "next_index": int(index),
+                    }
+                    return BehaviorTree.NodeState.SUCCESS
+
+                return BehaviorTree(
+                    BehaviorTree.ActionNode(
+                        name=f"Record forward path progress {index}/{len(points)}",
+                        action_fn=_mark,
+                    )
+                )
+
+            def _remaining_path(node: BehaviorTree.Node) -> BehaviorTree:
+                from ...Py4GWcorelib import Utils
+
+                current_map_id = int(Map.GetMapID())
+                current_uptime = int(Map.GetInstanceUptime() or 0)
+                record = node.blackboard.get(progress_key)
+                floor_index = 0
+                if isinstance(record, dict) and int(record.get("map_id", -1)) == current_map_id:
+                    saved_uptime = int(record.get("instance_uptime", 0) or 0)
+                    if current_uptime + 1_000 >= saved_uptime:
+                        floor_index = max(0, min(int(record.get("next_index", 0) or 0), len(points)))
+
+                current_xy = Player.GetXY()
+                if floor_index >= len(points):
+                    if Utils.Distance(current_xy, final_destination) <= float(tolerance):
+                        return BehaviorTree(BehaviorTree.SucceederNode(name="Restart-safe path already complete"))
+                    floor_index = 0
+
+                nearest_index = min(
+                    range(floor_index, len(points)),
+                    key=lambda index: Utils.Distance(
+                        current_xy,
+                        (float(points[index].x), float(points[index].y)),
+                    ),
+                )
+                node.blackboard[progress_key] = {
+                    "map_id": current_map_id,
+                    "instance_uptime": current_uptime,
+                    "next_index": nearest_index,
+                }
+                if log:
+                    PySystem.Console.Log(
+                        "MovePath",
+                        (
+                            f"Restart-safe path key={resume_key!r} resumes at "
+                            f"index={nearest_index}/{len(points)} floor={floor_index} "
+                            f"player={current_xy}."
+                        ),
+                        PySystem.Console.MessageType.Info,
+                    )
+
+                remaining_children: list[BehaviorTree] = []
+                for index in range(nearest_index, len(points)):
+                    point = points[index]
+                    remaining_children.append(
+                        BTComposite.Sequence(
+                            BTMovement.Move(
+                                x=point.x,
+                                y=point.y,
+                                tolerance=tolerance,
+                                pause_on_combat=pause_on_combat,
+                                flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+                                ignore_destination_obstacles=ignore_destination_obstacles,
+                                ignore_destination_npcs=ignore_destination_npcs,
+                                ignore_destination_gadgets=ignore_destination_gadgets,
+                                avoid_obstacles=avoid_obstacles,
+                                destination_obstacle_position=final_destination,
+                                destination_obstacle_ignore_distance=destination_obstacle_ignore_distance,
+                                log=log,
+                            ),
+                            _mark_progress(index + 1),
+                            name=f"Restart-safe waypoint {index + 1}/{len(points)}",
+                        )
+                    )
+                return BTComposite.Sequence(*remaining_children, name="RestartSafeMovePathRemaining")
+
+            return BehaviorTree(
+                BehaviorTree.SubtreeNode(
+                    name=f"Restart-safe move path {resume_key}",
+                    subtree_fn=_remaining_path,
+                )
+            )
+
         if len(points) == 1:
             point = points[0]
             return BTMovement.Move(
