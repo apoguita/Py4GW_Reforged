@@ -1,6 +1,18 @@
 TheFloodplainOfMahnkelon = [
     {
-        "bless": (-19184.0, -13485.0),
+        "bless": {
+            'name': 'Floodplain of Mahnkelon - Heket Hunt',
+            'interaction_mode': 'first',
+            'route_standoff_xy': (-19166.81, -13470.41),
+            'player_approach_xy': (-19166.81, -13470.41),
+            'target_xy': (-19169.0, -13401.0),
+            'model_id': 5434,
+            'target_name': 'Wandering Priest',
+            'encoded_name': '\\x8101\\x5254\\x81F0\\x39D0',
+            'effect_ids': (1837, 1838, 1977, 1978),
+            'initial_choice_settle_s': 0.25,
+            'capture_id': 'USER-20261116-MAHNKELON-BLESSING-1',
+        },
         "path": [
             (-15002.0, -14809.0),
             (-13711.0, -13165.0),
@@ -12,7 +24,19 @@ TheFloodplainOfMahnkelon = [
         ]
     },
     {
-        "bless": (-5912.0, -11262.0),
+        "bless": {
+            'name': 'Floodplain of Mahnkelon - Skale Hunt',
+            'interaction_mode': 'first',
+            'route_standoff_xy': (-5953.97, -11296.96),
+            'player_approach_xy': (-5953.97, -11296.96),
+            'target_xy': (-5874.0, -11335.0),
+            'model_id': 5434,
+            'target_name': 'Wandering Priest',
+            'encoded_name': '\\x8101\\x5226\\x90A1\\x9D78\\x5DA3',
+            'effect_ids': (1790, 1835, 1836, 1975, 1976),
+            'initial_choice_settle_s': 0.25,
+            'capture_id': 'USER-20261116-MAHNKELON-BLESSING-2',
+        },
         "path": [
             (-4454.0, -9503.0),
             (-2484.0, -8955.0),
@@ -42,7 +66,19 @@ TheFloodplainOfMahnkelon = [
         ]
     },
     {
-        "bless": (13534.0, 1442.0),
+        "bless": {
+            'name': 'Floodplain of Mahnkelon - Monster Hunt',
+            'interaction_mode': 'first',
+            'route_standoff_xy': (13508.09, 1445.17),
+            'player_approach_xy': (13508.09, 1445.17),
+            'target_xy': (13428.0, 1475.0),
+            'model_id': 5434,
+            'target_name': 'Wandering Priest',
+            'encoded_name': '\\x8101\\x521B\\xBB76\\x9793\\x0373',
+            'effect_ids': (1822, 1823, 1824, 1825, 1850, 1959, 1960, 2043, 2044),
+            'initial_choice_settle_s': 0.25,
+            'capture_id': 'USER-20261116-MAHNKELON-BLESSING-3',
+        },
         "path": [
             (15402.0, 4672.0),
             (15109.0, 7002.0),
@@ -56,7 +92,19 @@ TheFloodplainOfMahnkelon = [
         ]
     },
     {
-        "bless": (-701.0, 11798.0),
+        "bless": {
+            'name': 'Floodplain of Mahnkelon - Insect Hunt',
+            'interaction_mode': 'first',
+            'route_standoff_xy': (-671.76, 11817.16),
+            'player_approach_xy': (-671.76, 11817.16),
+            'target_xy': (-647.0, 11744.0),
+            'model_id': 5435,
+            'target_name': 'Wandering Priest',
+            'encoded_name': '\\x8101\\x521E\\xCB69\\x5812',
+            'effect_ids': (1793, 1829, 1830, 1967, 1968),
+            'initial_choice_settle_s': 0.25,
+            'capture_id': 'USER-20261116-MAHNKELON-BLESSING-4',
+        },
         "path": [
             (-2909.0, 9103.0),
             (-802.0, 12067.0),
@@ -104,7 +152,20 @@ TheFloodplainOfMahnkelon = [
 ]
 
 TheFloodplainOfMahnkelon_outpost_path = [
-    (2369, 3332), (4406, 4058), (4800, 4600)
+    (206.72, 1511.54),
+    (71.34, 1852.07),
+    (482.83, 2143.01),
+    (897.72, 2429.09),
+    (1303.28, 2728.32),
+    (1723.19, 3006.65),
+    (2151.2, 3272.78),
+    (2621.13, 3445.44),
+    (3124.82, 3431.84),
+    (3620.55, 3343.87),
+    (4019.08, 3652.56),
+    (4368.92, 4016.34),
+    (4522.98, 4181.55),
+    (4800, 4600),
 ]
 
 TheFloodplainOfMahnkelon_ids = {
