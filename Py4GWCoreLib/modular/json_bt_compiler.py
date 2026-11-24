@@ -664,7 +664,6 @@ def _target_named_agent(kind: str, key: str, *, max_dist: float) -> BehaviorTree
             if _agent_matches_definition(int(agent_id), definition):
                 Player.ChangeTarget(int(agent_id))
                 return BehaviorTree.NodeState.SUCCESS
-        _log_named_target_missing(kind, key, len(agents), max_dist)
         return BehaviorTree.NodeState.FAILURE
 
     return _action_tree(f"Target{kind.title()}::{key}", _target)
@@ -708,9 +707,9 @@ def _agent_matches_definition(agent_id: int, definition: Any) -> bool:
 
 def _agent_encoded_name(agent_id: int) -> tuple[int, ...]:
     try:
-        from Py4GWCoreLib import Agent
+        from PyAgent import PyAgent
 
-        return tuple(int(value) for value in Agent.GetEncNameByID(agent_id))
+        return tuple(int(value) for value in PyAgent.GetAgentEncName(agent_id))
     except Exception:
         return ()
 
@@ -822,37 +821,6 @@ def _log_optional_item_missing(model_id: int, max_dist: float) -> None:
         ConsoleLog(
             "Modular",
             f"Optional item model_id {int(model_id)} not found within {float(max_dist):.0f}; continuing.",
-            Console.MessageType.Warning,
-        )
-    except Exception:
-        pass
-
-
-_LAST_NAMED_TARGET_LOG: dict[tuple[str, str], float] = {}
-
-
-def _log_named_target_missing(kind: str, key: str, candidates: int, max_dist: float) -> None:
-    """Warn once every few seconds when a named selector finds nothing.
-
-    The planner retries a failed step, so an unthrottled warning would flood the
-    console buffer; the miss itself must still be visible, because the silent
-    failure mode is what hides a broken selector.
-    """
-    import time
-
-    now = time.monotonic()
-    stamp_key = (str(kind), str(key))
-    if (now - float(_LAST_NAMED_TARGET_LOG.get(stamp_key, 0.0))) < 5.0:
-        return
-    _LAST_NAMED_TARGET_LOG[stamp_key] = now
-    try:
-        from Py4GWCoreLib import Console
-        from Py4GWCoreLib import ConsoleLog
-
-        ConsoleLog(
-            "Modular",
-            f"No {kind} matching {key!r} within {float(max_dist):.0f} "
-            f"(candidates={int(candidates)}); the step will be retried.",
             Console.MessageType.Warning,
         )
     except Exception:
