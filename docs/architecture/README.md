@@ -6,5 +6,5 @@ when they conflict.
 
 - `reference/` contains the conceptual model and derived feature inventory.
 - `guides/` contains the traceable-refactor and migration review guide.
-- `records/` contains pending work, whiteboards, and the Reforged migration
-  record.
+- `records/` contains pending work, whiteboards, the Reforged migration
+  record, and the open pull-request review ledger.
