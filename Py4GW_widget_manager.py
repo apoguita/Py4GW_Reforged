@@ -15,14 +15,15 @@ cornerstone UI — from rendering.
 
 import os
 
-from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import WidgetHandler
-from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
-from Py4GWCoreLib.py4gwcorelib_src.launch_bar.launchpad import register_launchpad_once
+import PyImGui
+
 
 MODULE_NAME = "Widget Manager"
 
-widget_manager: WidgetHandler = get_widget_handler()
+Settings = None
+WidgetHandler = None
+register_launchpad_once = None
+widget_manager = None
 
 INI_KEY = ""
 INI_PATH = "Widgets/WidgetManager"
@@ -38,11 +39,49 @@ def _log(msg: str) -> None:
         pass
 
 
+def get_widget_handler():
+    """Return the shared handler while preserving the host's legacy import API."""
+
+    if widget_manager is None and not _ensure_runtime():
+        raise RuntimeError("Widget Manager is not ready: no ImGui context")
+    return widget_manager
+
+
+def _ensure_runtime() -> bool:
+    """Bind the core widget runtime only after the native ImGui context exists."""
+
+    global Settings, WidgetHandler, register_launchpad_once, widget_manager
+    if widget_manager is not None:
+        return True
+
+    try:
+        PyImGui.StyleConfig()
+    except RuntimeError as exc:
+        if "no imgui context" in str(exc).casefold():
+            return False
+        raise
+
+    from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings as _Settings
+    from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import WidgetHandler as _WidgetHandler
+    from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler as _get_widget_handler
+    from Py4GWCoreLib.py4gwcorelib_src.launch_bar.launchpad import (
+        register_launchpad_once as _register_launchpad_once,
+    )
+
+    Settings = _Settings
+    WidgetHandler = _WidgetHandler
+    register_launchpad_once = _register_launchpad_once
+    widget_manager = _get_widget_handler()
+    return True
+
+
 def _bootstrap_once() -> None:
     """Resolve settings + discover widgets + apply saved state. Retries each frame until done."""
 
     global INI_KEY
     if INI_KEY:
+        return
+    if Settings is None or widget_manager is None:
         return
     try:
         if not os.path.exists(INI_PATH):
@@ -74,10 +113,12 @@ def draw():
 
 
 def main():
-    """Called every draw frame by the widget host. Now only lifecycle: register the launchpad
-    callback once and run the settings/discovery bootstrap once. The launchpad itself renders
-    through its own Draw callback, so this host's steady-state per-frame cost is ~nil."""
+    """Register the launchpad and bootstrap once the draw context is ready."""
 
+    if not _ensure_runtime():
+        return
+    get_widget_handler()
+    assert register_launchpad_once is not None
     register_launchpad_once()
     _bootstrap_once()
 
