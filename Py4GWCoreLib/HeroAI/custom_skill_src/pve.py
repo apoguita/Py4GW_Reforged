@@ -5,6 +5,40 @@ from ..custom_skill import CustomSkill
 
 class PVESkills:
     def __init__(self, skill_data):
+        # Agent of the Mad King: the fixed four-skill Halloween disguise bar.
+        skill = CustomSkill()
+        skill.SkillID = GLOBAL_CACHE.Skill.GetID("Sugar_Rush_Agent_of_the_Mad_King")
+        skill.SkillType = SkillType.Stance.value
+        skill.TargetAllegiance = Skilltarget.Self.value
+        skill.Nature = SkillNature.Buff.value
+        skill.Conditions.IsOutOfCombat = True
+        skill.Conditions.IsMoving = True
+        skill_data[skill.SkillID] = skill
+
+        skill = CustomSkill()
+        skill.SkillID = GLOBAL_CACHE.Skill.GetID("Sticky_Ground")
+        skill.SkillType = SkillType.Shout.value
+        skill.TargetAllegiance = Skilltarget.EnemyMoving.value
+        skill.Nature = SkillNature.Offensive.value
+        skill.Conditions.TargetingStrict = False
+        skill_data[skill.SkillID] = skill
+
+        skill = CustomSkill()
+        skill.SkillID = GLOBAL_CACHE.Skill.GetID("Sugar_Shock")
+        skill.SkillType = SkillType.Shout.value
+        skill.TargetAllegiance = Skilltarget.Enemy.value
+        skill.Nature = SkillNature.Offensive.value
+        skill_data[skill.SkillID] = skill
+
+        skill = CustomSkill()
+        skill.SkillID = GLOBAL_CACHE.Skill.GetID("The_Mad_Kings_Influence")
+        skill.SkillType = SkillType.Shout.value
+        skill.TargetAllegiance = Skilltarget.Self.value
+        skill.Nature = SkillNature.SelfTargeted.value
+        skill.Conditions.EnemyCount = 1
+        skill.Conditions.EnemiesInRange = Range.Earshot.value
+        skill_data[skill.SkillID] = skill
+
          #region NO_ATTRIBUTE
 
         skill = CustomSkill()
