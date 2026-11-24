@@ -103,8 +103,11 @@ class LootFilters:
         self._nicholas.invalidate()
 
     def on_map_change(self) -> None:
+        from Py4GWCoreLib.GlobalCache.WhiteboardLocks import clear_loot_suppressions
+
         if self.live.clear_session_ids():
             _log("map changed - cleared session id entries")
+        clear_loot_suppressions()
 
     def _check_map(self) -> None:
         try:
@@ -114,8 +117,14 @@ class LootFilters:
         except Exception:
             return
         if map_id != self._map_id:
+            previous_map_id = self._map_id
             self._map_id = map_id
-            self.on_map_change()
+            # Initial discovery is not a map transition.  Another widget may already have
+            # published a failure for this instance, so only a known old map may clear it.
+            if previous_map_id is None:
+                self.live.clear_session_ids()
+            else:
+                self.on_map_change()
 
     # ------------------------------------------------------------------ what a script may do
     #
@@ -134,8 +143,12 @@ class LootFilters:
         self.live.blacklist_model_ids.add(int(model_id))
 
     def report_failed(self, agent_id: int) -> None:
-        """"I could not get this one." Suppression is simply a blacklist entry, live-only."""
+        """"I could not get this one." Suppress it locally and across this account's widgets."""
+        from Py4GWCoreLib.GlobalCache.WhiteboardLocks import post_loot_suppression
+
+        self._check_map()
         self.live.blacklist_item_ids.add(int(agent_id))
+        post_loot_suppression(int(agent_id))
 
     def use_filter_set(self, filter_set_id: str) -> bool:
         """Switch the running filter set, by id. Live-only: the user's saved choice is untouched."""
@@ -263,11 +276,17 @@ class LootFilters:
 
     def wants(self, agent_id: int, item_id: int, model_id: int) -> bool:
         """The whole decision for one drop: blacklist veto, then HAS-ANY."""
+        from Py4GWCoreLib.GlobalCache.WhiteboardLocks import is_loot_suppressed
+
         config = self.live
         agent_id, model_id = int(agent_id), int(model_id)
 
         # -- absolute veto --
-        if agent_id in config.blacklist_item_ids or model_id in config.blacklist_model_ids:
+        if (
+            agent_id in config.blacklist_item_ids
+            or is_loot_suppressed(agent_id)
+            or model_id in config.blacklist_model_ids
+        ):
             return False
         if self._type_vetoed(item_id):
             return False
