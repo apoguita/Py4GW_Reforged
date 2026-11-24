@@ -160,13 +160,41 @@ def _unpack(raw: str) -> dict[str, object]:
     return value if isinstance(value, dict) else {}
 
 
+_ORDER_COMMAND: Any = None
+_ORDER_COMMAND_RESOLVED = False
+
+
+def _order_command() -> Any:
+    """Resolve the coordination command once, and say why when it is missing.
+
+    A client that was running before the command existed keeps the old enum in
+    memory: the member is on disk but not in the live class. Reporting that once
+    is better than failing on every heartbeat, and it names the fix.
+    """
+    global _ORDER_COMMAND, _ORDER_COMMAND_RESOLVED
+    if not _ORDER_COMMAND_RESOLVED:
+        _ORDER_COMMAND_RESOLVED = True
+        _ORDER_COMMAND = getattr(SharedCommandType, "EctoBuyerOrder", None)
+        if _ORDER_COMMAND is None:
+            _log(
+                "This client's SharedCommandType has no EctoBuyerOrder. Update the "
+                "library files and restart the client; the party order is disabled "
+                "until then.",
+                _MSG.Error,
+            )
+    return _ORDER_COMMAND
+
+
 def _send(email: str, tag: str, payload: dict[str, object], note: str = "") -> bool:
     """Send one coordination message to another account of the party."""
+    command = _order_command()
+    if command is None:
+        return False
     try:
         GLOBAL_CACHE.ShMem.SendMessage(
             _my_email(),
             email,
-            SharedCommandType.EctoBuyerOrder,
+            command,
             (0.0, 0.0, 0.0, 0.0),
             (tag, _pack(payload), str(note)[:60], ""),
         )
@@ -635,6 +663,11 @@ class _PartyLauncher:
         self.session = f"e{int(time.time() * 1000)}"
         self.started = time.time()
         self.tracking = True
+        if _order_command() is None:
+            # No point heartbeating a command this client does not know: the reason
+            # is already logged once, and the accounts are left untouched.
+            self.clear()
+            return
         self._beat(False)
         _log(
             f"Party run {self.session}: {len(self.accounts)} alt(s), {asked} asked to buy."
