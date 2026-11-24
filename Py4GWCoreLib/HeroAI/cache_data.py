@@ -43,6 +43,7 @@ class GameData:
         
         #combat field data
         self.local_in_aggro = False
+        self.hero_in_aggro = False
         self.in_aggro = False
         self.leader_in_aggro = False
         self.party_in_aggro = False
@@ -239,10 +240,34 @@ class CacheData:
         filtered = [e for e in filtered if Agent.IsAlive(e) and not bl.is_blacklisted(e)]
         return len(filtered) > 0
     
+    def HeroesInAggro(self, enemy_array, aggro_range = Range.Spellcast.value):
+        """Detect living enemies close to any living hero in the local party."""
+        bl = EnemyBlacklist()
+        try:
+            heroes = GLOBAL_CACHE.Party.GetHeroes() or []
+        except Exception:
+            heroes = []
+        for hero in heroes:
+            hero_agent_id = int(getattr(hero, "agent_id", 0) or 0)
+            if hero_agent_id == 0 or not Agent.IsAlive(hero_agent_id):
+                continue
+            try:
+                nearby = AgentArray.Filter.ByDistance(
+                    enemy_array, Agent.GetXY(hero_agent_id), aggro_range
+                )
+            except Exception:
+                continue
+            if any(Agent.IsAlive(enemy_id) and not bl.is_blacklisted(enemy_id) for enemy_id in nearby):
+                return True
+        return False
+
+
     def GetActiveScanRange(self) -> float:
         from .settings import Settings
 
         if self.data.party_position == 0 or Settings().get_combat_range_mode() == Settings.COMBAT_RANGE_MODE_LEGACY:
+            if self.data.hero_in_aggro:
+                return Range.Spirit.value
             return Range.Earshot.value if self.stay_alert_timer.HasElapsed(STAY_ALERT_TIME) else Range.Spellcast.value
 
         HighRange = Range.Longbow.value if not self.data.in_aggro else Range.Spellcast.value
@@ -325,7 +350,16 @@ class CacheData:
                     if account_in_aggro:
                         self.data.party_in_aggro = True
                     
-                local_in_aggro = self.InAggro(AgentArray.GetEnemyArray(), self.GetActiveScanRange())
+                enemy_array = AgentArray.GetEnemyArray()
+                active_scan_range = self.GetActiveScanRange()
+                hero_in_aggro = (
+                    self.HeroesInAggro(enemy_array, active_scan_range)
+                    if self.data.party_position == 0 else False
+                )
+                self.data.hero_in_aggro = hero_in_aggro
+                if hero_in_aggro:
+                    self.data.party_in_aggro = True
+                local_in_aggro = self.InAggro(enemy_array, active_scan_range)
                 self.data.local_in_aggro = local_in_aggro
 
                 # Publish our own aggro into shared memory so other party members can
@@ -334,11 +368,11 @@ class CacheData:
                 # old publish, which left followers' party_in_aggro permanently False
                 # so their combat branch never fired (OOC still ran). Cheap single-bool
                 # write into the already-mapped buffer.
-                GLOBAL_CACHE.ShMem.SetInAggroByEmail(self.account_email, local_in_aggro)
+                GLOBAL_CACHE.ShMem.SetInAggroByEmail(self.account_email, local_in_aggro or hero_in_aggro)
 
                 from .settings import Settings
                 if self.data.party_position == 0 or Settings().get_combat_range_mode() == Settings.COMBAT_RANGE_MODE_LEGACY:
-                    effective_in_aggro = local_in_aggro
+                    effective_in_aggro = local_in_aggro or hero_in_aggro
                 else:
                     effective_in_aggro = self.data.party_in_aggro
 

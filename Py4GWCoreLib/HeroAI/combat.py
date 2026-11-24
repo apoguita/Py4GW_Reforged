@@ -2117,12 +2117,87 @@ class CombatClass:
         except Exception:
             pass
 
+    def _nearest_enemy_engaging_heroes(self) -> int:
+        """Find a real hero-engagement target outside the player's local scan.
+
+        The party leader deliberately treats enemies around its heroes as
+        combat.  If those heroes are farther away than the player's normal
+        targeting radius, however, the combat tree can otherwise self-cast
+        indefinitely without selecting or chasing anything.
+        """
+        cached_data = self.cached_data
+        if cached_data is None or not bool(cached_data.data.hero_in_aggro):
+            return 0
+
+        try:
+            heroes = GLOBAL_CACHE.Party.GetHeroes() or []
+            enemies = AgentArray.GetEnemyArray() or []
+        except Exception:
+            return 0
+
+        player_xy = Player.GetXY()
+        blacklist = EnemyBlacklist()
+        candidates: set[int] = set()
+        for hero in heroes:
+            hero_id = int(getattr(hero, 'agent_id', 0) or 0)
+            if hero_id == 0 or not Agent.IsAlive(hero_id):
+                continue
+            try:
+                nearby = AgentArray.Filter.ByDistance(
+                    enemies,
+                    Agent.GetXY(hero_id),
+                    Range.Spellcast.value,
+                )
+            except Exception:
+                continue
+            for enemy_id in nearby:
+                enemy_id = int(enemy_id or 0)
+                if (
+                    enemy_id == 0
+                    or not Agent.IsValid(enemy_id)
+                    or not Agent.IsAlive(enemy_id)
+                    or blacklist.is_blacklisted(enemy_id)
+                    or not self._is_target_within_guard_anchor_range(enemy_id)
+                ):
+                    continue
+                try:
+                    if Utils.Distance(player_xy, Agent.GetXY(enemy_id)) > Range.SafeCompass.value:
+                        continue
+                except Exception:
+                    continue
+                candidates.add(enemy_id)
+
+        if not candidates:
+            return 0
+        return min(
+            candidates,
+            key=lambda enemy_id: Utils.Distance(player_xy, Agent.GetXY(enemy_id)),
+        )
+
+
+    def _acquire_hero_engagement_target(self) -> bool:
+        """Join a fight already detected around heroes instead of standing idle."""
+        current_target = int(Player.GetTargetID() or 0)
+        if current_target and Agent.IsValid(current_target) and Agent.IsAlive(current_target):
+            _, allegiance = Agent.GetAllegiance(current_target)
+            if allegiance == 'Enemy' and not self._is_blacklisted_enemy_target(current_target) and self._is_target_within_guard_anchor_range(current_target):
+                return False
+
+        target_id = self._nearest_enemy_engaging_heroes()
+        if target_id == 0:
+            return False
+        self.SafeInteract(target_id)
+        self.MaybeCallCombatTarget(target_id, self.cached_data, source='hero_aggro_join')
+        return True
+
+
     def HandleCombat(self, cached_data: CacheData | None = None, ooc: bool = False) -> bool:
         """
         Execute the first castable skill in the prioritized skill order.
         """
         if not ooc:
             self._maybe_call_leader_selected_target(cached_data)
+            self._acquire_hero_engagement_target()
 
         slot, target_agent_id = self.FindCastableSkill(ooc=ooc)
         if slot < 0:
