@@ -43,14 +43,22 @@ class SoulReaping:
     #endregion
 
     #region M
-    def Masochism(self, assume_active_ms: int = 25000) -> BuildCoroutine:
+    def Masochism(
+        self,
+        assume_active_ms: int = 25000,
+        *,
+        require_aggro: bool = True,
+    ) -> BuildCoroutine:
         masochism_id: int = Skill.GetID("Masochism")
 
         if not self.build.IsSkillEquipped(masochism_id):
             return False
 
-        # Aggro gate: only cast when in aggro or close to aggro
-        if not (self.build.IsInAggro() or self.build.IsCloseToAggro()):
+        # Most bars only need this attribute boost near combat. Minion Masters
+        # may need it after a fight, while corpses are still available.
+        if require_aggro and not (
+            self.build.IsInAggro() or self.build.IsCloseToAggro()
+        ):
             return False
 
         player_agent_id = Player.GetAgentID()
