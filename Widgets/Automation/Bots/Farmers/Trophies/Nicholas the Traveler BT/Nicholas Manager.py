@@ -137,6 +137,8 @@ from _modules.NicholasFarmBase import (
     check_target_item_count,
     configure_tree,
     reset_prepare_session,
+    set_travel_to_guild_hall_enabled,
+    travel_to_guild_hall_enabled,
 )
 from _modules.NicholasFarms import FARMS, FarmDefinition
 
@@ -662,6 +664,16 @@ def _draw_config_tab() -> None:
     if new_gift_accounts != gift_accounts:
         _set_gift_account_count(new_gift_accounts)
         gift_accounts = new_gift_accounts
+
+    travel_gh = travel_to_guild_hall_enabled()
+    new_travel_gh = bool(
+        PyImGui.checkbox(
+            "Travel to the guild hall when a run finishes",
+            travel_gh,
+        )
+    )
+    if new_travel_gh != travel_gh:
+        set_travel_to_guild_hall_enabled(new_travel_gh)
 
     target = _target_for_farm(farm)
 

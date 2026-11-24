@@ -1228,6 +1228,112 @@ def check_target_item_count(
     )
 
 
+# --- Optional guild hall return ---------------------------------------------
+#
+# After a completed run the party used to stay in the starting outpost. The trip
+# to the guild hall is a saved, opt-in choice, so the previous behaviour remains
+# the default and the decision is visible in the widget instead of being implied
+# by the cleanup.
+
+_GH_TRAVEL_TIMEOUT_MS = 30_000
+_GH_SETTINGS_FILE = "Widgets/Automation/Bots/Farmers/Nicholas/Nicholas Farm Manager.ini"
+_GH_SETTINGS_SECTION = "Config"
+_GH_SETTINGS_KEY = "TravelToGuildHallAfterRun"
+
+
+def travel_to_guild_hall_enabled() -> bool:
+    """Whether a finished run should move the party into its guild hall."""
+    try:
+        from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+
+        settings = Settings(_GH_SETTINGS_FILE, "global")
+        return bool(settings.get_bool(_GH_SETTINGS_SECTION, _GH_SETTINGS_KEY, False))
+    except Exception:
+        return False
+
+
+def set_travel_to_guild_hall_enabled(enabled: bool) -> None:
+    """Persist the guild hall return choice."""
+    try:
+        from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+
+        settings = Settings(_GH_SETTINGS_FILE, "global")
+        settings.set(_GH_SETTINGS_SECTION, _GH_SETTINGS_KEY, bool(enabled))
+    except Exception:
+        pass
+
+
+def _has_guild() -> bool:
+    """False when the local account has no guild and therefore no guild hall."""
+    try:
+        return int(Agent.GetGuildID(Player.GetAgentID())) > 0
+    except Exception:
+        return False
+
+
+def travel_to_guild_hall(timeout_ms: int = _GH_TRAVEL_TIMEOUT_MS) -> BehaviorTree:
+    """
+    Move the party into its guild hall when the saved option is on.
+
+    Only the party leader travels: the rest of the party moves with it, so one
+    request is enough. This is best effort -- an account without a guild has no
+    hall to travel to, and the cleanup must still stop the tree -- so every
+    failure only logs and lets the stop happen.
+    """
+    if not travel_to_guild_hall_enabled():
+        return BehaviorTree(
+            BehaviorTree.SucceederNode(name="Guild Hall Travel Disabled")
+        )
+
+    state: dict[str, float] = {"requested_at": 0.0}
+
+    def _travel(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if Map.IsMapReady() and Map.IsGuildHall():
+            return BehaviorTree.NodeState.SUCCESS
+
+        if not state["requested_at"]:
+            if not _has_guild():
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        "Target cleanup: this account has no guild, so there is no "
+                        "guild hall to travel to. The party stays in the outpost."
+                    ),
+                    PySystem.Console.MessageType.Warning,
+                )
+                return BehaviorTree.NodeState.SUCCESS
+
+            state["requested_at"] = time.monotonic()
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "Target cleanup: travelling the party to the guild hall.",
+                PySystem.Console.MessageType.Info,
+            )
+            Map.TravelGH()
+            return BehaviorTree.NodeState.RUNNING
+
+        if (time.monotonic() - state["requested_at"]) * 1000.0 >= timeout_ms:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    "Guild hall travel did not complete in time. The party stays "
+                    "where it is; the cleanup continues."
+                ),
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.SUCCESS
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Travel To Guild Hall",
+            action_fn=_travel,
+            aftercast_ms=0,
+        )
+    )
+
+
 def handle_target_reached(
     *,
     tree_getter: Callable[[], BottingTree],
@@ -1287,6 +1393,7 @@ def handle_target_reached(
                         )
                     ),
                     return_to_outpost_if_needed(farm),
+                    travel_to_guild_hall(),
                     BehaviorTree(
                         BehaviorTree.ActionNode(
                             name=f"Stop After Target Cleanup - {farm.name}",
