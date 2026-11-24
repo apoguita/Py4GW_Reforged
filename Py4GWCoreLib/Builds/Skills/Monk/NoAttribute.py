@@ -9,7 +9,6 @@ from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Skill import Skill
 from Py4GWCoreLib.GlobalCache.HexRemovalPriority import HexRemovalPriority, cast_hex_removal_and_track, get_hexed_ally_for_removal
 from Py4GWCoreLib.HeroAI.targeting import GetAllAlliesArray
-from Py4GWCoreLib.HeroAI.types import Skilltarget
 
 if TYPE_CHECKING:
     from Py4GWCoreLib.HeroAI.custom_skill_src.skill_types import CustomSkill
@@ -60,16 +59,24 @@ class NoAttribute:
             )
 
         def _resolve_seed_of_life_target() -> int:
-            return self.build.ResolvePreferredPartySpikeAllyTarget(
+            # Unlike ResolvePreferredPartySpikeAllyTarget, this evaluates all
+            # candidates BEFORE ranking. A low-HP ally without a recent spike
+            # must not hide a different ally who is actually taking damage.
+            return self.build.ResolveRankedPartyAllyTarget(
                 seed_of_life_id,
                 seed_of_life,
-                variants=[
-                    lambda custom_skill: setattr(custom_skill, "TargetAllegiance", Skilltarget.AllyMartialMelee.value),
-                    lambda custom_skill: setattr(custom_skill, "TargetAllegiance", Skilltarget.AllyMartial.value),
-                    None,
-                ],
-                validator=_is_valid_seed_target,
-                drop_threshold=0.08,
+                validator=lambda agent_id: (
+                    _is_valid_seed_target(agent_id)
+                    and self.build.GetPartyHealthDelta(agent_id) >= 0.08
+                    and not Routines.Checks.Effects.HasBuff(agent_id, seed_of_life_id)
+                ),
+                rank_key=lambda agent_id: (
+                    0 if Routines.Checks.Agents.IsMelee(agent_id)
+                    else 1 if Routines.Checks.Agents.IsMartial(agent_id)
+                    else 2,
+                    -self.build.GetPartyHealthDelta(agent_id),
+                    Agent.GetHealth(agent_id),
+                ),
                 sample_interval_ms=150,
                 window_ms=1000,
             )

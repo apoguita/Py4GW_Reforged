@@ -17,6 +17,9 @@ from Py4GWCoreLib import Player
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import SharedCommandType
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib import ImGui
+from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Hero_enums import HeroType
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -28,6 +31,7 @@ from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.controller impor
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
+from Sources.Sky.Support import attach_botting_tree_support
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
 
@@ -56,7 +60,7 @@ PLAYER_BUILDS_BY_PRIMARY = {
     'Necromancer': 'OAFUYCqWVyS4k9F8E7gUizB5iwF',
     'Mesmer': 'OQFUAixS1qS4k9F8E7gUioA5iwF',
     'Elementalist': 'OgFUwi1S1qS4k9F8E7gUitT5iwF',
-    'Assassin': 'OwFkQpV63OG0dZfBPxOYDkLTuIcB',
+    'Assassin': 'OwFkQdV6XOqEOZfBPxOIloLTuYAA',
     'Ritualist': 'OAGkQGhLlWpEOZfBPxOIlo0UuIcB',
     'Paragon': 'OQGjgOUcFT4k9F8E7gUiBA5iwF',
     'Dervish': 'OgGlwWrJlWpqFhT2XwTsDSJSglL29B',
@@ -2955,6 +2959,7 @@ def LootAndReturn() -> BehaviorTree:
 
             BT.Travel(
                 target_map_id=KAINENG_CENTER,
+                random_travel=True,
                 log=True,
             ),
             BT.WaitForMapLoad(KAINENG_CENTER, timeout_ms=45_000),
@@ -3012,6 +3017,50 @@ def _configure_botting_tree(tree: BottingTree) -> None:
     tree.AddServiceTree('MissionRestartAnchor', MissionRestartAnchorService)
 
 
+def tooltip() -> None:
+    """Detailed module overview and author credits."""
+    PyImGui.set_next_window_size((600, 0))
+    PyImGui.begin_tooltip()
+
+    title_color = Color(255, 200, 100, 255)
+    ImGui.image(MODULE_ICON, (32, 32))
+    PyImGui.same_line(0, 10)
+    ImGui.push_font("Regular", 20)
+    ImGui.text_aligned(
+        MODULE_NAME,
+        alignment=Alignment.MidLeft,
+        color=title_color.color_tuple,
+        height=32,
+    )
+    ImGui.pop_font()
+
+    PyImGui.spacing()
+    PyImGui.spacing()
+    PyImGui.separator()
+    PyImGui.spacing()
+
+    PyImGui.text_wrapped('A single-account BottingTree farm for Ministerial Commendations in A Chance Encounter. Sets up a dedicated seven-hero team, executes the opening fight and stairway defense, then gathers the rewards and repeats the mission.')
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text('Travels from Kaineng Center into A Chance Encounter and prepares the encounter-specific team.')
+    PyImGui.bullet_text('Can load the player build and configure seven heroes with predefined builds and positions.')
+    PyImGui.bullet_text('Controls the opening combat, staircase positioning, Purity Ball timing and final Ministry of Purity spike.')
+    PyImGui.bullet_text('Offers Normal/Hard Mode, optional Birthday Cupcake use and configurable party preparation.')
+    PyImGui.bullet_text('Collects drops, returns to the outpost and repeats using explicit BottingTree Planner stages.')
+    PyImGui.bullet_text('Uses single-account MerchantRules maintenance with configurable inventory and kit thresholds.')
+    PyImGui.bullet_text('Tracks lifetime/session runs, Ministerial Commendations earned and runs with drops.')
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text('Ministerial Commendations BottingTree farming implementation: Sky.')
+    PyImGui.bullet_text('Encounter ReBuilt reference builds and team setup are acknowledged in the script.')
+    PyImGui.bullet_text('Built on Py4GW and the BottingTree framework by Apo and contributors.')
+
+    PyImGui.end_tooltip()
+
+
+
 def main() -> None:
     global initialized
 
@@ -3022,6 +3071,7 @@ def main() -> None:
 
     tree = ensure_botting_tree()
     tree.tick()
+    attach_botting_tree_support(tree)
     tree.UI.draw_window(
         icon_path=TEXTURE,
         main_child_dimensions=(440, 390),

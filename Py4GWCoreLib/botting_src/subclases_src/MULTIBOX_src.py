@@ -127,6 +127,10 @@ class _MULTIBOX:
         self.UsePahnaiSalad()
         self.UseWarSupplies()
 
+    def RestockItems(self, items):
+        """Restock per-model target quantities on every account in the current party."""
+        self._helpers.Multibox.restock_items(items)
+
     def RestockAllPcons(self, quantity: int = 250):
         self._helpers.Multibox.restock_all_pcons(quantity)
 

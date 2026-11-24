@@ -23,6 +23,10 @@ Ebon_Vanguard_Assassin_Support_ID = Skill.GetID("Ebon_Vanguard_Assassin_Support"
 Smiters_Boon_ID = Skill.GetID("Smiters_Boon")
 Reversal_of_Damage_ID = Skill.GetID("Reversal_of_Damage")
 Technobabble_ID = Skill.GetID("Technobabble")
+Seed_of_Life_ID = Skill.GetID("Seed_of_Life")
+Symbol_of_Wrath_ID = Skill.GetID("Symbol_of_Wrath")
+Great_Dwarf_Weapon_ID = Skill.GetID("Great_Dwarf_Weapon")
+Tryptophan_Signet_ID = Skill.GetID("Tryptophan_Signet")
 
 
 class Ray_of_Judgment(BuildMgr):
@@ -46,6 +50,10 @@ class Ray_of_Judgment(BuildMgr):
                 Smiters_Boon_ID,
                 Reversal_of_Damage_ID,
                 Technobabble_ID,
+                Seed_of_Life_ID,
+                Symbol_of_Wrath_ID,
+                Great_Dwarf_Weapon_ID,
+                Tryptophan_Signet_ID,
             ],
         )
         if match_only:
@@ -96,12 +104,32 @@ class Ray_of_Judgment(BuildMgr):
         if not arcane_echo_active and (yield from self.skills.Monk.SmitingPrayers.Smite_Hex(min_priority=HexRemovalPriority.HIGH)):
             return True
 
+        # Seed of Life: emergency support. The skill helper keeps its own
+        # <=80% HP filter, melee -> martial -> other ally preference and
+        # 8% / 1s party-spike targeting logic. Never fire while Arcane Echo
+        # is active, otherwise Echo could copy Seed instead of RoJ.
+        if (
+            not arcane_echo_active
+            and self.IsSkillEquipped(Seed_of_Life_ID)
+            and (yield from self.skills.Monk.NoAttribute.Seed_of_Life())
+        ):
+            return True
+
         # RoJ fallback when Arcane Echo isn't on the bar.
         if not self.IsSkillEquipped(Arcane_Echo_ID) and (yield from self.skills.Monk.SmitingPrayers.Ray_of_Judgment()):
             return True
 
         # Smiter's Boon: maintain self-buff.
         if not arcane_echo_active and self.IsSkillEquipped(Smiters_Boon_ID) and (yield from self.skills.Monk.SmitingPrayers.Smiters_Boon()):
+            return True
+
+        # Great Dwarf Weapon: maintain the existing strict martial-ally
+        # targeting rules from the shared PvE skill helper.
+        if (
+            not arcane_echo_active
+            and self.IsSkillEquipped(Great_Dwarf_Weapon_ID)
+            and (yield from self.skills.Any.NoAttribute.Great_Dwarf_Weapon())
+        ):
             return True
 
         # RoJ on a different cluster than the previous cast (echo copy). Only meaningful
@@ -131,6 +159,23 @@ class Ray_of_Judgment(BuildMgr):
         player_energy_pct = float(Agent.GetEnergy(Player.GetAgentID()))
         # MEDIUM-priority hex removal at >= 50% energy.
         if not arcane_echo_active and player_energy_pct >= 0.50 and (yield from self.skills.Monk.SmitingPrayers.Smite_Hex(min_priority=HexRemovalPriority.MEDIUM)):
+            return True
+
+        # Tryptophan Signet: use the shared clustered-target implementation.
+        if (
+            not arcane_echo_active
+            and self.IsSkillEquipped(Tryptophan_Signet_ID)
+            and (yield from self.skills.Any.PvE.Tryptophan_Signet())
+        ):
+            return True
+
+        # Symbol of Wrath: point-blank pressure only when an enemy is actually
+        # adjacent to the Monk.
+        if (
+            not arcane_echo_active
+            and self.IsSkillEquipped(Symbol_of_Wrath_ID)
+            and (yield from self.skills.Monk.SmitingPrayers.Symbol_of_Wrath())
+        ):
             return True
 
         # Castigation Signet on an attacking foe.

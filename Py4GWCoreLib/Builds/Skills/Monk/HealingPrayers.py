@@ -246,6 +246,48 @@ class HealingPrayers:
 
     #region S
 
+    #region O
+    def Orison_of_Healing(self) -> BuildCoroutine:
+        orison_id: int = Skill.GetID("Orison_of_Healing")
+        if not self.build.IsSkillEquipped(orison_id):
+            return False
+
+        orison: CustomSkill = self.build.GetCustomSkill(orison_id)
+        health_threshold: float = max(0.0, min(1.0, float(orison.Conditions.LessLife or 0.80)))
+        target_agent_id: int = self.build.ResolveRankedPartyAllyTarget(
+            orison_id,
+            orison,
+            validator=lambda agent_id: Agent.IsAlive(agent_id) and Agent.GetHealth(agent_id) <= health_threshold,
+            rank_key=lambda agent_id: Agent.GetHealth(agent_id),
+        )
+        if not target_agent_id:
+            return False
+        return (yield from self.build.CastSkillIDAndRestoreTarget(orison_id, target_agent_id))
+    #endregion
+
+    #region P
+    def Patient_Spirit(self) -> BuildCoroutine:
+        patient_id: int = Skill.GetID("Patient_Spirit")
+        if not self.build.IsSkillEquipped(patient_id):
+            return False
+
+        patient: CustomSkill = self.build.GetCustomSkill(patient_id)
+        health_threshold: float = max(0.0, min(1.0, float(patient.Conditions.LessLife or 0.70)))
+        target_agent_id: int = self.build.ResolveRankedPartyAllyTarget(
+            patient_id,
+            patient,
+            validator=lambda agent_id: (
+                Agent.IsAlive(agent_id)
+                and Agent.GetHealth(agent_id) <= health_threshold
+                and not Routines.Checks.Effects.HasBuff(agent_id, patient_id)
+            ),
+            rank_key=lambda agent_id: Agent.GetHealth(agent_id),
+        )
+        if not target_agent_id:
+            return False
+        return (yield from self.build.CastSkillIDAndRestoreTarget(patient_id, target_agent_id))
+    #endregion
+
     #region V
     def Vigorous_Spirit(self) -> BuildCoroutine:
         vigorous_spirit_id: int = Skill.GetID("Vigorous_Spirit")

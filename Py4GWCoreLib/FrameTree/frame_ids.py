@@ -1078,6 +1078,8 @@ class FrameId:
 
     SkillMonitor = 'SkillMonitor'
 
+    SkillTome = 'SkillTome'
+
     class SkillTrainerWindow:
         KEY = 'SkillTrainerWindow'
         DisplayModeButton = 'SkillTrainerWindow.DisplayModeButton'

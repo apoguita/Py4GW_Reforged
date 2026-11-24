@@ -6,6 +6,7 @@ from Py4GWCoreLib import Agent
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import ImGui
 from Py4GWCoreLib import Map
+from Py4GWCoreLib import Party
 from Py4GWCoreLib import ModelID
 from Py4GWCoreLib import Player
 from Py4GWCoreLib import Range
@@ -71,15 +72,73 @@ _on_cooldown = False
 
 
 def _get_same_party_accounts() -> list[AccountStruct]:
-    self_email = str(Player.GetAccountEmail() or "").strip()
-    self_account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(self_email) if self_email else None
-    party_id = int(getattr(getattr(self_account, "AgentPartyData", None), "PartyID", 0) or 0)
+    """Live player accounts in this *actual party*, never all clients in shared memory.
 
-    accounts = []
-    for account in GLOBAL_CACHE.ShMem.GetAllAccountData():
-        if party_id and int(getattr(getattr(account, "AgentPartyData", None), "PartyID", 0) or 0) != party_id:
+    A missing PartyID does not authorize broadcasting to unrelated instances:
+    use the in-game party login roster when available, otherwise fall back to self.
+    Both the local player and followers must be on the same map instance.
+    """
+    self_email = str(Player.GetAccountEmail() or "").strip()
+    if not self_email:
+        return []
+
+    self_account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(self_email)
+    try:
+        if not Map.IsMapReady() or not Party.IsPartyLoaded():
+            return [self_account] if self_account is not None else []
+        party_id = int(Party.GetPartyID() or 0)
+        party_login_numbers = {
+            int(getattr(player, "login_number", 0) or 0)
+            for player in (Party.GetPlayers() or [])
+        }
+        party_login_numbers.discard(0)
+        local_map = (
+            int(Map.GetMapID() or 0),
+            int(Map.GetRegion()[0] or 0),
+            int(Map.GetDistrict() or 0),
+            int(Map.GetLanguage()[0] or 0),
+        )
+    except Exception:
+        return [self_account] if self_account is not None else []
+
+    if local_map[0] <= 0 or (party_id <= 0 and not party_login_numbers):
+        return [self_account] if self_account is not None else []
+
+    try:
+        active_accounts = GLOBAL_CACHE.ShMem.GetAllAccountData(
+            sort_results=False, include_isolated=True,
+        )
+    except TypeError:
+        active_accounts = GLOBAL_CACHE.ShMem.GetAllAccountData(sort_results=False)
+
+    accounts: list[AccountStruct] = []
+    seen: set[str] = set()
+    for account in active_accounts or []:
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not email or email in seen or not bool(getattr(account, "IsSlotActive", False)):
+            continue
+        account_party_id = int(getattr(getattr(account, "AgentPartyData", None), "PartyID", 0) or 0)
+        if party_id > 0 and account_party_id != party_id:
+            continue
+        data = getattr(account, "AgentData", None)
+        account_login = int(getattr(data, "LoginNumber", 0) or 0)
+        if party_login_numbers and account_login not in party_login_numbers and email != self_email:
+            continue
+        amap = getattr(data, "Map", None)
+        account_map = (
+            int(getattr(amap, "MapID", 0) or 0),
+            int(getattr(amap, "Region", 0) or 0),
+            int(getattr(amap, "District", 0) or 0),
+            int(getattr(amap, "Language", 0) or 0),
+        )
+        if account_map != local_map:
             continue
         accounts.append(account)
+        seen.add(email)
+
+    # A temporary ShMem slot mismatch must not prevent the local UI from working.
+    if self_email not in seen and self_account is not None:
+        accounts.append(self_account)
 
     return sorted(
         accounts,
@@ -196,40 +255,51 @@ def _send_state_command(
     )
 
 
-def _consume_toggle_messages() -> None:
+def apply_state_command(message: object) -> bool:
+    """Apply a SetResurrectionScroll message in its recipient's local settings.
+
+    Used by both the HeroAI tick and the always-running Messaging widget: the
+    first consumer to receive a command handles it instead of discarding it.
+    The caller owns the MarkMessageAsFinished lifecycle.
+    """
     account_email = str(Player.GetAccountEmail() or "").strip()
-    if not account_email:
-        return
+    if not account_email or str(getattr(message, "ReceiverEmail", "") or "").strip() != account_email:
+        return False
+    if int(getattr(message, "Command", SharedCommandType.NoCommand)) != int(SharedCommandType.SetResurrectionScroll):
+        return False
 
+    _settings.ensure_initialized()
+    params = getattr(message, "Params", (0, 0, 0, 0)) or (0, 0, 0, 0)
+    mask = int(params[2] or 0) if len(params) > 2 else 0
     changed = False
-    for message_index, message in GLOBAL_CACHE.ShMem.GetAllMessages():
-        if message is None or not getattr(message, "Active", False):
-            continue
-        if str(getattr(message, "ReceiverEmail", "") or "").strip() != account_email:
-            continue
-        if int(getattr(message, "Command", SharedCommandType.NoCommand)) != int(SharedCommandType.SetResurrectionScroll):
-            continue
-
-        params = getattr(message, "Params", (0, 0, 0, 0)) or (0, 0, 0, 0)
-        mask = int(params[2] or 0) if len(params) > 2 else 0
-
-        if mask == 0 or (mask & _MSG_FIELD_ENABLED):
-            # mask == 0 is the legacy enabled-only payload (enabled in Params[0]).
-            _settings.set_account_resurrection_scroll_enabled(bool(int(params[0] or 0)))
-            changed = True
-        if mask & _MSG_FIELD_SKIP:
-            _settings.set_account_resurrection_scroll_skip_if_res_available(bool(int(params[1] or 0)))
-            changed = True
-
-        GLOBAL_CACHE.ShMem.MarkMessageAsFinished(account_email, message_index)
+    if mask == 0 or (mask & _MSG_FIELD_ENABLED):
+        # mask == 0 is the original enabled-only message format.
+        _settings.set_account_resurrection_scroll_enabled(bool(int(params[0] or 0)))
+        changed = True
+    if mask & _MSG_FIELD_SKIP:
+        _settings.set_account_resurrection_scroll_skip_if_res_available(bool(int(params[1] or 0)))
+        changed = True
 
     if changed:
         _broadcast_local_state()
         ConsoleLog(
             "HeroAI",
-            f"Resurrection Scroll {'enabled' if is_enabled() else 'disabled'} for {account_email}",
+            f"Resurrection Scroll {'enabled' if is_enabled() else 'disabled'} for local account",
             Console.MessageType.Info,
         )
+    return True
+
+
+def _consume_toggle_messages() -> None:
+    account_email = str(Player.GetAccountEmail() or "").strip()
+    if not account_email:
+        return
+
+    for message_index, message in GLOBAL_CACHE.ShMem.GetAllMessages():
+        if message is None or not getattr(message, "Active", False):
+            continue
+        if apply_state_command(message):
+            GLOBAL_CACHE.ShMem.MarkMessageAsFinished(account_email, message_index)
 
 
 def is_enabled() -> bool:
@@ -257,6 +327,7 @@ def are_all_party_accounts_enabled() -> bool:
 
 
 def toggle_all_accounts() -> bool:
+    """Toggle the scroll option for the active party, including the local client."""
     sender_email = str(Player.GetAccountEmail() or "").strip()
     if not sender_email:
         return False
@@ -266,12 +337,22 @@ def toggle_all_accounts() -> bool:
         return False
 
     new_enabled = not are_all_party_accounts_enabled()
+    # Local changes are immediate; never rely on a message addressed to self.
+    _settings.set_account_resurrection_scroll_enabled(new_enabled)
+    _broadcast_local_state()
+
+    remote_count = 0
     for account in accounts:
-        _send_state_command(str(account.AccountEmail or ""), enabled=new_enabled)
+        target_email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not target_email or target_email == sender_email:
+            continue
+        _send_state_command(target_email, enabled=new_enabled)
+        remote_count += 1
 
     ConsoleLog(
         "HeroAI",
-        f"Resurrection Scroll {'enabled' if new_enabled else 'disabled'} for all accounts",
+        f"Resurrection Scroll {'enabled' if new_enabled else 'disabled'} for active party: "
+        f"local + {remote_count} other account(s)",
         Console.MessageType.Info,
     )
     return new_enabled
@@ -330,19 +411,14 @@ def tick() -> None:
         _status_text = "Player is dead"
         return
 
-    dead_ally_id = claim_resurrection_target(
-        Routines.Agents.GetDeadAllyArray(Range.Earshot.value),
-        skill_id=0,
-        aftercast_delay=_USE_COOLDOWN_MS,
-    )
-    if dead_ally_id == 0:
-        if Routines.Agents.GetDeadAlly(Range.Earshot.value) != 0:
-            _status_text = "Dead party member locked by another account"
-        else:
-            _status_text = "All alive"
+    dead_ally_ids = Routines.Agents.GetDeadAllyArray(Range.Earshot.value)
+    if not dead_ally_ids:
+        _status_text = "All alive"
         _on_cooldown = False
         return
 
+    # A client that cannot actually use a scroll must NOT reserve the dead
+    # ally on the shared Whiteboard: that starves other accounts in multibox.
     if skip_if_res_available and _alive_party_member_has_res_skill():
         _status_text = "Dead party member - res skill available"
         return
@@ -358,6 +434,15 @@ def tick() -> None:
     item_id = GLOBAL_CACHE.Inventory.GetFirstModelID(_SCROLL_MODEL_ID)
     if item_id == 0:
         _status_text = "Dead party member - no scroll in inventory"
+        return
+
+    dead_ally_id = claim_resurrection_target(
+        dead_ally_ids,
+        skill_id=0,
+        aftercast_delay=_USE_COOLDOWN_MS,
+    )
+    if dead_ally_id == 0:
+        _status_text = "Dead party member locked by another account"
         return
 
     Player.ChangeTarget(dead_ally_id)

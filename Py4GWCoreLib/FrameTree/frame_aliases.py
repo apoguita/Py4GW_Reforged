@@ -12,6 +12,7 @@ FRAME_ALIASES: dict[str, str] = {
     'NpcDialogue2': 'Dialogue 2',
     'SkillWarmup': 'Skill Warmup',
     'SkillUpkeep': 'Upkeep Monitor',
+    'SkillTome': 'Skill Tome',
     'StatEnergy': 'Energy Bar',
     'StatHealth': 'Health Bar',
     'Bundle': 'Drop Bundle Button',
