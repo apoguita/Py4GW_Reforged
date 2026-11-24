@@ -776,7 +776,10 @@ def _condition(name: str, condition_fn: Callable[[], bool]) -> BehaviorTree:
     )
 
 
-def _action(name: str, action_fn: Callable[[], BehaviorTree.NodeState]) -> BehaviorTree:
+def _action(
+    name: str,
+    action_fn: Callable[..., BehaviorTree.NodeState],
+) -> BehaviorTree:
     return BehaviorTree(
         BehaviorTree.ActionNode(
             name=name,
