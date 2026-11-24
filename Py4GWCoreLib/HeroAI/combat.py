@@ -358,6 +358,11 @@ class CombatClass:
         ptr_chk = [False] * MAX_SKILLS
         ordered_skills  : list[CombatClass.SkillData] = []
         
+        effective_natures = {}
+        for candidate in original_skills:
+            selector = candidate.custom_skill_data.PrioritySelector
+            effective_natures[id(candidate)] = selector(self.get_combat_distance()) if selector is not None else candidate.custom_skill_data.Nature
+
         priorities = [
             SkillNature.CustomA,
             SkillNature.Interrupt,
@@ -392,7 +397,7 @@ class CombatClass:
             #for i in range(ptr,MAX_SKILLS):
             for i in range(MAX_SKILLS):
                 skill = original_skills[i]
-                if not ptr_chk[i] and skill.custom_skill_data.Nature == priority.value:
+                if not ptr_chk[i] and effective_natures[id(skill)] == priority.value:
                     self.skill_order[ptr] = i
                     ptr_chk[i] = True
                     ptr += 1
@@ -779,6 +784,9 @@ class CombatClass:
 
         targeting_strict = self.skills[slot].custom_skill_data.Conditions.TargetingStrict
         target_allegiance = self.skills[slot].custom_skill_data.TargetAllegiance
+        selector = self.skills[slot].custom_skill_data.TargetSelector
+        if selector is not None:
+            return int(selector(self.get_combat_distance()) or 0)
         conditions = self.skills[slot].custom_skill_data.Conditions
         preferred_enemy_target: int = 0
 

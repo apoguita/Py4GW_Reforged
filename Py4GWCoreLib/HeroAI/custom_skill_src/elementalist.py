@@ -1,3 +1,4 @@
+from .icy_prism import select_target as icy_prism_target, select_priority as icy_prism_priority
 
 from Py4GWCoreLib import GLOBAL_CACHE, Range
 from ..types import SkillNature, Skilltarget, SkillType
@@ -907,6 +908,8 @@ class ElementalistSkills:
         skill.SkillType = SkillType.Spell.value
         skill.TargetAllegiance = Skilltarget.Enemy.value
         skill.Nature = SkillNature.Offensive.value
+        skill.TargetSelector = icy_prism_target
+        skill.PrioritySelector = icy_prism_priority
         skill_data[skill.SkillID] = skill
 
         skill = CustomSkill()
