@@ -1,3 +1,4 @@
+from contextvars import ContextVar
 import random
 from collections.abc import Callable
 from collections.abc import Mapping
@@ -126,6 +127,36 @@ def _wait_until_player_action_settles(
     )
 
 
+_canonical_dialogue_scope: ContextVar = ContextVar(
+    'canonical_dialogue_scope',
+    default=None,
+)
+
+
+class CanonicalDialogueStateScope:
+    """Restore shared HeroAI state if a canonical dialogue is cancelled."""
+
+    def __init__(self):
+        self._guards: dict[str, dict] = {}
+
+    def remember(self, guard_key: str, blackboard: dict) -> None:
+        self._guards.setdefault(guard_key, blackboard)
+
+    def run(self, callback: Callable[[], object]) -> object:
+        token = _canonical_dialogue_scope.set(self)
+        try:
+            return callback()
+        finally:
+            _canonical_dialogue_scope.reset(token)
+
+    def close(self) -> None:
+        guards, self._guards = self._guards, {}
+        for guard_key, blackboard in guards.items():
+            restore = _restore_shared_heroai_state(guard_key)
+            restore.blackboard = blackboard
+            restore.tick()
+
+
 def _save_shared_heroai_state(guard_key: str) -> BehaviorTree:
     """Snapshot and suspend the local account's shared HeroAI options."""
 
@@ -163,6 +194,10 @@ def _save_shared_heroai_state(guard_key: str) -> BehaviorTree:
             'Combat': bool(getattr(options, 'Combat', False)),
             'Skills': skill_snapshot,
         }
+
+        scope = _canonical_dialogue_scope.get()
+        if scope is not None:
+            scope.remember(guard_key, node.blackboard)
 
         for option_name in ('Following', 'Avoidance', 'Looting', 'Targeting', 'Combat'):
             if hasattr(options, option_name):
