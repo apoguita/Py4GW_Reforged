@@ -6,5 +6,6 @@ Use this topic for gameplay automation and authoring records.
 - `builds/` - build controllers, skill contracts, and workflow guidance.
 - `hero-ai/` - HeroAI combat, interrupt, UI, and follower behavior.
 - `hex-removal/` - hex-removal configuration, selection, and coordination.
+- `interactions/` - curated encoded identities and occurrence metadata for recurring interactions.
 
 Loot has its own reader-facing topic at `../loot/`.
