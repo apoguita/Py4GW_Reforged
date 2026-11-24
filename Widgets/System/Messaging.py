@@ -2763,6 +2763,33 @@ def UseSkillCombatPrep(index: int, message: SharedMessageStruct):
 #endregion
 
 # region Widget handling
+# Resolved once, and tolerant of a library that predates the command: a client
+# keeps the SharedCommandType it imported at injection time, so a `case` that
+# reads the member directly would raise for every unmatched message until the
+# client restarts.
+_ECTO_BUYER_ORDER_COMMAND = getattr(SharedCommandType, "EctoBuyerOrder", None)
+
+
+def EctoBuyerOrder(index: int, message: SharedMessageStruct):
+    """Forward an Ecto Buyer coordination message to the widget that owns it.
+
+    Same shape as Pycons: the dispatcher owns the message lifecycle and the widget
+    reads the payload through the hook it declares, so no other widget has to know
+    the command exists.
+    """
+    GLOBAL_CACHE.ShMem.MarkMessageAsRunning(message.ReceiverEmail, index)
+    try:
+        widget = get_widget_handler().get_widget_info("Ecto buyer")
+        module = getattr(widget, "module", None) if widget is not None else None
+        handler = getattr(module, "ecto_handle_shared_message", None) if module is not None else None
+        if callable(handler):
+            handler(message)
+    except Exception as exc:
+        ConsoleLog(MODULE_NAME, f"Ecto Buyer shared-message error: {exc}", Console.MessageType.Error, False)
+    finally:
+        GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
+
+
 def Pycons(index: int, message: SharedMessageStruct):
     GLOBAL_CACHE.ShMem.MarkMessageAsRunning(message.ReceiverEmail, index)
     try:
@@ -3581,6 +3608,12 @@ def ProcessMessages():
             GLOBAL_CACHE.Coroutines.append(MerchantRules(index, message))
         case SharedCommandType.Pycons:
             GLOBAL_CACHE.Coroutines.append(Pycons(index, message))
+        case command if (
+            _ECTO_BUYER_ORDER_COMMAND is not None
+            and command == int(_ECTO_BUYER_ORDER_COMMAND)
+        ):
+            # Synchronous on purpose: the handler only hands the payload over.
+            EctoBuyerOrder(index, message)
         case SharedCommandType.DisableHeroAI:
             GLOBAL_CACHE.Coroutines.append(MessageDisableHeroAI(index, message))
         case SharedCommandType.EnableHeroAI:

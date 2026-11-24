@@ -77,6 +77,7 @@ class SharedCommandType(IntEnum):
     ConsoleMessage = auto()
     SetHeadlessLooting = auto()
     SetResurrectionScroll = auto()
+    EctoBuyerOrder = auto() # privately Handled Command, by the Ecto Buyer widget
 
     # Nicholas / generic collector exchange.
     # IMPORTANT: appended at the end so existing SharedCommandType values do not shift.
