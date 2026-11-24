@@ -198,7 +198,6 @@ _1_beaconsperch_to_deldrimorwarcamp_segments = [
     {
         "map_id": explorable_name_to_id["Grenth's Footprint"],
         "path": [
-            (-18593, -9945),
             (-18093.2, -9915.92),
             (-17594.12, -9830.67),
             (-17108.81, -9686.08),
