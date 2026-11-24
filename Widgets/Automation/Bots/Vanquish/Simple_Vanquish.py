@@ -48,7 +48,8 @@ class QueuedVanquish:
     def __init__(self, region, map_name, display,
                  outpost_id, explorable_id,
                  outpost_path, vanquish_path,
-                 transit_explorables, transit_paths):
+                 transit_explorables, transit_paths,
+                 reverse_cleanup_passes=2):
         self.region = region
         self.map_name = map_name
         self.display = display
@@ -58,6 +59,7 @@ class QueuedVanquish:
         self.vanquish_path = vanquish_path
         self.transit_explorables = transit_explorables
         self.transit_paths = transit_paths
+        self.reverse_cleanup_passes = max(0, min(2, int(reverse_cleanup_passes)))
 
 _queued_vanquishes: list[QueuedVanquish] = []
 _queue_version: int = 0
@@ -136,6 +138,61 @@ def _take_blessing(bot: Botting, x: float, y: float):
     yield from Routines.Yield.wait(500)
 
 
+def _log_vanquish_status(label):
+    """Record live vanquish counters at a named route boundary."""
+    foes_killed = int(Map.GetFoesKilled() or 0)
+    foes_remaining = int(Map.GetFoesToKill() or 0)
+    ConsoleLog(
+        BotSettings.BOT_NAME,
+        f"VQ_CLEANUP_CHECKPOINT label={str(label)!r}; "
+        f"foes_killed={foes_killed}; foes_remaining={foes_remaining}",
+        PySystem.Console.MessageType.Info,
+        True,
+    )
+
+
+def _face_boundary_and_hold_location(bot: Botting, location_data):
+    """Reach a captured edge point, press into its boundary, and hold."""
+    point_name = str(location_data.get("name", "Captured boundary location"))
+    spot_xy = tuple(float(value) for value in location_data["xy"])
+    facing_move_xy = tuple(
+        float(value) for value in location_data["facing_move_xy"]
+    )
+    hold_ms = max(1000, int(location_data.get("hold_ms", 1000)))
+    position_tolerance = float(location_data.get("position_tolerance", 25.0))
+    player_id = int(Player.GetAgentID() or 0)
+    if player_id <= 0:
+        bot.Stop()
+        raise RuntimeError(f"{point_name}: player agent unavailable")
+
+    try:
+        saved_pause = bool(bot.Properties.Get("hero_ai_paused", "active"))
+        try:
+            bot.Properties.ApplyNow("hero_ai_paused", "active", True)
+            try:
+                deadline = time.monotonic() + 10.0
+                while Utils.Distance(Player.GetXY(), spot_xy) > position_tolerance:
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError(f"{point_name}: exact position was not reached")
+                    Player.Move(spot_xy[0], spot_xy[1])
+                    yield from Routines.Yield.wait(100)
+
+                # Collision at the captured boundary keeps the player at the exact
+                # cartography point while this movement command establishes facing.
+                Player.Move(facing_move_xy[0], facing_move_xy[1])
+                yield from Routines.Yield.wait(hold_ms)
+            finally:
+                current_xy = Player.GetXY()
+                Player.Move(current_xy[0], current_xy[1])
+        finally:
+            bot.Properties.ApplyNow("hero_ai_paused", "active", saved_pause)
+    except Exception:
+        bot.Stop()
+        raise
+
+    return True
+
+
 def _handle_keyword(bot, key, value):
     """Process a single keyword action from a complex path segment."""
     if key == "bless":
@@ -161,6 +218,17 @@ def _handle_keyword(bot, key, value):
     elif key == "wait":
         bot.UI.PrintMessageToConsole(BotSettings.BOT_NAME, f"Waiting...")
         bot.Wait.ForTime(value)
+    elif key == "vanquish_status":
+        bot.States.AddCustomState(
+            lambda label=value: _log_vanquish_status(label),
+            f"Check remaining foes ({value})",
+        )
+    elif key == "boundary_face_hold":
+        bot.Wait.UntilOutOfCombat()
+        bot.States.AddCustomState(
+            lambda data=value: _face_boundary_and_hold_location(bot, data),
+            f"Boundary Cartography Hold ({value.get('name', 'captured spot')})",
+        )
     elif key == "map":
         bot.Wait.ForMapToChange(value)
     elif key == "dropbundle":
@@ -361,12 +429,14 @@ def bot_routine(bot: Botting) -> None:
         sections.append(f"[H]VanquishPath_{vq_idx}_{header_counter}")
 
         # ReverseAggro1 header
-        header_counter += 1
-        sections.append(f"[H]ReverseAggro1_{vq_idx}_{header_counter}")
+        if vq.reverse_cleanup_passes >= 1:
+            header_counter += 1
+            sections.append(f"[H]ReverseAggro1_{vq_idx}_{header_counter}")
 
         # ReverseAggro2 header
-        header_counter += 1
-        sections.append(f"[H]ReverseAggro2_{vq_idx}_{header_counter}")
+        if vq.reverse_cleanup_passes >= 2:
+            header_counter += 1
+            sections.append(f"[H]ReverseAggro2_{vq_idx}_{header_counter}")
 
         _section_headers[vq_idx] = sections
 
@@ -472,34 +542,36 @@ def bot_routine(bot: Botting) -> None:
         section_idx += 1
 
         # -- Reverse Path (Aggro: ReverseAggro1) --
-        bot.UI.PrintMessageToConsole(BotSettings.BOT_NAME, f"Starting Reverse Aggro Path 1 (range={_aggro_range_reverse1}).")
-        reversed_path = _build_reversed_path(vq.vanquish_path)
-        rp_coord = _get_first_path_coord(reversed_path)
-        bot.States.AddCustomState(lambda vi=vq_idx, si=section_idx, rc=rp_coord: _set_section_header(_section_headers[vi][si], rc[0], rc[1]), f"SetSection_ReverseAggro1_{vq_idx}")
-        def _log_reverse1(x, y, mn=vq.map_name):
-            _reverse_detections.setdefault(mn, {}).setdefault("reverse1", []).append((round(x), round(y)))
-        _register_aggro_path(bot, reversed_path,
-                             header_name=f"ReverseAggro1_{vq_idx}",
-                             detection_radius=float(_aggro_range_reverse1),
-                             clear_radius=float(_aggro_range_reverse1),
-                             on_enemy_detected=_log_reverse1)
-        bot.Wait.UntilOutOfCombat()
-        section_idx += 1
+        if vq.reverse_cleanup_passes >= 1:
+            bot.UI.PrintMessageToConsole(BotSettings.BOT_NAME, f"Starting Reverse Aggro Path 1 (range={_aggro_range_reverse1}).")
+            reversed_path = _build_reversed_path(vq.vanquish_path)
+            rp_coord = _get_first_path_coord(reversed_path)
+            bot.States.AddCustomState(lambda vi=vq_idx, si=section_idx, rc=rp_coord: _set_section_header(_section_headers[vi][si], rc[0], rc[1]), f"SetSection_ReverseAggro1_{vq_idx}")
+            def _log_reverse1(x, y, mn=vq.map_name):
+                _reverse_detections.setdefault(mn, {}).setdefault("reverse1", []).append((round(x), round(y)))
+            _register_aggro_path(bot, reversed_path,
+                                 header_name=f"ReverseAggro1_{vq_idx}",
+                                 detection_radius=float(_aggro_range_reverse1),
+                                 clear_radius=float(_aggro_range_reverse1),
+                                 on_enemy_detected=_log_reverse1)
+            bot.Wait.UntilOutOfCombat()
+            section_idx += 1
 
         # -- Reverse Path (Aggro: ReverseAggro2) --
-        bot.UI.PrintMessageToConsole(BotSettings.BOT_NAME, f"Starting Reverse Aggro Path 2 (range={_aggro_range_reverse2}).")
-        reversed_path = _build_reversed_path(vq.vanquish_path)
-        rp5_coord = _get_first_path_coord(reversed_path)
-        bot.States.AddCustomState(lambda vi=vq_idx, si=section_idx, rc=rp5_coord: _set_section_header(_section_headers[vi][si], rc[0], rc[1]), f"SetSection_ReverseAggro2_{vq_idx}")
-        def _log_reverse2(x, y, mn=vq.map_name):
-            _reverse_detections.setdefault(mn, {}).setdefault("reverse2", []).append((round(x), round(y)))
-        _register_aggro_path(bot, reversed_path,
-                             header_name=f"ReverseAggro2_{vq_idx}",
-                             detection_radius=float(_aggro_range_reverse2),
-                             clear_radius=float(_aggro_range_reverse2),
-                             on_enemy_detected=_log_reverse2)
-        bot.Wait.UntilOutOfCombat()
-        section_idx += 1
+        if vq.reverse_cleanup_passes >= 2:
+            bot.UI.PrintMessageToConsole(BotSettings.BOT_NAME, f"Starting Reverse Aggro Path 2 (range={_aggro_range_reverse2}).")
+            reversed_path = _build_reversed_path(vq.vanquish_path)
+            rp5_coord = _get_first_path_coord(reversed_path)
+            bot.States.AddCustomState(lambda vi=vq_idx, si=section_idx, rc=rp5_coord: _set_section_header(_section_headers[vi][si], rc[0], rc[1]), f"SetSection_ReverseAggro2_{vq_idx}")
+            def _log_reverse2(x, y, mn=vq.map_name):
+                _reverse_detections.setdefault(mn, {}).setdefault("reverse2", []).append((round(x), round(y)))
+            _register_aggro_path(bot, reversed_path,
+                                 header_name=f"ReverseAggro2_{vq_idx}",
+                                 detection_radius=float(_aggro_range_reverse2),
+                                 clear_radius=float(_aggro_range_reverse2),
+                                 on_enemy_detected=_log_reverse2)
+            bot.Wait.UntilOutOfCombat()
+            section_idx += 1
 
         # -- Vanquish FAILED --
         bot.States.AddHeader(f"Vanquish Failed_{vq_idx}")
@@ -734,6 +806,7 @@ def _load_vanquish_data(region_dir, map_name):
     ids = getattr(mod, f"{map_name}_ids", {})
     outpost_id = ids.get("outpost_id", 0)
     explorable_id = ids.get("map_id", 0)
+    reverse_cleanup_passes = ids.get("reverse_cleanup_passes", 2)
     outpost_path = getattr(mod, f"{map_name}_outpost_path", [])
     vanquish_path = getattr(mod, map_name, [])
     transit_explorables, transit_paths = _load_transit_data(mod, map_name)
@@ -751,6 +824,7 @@ def _load_vanquish_data(region_dir, map_name):
         vanquish_path=vanquish_path,
         transit_explorables=transit_explorables,
         transit_paths=transit_paths,
+        reverse_cleanup_passes=reverse_cleanup_passes,
     )
 # endregion
 # =============================================================================
