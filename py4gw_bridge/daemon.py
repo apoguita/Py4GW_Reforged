@@ -188,19 +188,9 @@ class BridgeDaemon:
     def get_client(self, hwnd: int | None, pid: int | None) -> BridgeClientSession | None:
         with self._clients_lock:
             if hwnd:
-                client = self._clients.get(f"hwnd:{int(hwnd)}")
-                if client is not None:
-                    return client
+                return self._clients.get(f"hwnd:{int(hwnd)}")
             if pid:
-                client = self._clients.get(f"pid:{int(pid)}")
-                if client is not None:
-                    return client
-                # A client that reported an HWND is registered under its hwnd key
-                # only, so the PID fallback the protocol promises has to scan for
-                # it: the directory key is not a second entry in the table.
-                for session in self._clients.values():
-                    if session.client_pid == int(pid):
-                        return session
+                return self._clients.get(f"pid:{int(pid)}")
             return None
 
     def _record_forward(self, request_id: str, client: BridgeClientSession, response: dict[str, Any]) -> None:

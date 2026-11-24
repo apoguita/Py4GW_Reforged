@@ -406,7 +406,8 @@ one: the outer one only says who replied.
     "bridge_response": {
       "type": "response",
       "ok": true,
-      "result": {"name": "PyQuishAI_BT", "config": {}}
+      "result": {"id": "Automation\\Bots\\Vanquish/PyQuishAI_BT.py",
+                 "name": "PyQuishAI_BT", "config": {}}
     }
   }
 }
@@ -670,13 +671,37 @@ goes through `widgets.*`:
   declares `ensure_botting_tree()` for `widgets.start`. One that declares neither
   answers `widget_config_unavailable`.
 
-The target is the **plain name**: the script file stem, as the manager indexes it,
-not the window title. `Widgets/Automation/Bots/Vanquish/PyQuishAI_BT.py` is
-`PyQuishAI_BT`.
+The target is a widget **id** or its **plain name**. `widgets.list` reports both:
+`id` is the manager's primary key, the widget's folder path plus its file name
+(`Automation\Bots\Vanquish/PyQuishAI_BT.py`; pass it back verbatim, folder
+separators included), and `name` is the script file stem (`PyQuishAI_BT`). Use
+the id in write commands: two widgets can share a file name in different folders,
+and the plain name cannot tell them apart. The plain name still resolves as the
+fallback, which keeps a one-off `PyQuishAI_BT` convenient.
 
 Each of these commands acts on the one client you target, and both the enabled
 state and a widget's own settings are **per account**: a multibox rig needs one
 call per client, and enabling a widget on the main says nothing about the alts.
+
+### What a remote caller is allowed to change, and how it is reached
+
+The write commands (`widgets.enable`, `widgets.disable`, `widgets.start`,
+`widgets.stop`, `widgets.reload`, `widgets.config.set`) are the same actions the
+widget manager's own window performs. The bridge grants no privilege of its own;
+what gates them is reachability and per-call guards:
+
+- The control API binds `127.0.0.1` only (`--control-host` defaults to it), so
+  nothing off the machine can call it. **It has no authentication of its own**: a
+  process on the same machine that can open the loopback port can drive any of
+  these commands. The `--token` handshake protects the widget ingress, not the
+  control API. Do not point `--control-host` at a routable address or forward the
+  port.
+- `widgets.enable`, `widgets.start` and `widgets.reload` refuse while a map is
+  loading, because the module would run its first frame against a half-loaded map.
+- `widgets.start` requires the widget to be enabled and to own a botting tree;
+  `widgets.stop` restores what starting took over.
+- `widgets.config.set` only reaches a widget that declares `bridge_config_set`,
+  and the widget itself may refuse a value in a state its own window forbids.
 
 `widgets.status` reports `botting_tree: null` until the widget has built its tree,
 which a freshly enabled widget does on its first frame. Reading status never

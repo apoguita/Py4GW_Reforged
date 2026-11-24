@@ -1,17 +1,18 @@
 import os
-import json
 import queue
 import socket
-import tempfile
 import threading
 import time
 import traceback
 import inspect
 from dataclasses import is_dataclass, asdict
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import PyImGui
 import Py4GW
+
+if TYPE_CHECKING:
+    from Py4GWCoreLib.BottingTree import BottingTree
 
 from .transport import (
     PROTOCOL_VERSION,
@@ -467,10 +468,11 @@ def _widget_handler():
 
 
 def _find_widget(name: str):
-    """Resolve a widget by the plain name the manager indexes it by (the file stem).
+    """Resolve a widget by its full id or by the plain name the manager indexes it by.
 
-    `get_widget_info` is the manager's own accessor; the scan is the fallback for a
-    manager that does not expose it.
+    The full id is `folder/script`; the plain name is the file stem. `get_widget_info`
+    resolves both (full id first), and the scan is the fallback for a manager that
+    does not expose it.
     """
     handler = _widget_handler()
     getter = getattr(handler, "get_widget_info", None)
@@ -502,6 +504,19 @@ def _widget_config_functions(widget: Any) -> tuple[Any, Any]:
     )
 
 
+def _resolve_botting_tree(module: Any) -> "BottingTree | None":
+    """Return the tree a widget owns, typed as `BottingTree`.
+
+    `ensure_botting_tree` is the widget's own factory and the only supported way
+    to obtain the tree; reading the attribute is the fallback for a widget that
+    builds it once at import. Casting here keeps the start/stop path below from
+    poking an untyped `object`.
+    """
+    factory = getattr(module, "ensure_botting_tree", None)
+    tree = factory() if callable(factory) else getattr(module, "botting_tree", None)
+    return cast("BottingTree | None", tree)
+
+
 def _widget_payload(widget: Any) -> dict[str, Any]:
     """Report one widget without changing its state.
 
@@ -509,8 +524,9 @@ def _widget_payload(widget: Any) -> dict[str, Any]:
     needs to know before asking to start or stop it.
     """
     module = getattr(widget, "module", None)
-    tree = getattr(module, "botting_tree", None) if module is not None else None
+    tree = _resolve_botting_tree(module) if module is not None else None
     payload: dict[str, Any] = {
+        "id": str(getattr(widget, "folder_script_name", "") or ""),
         "name": str(getattr(widget, "plain_name", "") or ""),
         "enabled": bool(getattr(widget, "enabled", False)),
         "module_loaded": module is not None,
@@ -1008,6 +1024,10 @@ def _handle_command(request: dict[str, Any]) -> dict[str, Any]:
             if widget is None:
                 return make_error_response(request_id, "widget_not_found", f"no widget named {name}")
             plain_name = str(getattr(widget, "plain_name", "") or name)
+            # Mutations address the widget by its full id: two widgets can share a
+            # file name in different folders, and the plain name would not tell
+            # them apart. The plain name stays in the payload for human reading.
+            widget_id = str(getattr(widget, "folder_script_name", "") or plain_name)
 
             if command.startswith("widgets.config.") and getattr(widget, "module", None) is None:
                 return make_error_response(
@@ -1033,7 +1053,7 @@ def _handle_command(request: dict[str, Any]) -> dict[str, Any]:
                     return make_error_response(
                         request_id, "widget_config_error", f"get: {exc}"
                     )
-                return make_response(request_id, {"name": plain_name, "config": config})
+                return make_response(request_id, {"id": widget_id, "name": plain_name, "config": config})
 
             if command == "widgets.config.set":
                 if Map.IsMapLoading():
@@ -1071,16 +1091,16 @@ def _handle_command(request: dict[str, Any]) -> dict[str, Any]:
                         "widget_config_error",
                         "the widget's setter returned no record",
                     )
-                payload = {"name": plain_name}
+                payload = {"id": widget_id, "name": plain_name}
                 payload.update(result)
                 return make_response(request_id, payload)
 
             if command == "widgets.enable":
-                manager.enable_widget(plain_name)
+                manager.enable_widget(widget_id)
                 return make_response(request_id, _widget_payload(widget))
 
             if command == "widgets.disable":
-                manager.disable_widget(plain_name)
+                manager.disable_widget(widget_id)
                 return make_response(request_id, _widget_payload(widget))
 
             # start/stop only mean something for a widget that owns a botting tree.
@@ -1091,8 +1111,7 @@ def _handle_command(request: dict[str, Any]) -> dict[str, Any]:
                     "widget_module_missing",
                     f"{plain_name} has no loaded module; enable it first",
                 )
-            factory = getattr(module, "ensure_botting_tree", None)
-            tree = factory() if callable(factory) else getattr(module, "botting_tree", None)
+            tree = _resolve_botting_tree(module)
             if tree is None:
                 return make_error_response(
                     request_id,
