@@ -245,6 +245,8 @@ class CombatClass:
         self._alcohol_pending_model_count: int = 0
         self._next_alcohol_duration_check_ms: int = 0
         
+        self.pending_melee_engagement_target_id: int = 0
+
         #junundu
         self.junundu_wail = GLOBAL_CACHE.Skill.GetID("Junundu_Wail")
         self.unknown_junundu_ability = GLOBAL_CACHE.Skill.GetID("Unknown_Junundu_Ability")
@@ -2117,10 +2119,67 @@ class CombatClass:
         except Exception:
             pass
 
+    def _is_valid_current_enemy_target(self, target_id: int) -> bool:
+        if (
+            target_id == 0
+            or not Agent.IsValid(target_id)
+            or not Agent.IsLiving(target_id)
+            or Agent.IsDead(target_id)
+            or self._is_blacklisted_enemy_target(target_id)
+            or not self._is_target_within_guard_anchor_range(target_id)
+        ):
+            return False
+
+        _, target_allegiance = Agent.GetAllegiance(target_id)
+        if target_allegiance != "Enemy":
+            return False
+
+        try:
+            return (
+                Utils.Distance(Player.GetXY(), Agent.GetXY(target_id))
+                <= self.get_combat_distance()
+            )
+        except Exception:
+            return False
+
+
+    def _queue_melee_engagement_after_skill(
+        self,
+        skill: SkillData,
+        target_id: int,
+    ) -> None:
+        """Resume attacking after a targeted non-attack skill finishes casting."""
+        player_id = Player.GetAgentID()
+        if (
+            target_id == 0
+            or not Agent.IsMelee(player_id)
+            or skill.custom_skill_data.SkillType == SkillType.Attack.value
+            or not self._is_valid_current_enemy_target(target_id)
+        ):
+            return
+        self.pending_melee_engagement_target_id = int(target_id)
+
+
+    def _resume_pending_melee_engagement(self) -> bool:
+        if self.InCastingRoutine() or Agent.IsCasting(Player.GetAgentID()):
+            return False
+        target_id = int(self.pending_melee_engagement_target_id or 0)
+        self.pending_melee_engagement_target_id = 0
+        if target_id == 0 or not self._is_valid_current_enemy_target(target_id):
+            return False
+
+        self.SafeInteract(target_id)
+        return True
+
+
     def HandleCombat(self, cached_data: CacheData | None = None, ooc: bool = False) -> bool:
         """
         Execute the first castable skill in the prioritized skill order.
         """
+        if not ooc and self._resume_pending_melee_engagement():
+            self.ResetSkillPointer()
+            return True
+
         if not ooc:
             self._maybe_call_leader_selected_target(cached_data)
 
@@ -2167,6 +2226,7 @@ class CombatClass:
                 self._reset_alcohol_drink_state()
 
         GLOBAL_CACHE.SkillBar.UseSkill(self.skill_order[slot]+1, target_agent_id, aftercast_delay=self.aftercast)
+        self._queue_melee_engagement_after_skill(skill, target_agent_id)
         if skill_id in self.alcohol_skills:
             self._reset_alcohol_drink_state()
         self.ResetSkillPointer()
