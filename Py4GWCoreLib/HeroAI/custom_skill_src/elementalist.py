@@ -183,6 +183,10 @@ class ElementalistSkills:
         skill.SkillType = SkillType.Spell.value
         skill.TargetAllegiance = Skilltarget.Enemy.value
         skill.Nature = SkillNature.Offensive.value
+        skill.Conditions.MaxOvercastFraction = 0.50
+        skill.Conditions.MaxOvercastBypassSkillID = (
+            GLOBAL_CACHE.Skill.GetID("Soul_Ignition") or 3446
+        )
         skill_data[skill.SkillID] = skill
 
         skill = CustomSkill()

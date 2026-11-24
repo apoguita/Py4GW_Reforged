@@ -290,6 +290,21 @@ class BuildMgr:
             if Agent.GetOvercast(player_id) < conditions.Overcast:
                 return False
 
+        max_overcast_fraction = float(
+            getattr(conditions, "MaxOvercastFraction", 0.0) or 0.0
+        )
+        bypass_skill_id = int(
+            getattr(conditions, "MaxOvercastBypassSkillID", 0) or 0
+        )
+        if (
+            max_overcast_fraction > 0.0
+            and not (bypass_skill_id and self.IsSkillEquipped(bypass_skill_id))
+            and not Routines.Checks.Skills.IsProjectedOvercastAllowed(
+                player_id, skill_id, max_overcast_fraction
+            )
+        ):
+            return False
+
         if conditions.RequiresSpiritInEarshot:
             spirit_array = AgentArray.GetSpiritPetArray()
             spirit_array = AgentArray.Filter.ByDistance(
