@@ -764,7 +764,9 @@ class WidgetHandler:
         return _widgets_revision
 
     def _set_widget_state(self, name: str, state: bool):
-        widget = self._get_widget_by_plain_name(name)
+        # Full id first, plain name as the fallback: two widgets can share a file
+        # name in different folders, and the plain name cannot tell them apart.
+        widget = self.get_widget_info(name)
         if not widget:
             PySystem.Console.Log("WidgetHandler", f"Widget '{name}' not found", PySystem.Console.MessageType.Warning)
             return
