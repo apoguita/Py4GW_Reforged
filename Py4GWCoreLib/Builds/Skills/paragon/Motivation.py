@@ -86,25 +86,7 @@ class Motivation:
 
     #region M
     def Mending_Refrain(self) -> BuildCoroutine:
-        mending_refrain_id: int = Skill.GetID("Mending_Refrain")
-        mending_refrain = self.build.GetCustomSkill(mending_refrain_id)
-
-        if not self.build.IsSkillEquipped(mending_refrain_id):
-            return False
-
-        target_agent_id = self.build.ResolveAllyTarget(
-            mending_refrain_id,
-            mending_refrain,
-        )
-        if not target_agent_id:
-            return False
-
-        return (yield from self.build.CastSkillIDAndRestoreTarget(
-            skill_id=mending_refrain_id,
-            target_agent_id=target_agent_id,
-            log=False,
-            aftercast_delay=250,
-        ))
+        return (yield from self.build.SpreadEchoToAlly(Skill.GetID("Mending_Refrain")))
     #endregion
 
     #region N
