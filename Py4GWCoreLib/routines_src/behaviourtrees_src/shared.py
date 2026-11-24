@@ -515,6 +515,7 @@ class BTShared:
         poll_interval_ms: int = 100,
         log: bool = False,
         aftercast_ms: int = 100,
+        only_emails: list[str] | None = None,
     ) -> BehaviorTree:
         """
         Build a BT summon flow for all other accounts using map travel or GH travel.
@@ -526,6 +527,7 @@ class BTShared:
           Purpose: Dispatch summon travel commands to all other accounts based on the current local map context.
           UserDescription: Use this to summon every other account to your current outpost or guild hall.
           Notes: Uses `TravelToGuildHall` when the sender is in GH, otherwise sends `TravelToMap`.
+          Notes: `only_emails` narrows the recipients to that list; None means every account.
         """
 
         def _prepare_summon(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
@@ -561,9 +563,18 @@ class BTShared:
             )
 
             recipient_emails: list[str] = []
+            # One dispatch for every recipient is what makes this cheap: a
+            # per-account summon pays the send/ack round trip N times over.
+            wanted = (
+                {str(email or "").strip() for email in only_emails}
+                if only_emails is not None
+                else None
+            )
             for account in GLOBAL_CACHE.ShMem.GetAllAccountData():
                 receiver_email = str(getattr(account, "AccountEmail", "") or "")
                 if not receiver_email or receiver_email == sender_email:
+                    continue
+                if wanted is not None and receiver_email not in wanted:
                     continue
                 if _account_map_tuple(account) == sender_map_tuple:
                     continue
