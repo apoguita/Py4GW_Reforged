@@ -192,8 +192,14 @@ class Movement:
 
                 if custom_pause_fn:
                     was_paused = False
+                    pause_stop_issued = False
                     while custom_pause_fn():
                         was_paused = True
+                        if not pause_stop_issued:
+                            # Withholding the next waypoint does not cancel
+                            # the click-to-move destination already in flight.
+                            Player.Move(*Player.GetXY())
+                            pause_stop_issued = True
                         if not _map_still_valid():
                             return _abort_on_map_invalid("Map changed while movement was paused, aborting.")
                         if custom_exit_condition():
