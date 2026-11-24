@@ -1,6 +1,18 @@
 HoldingsOfChokhin = [
     {
-        "bless": (15810.0, -15238.0),
+        "bless": {
+            "name": "Holdings of Chokhin - Plant Hunt",
+            "interaction_mode": "first",
+            "route_standoff_xy": (15817.15, -15241.85),
+            "player_approach_xy": (15817.15, -15241.85),
+            "target_xy": (15773.0, -15302.0),
+            "model_id": 5683,
+            "target_name": "Vabbian Scout",
+            "encoded_name": "\\x8101\\x525D\\xEB7E\\xF19D\\x23FD",
+            "effect_ids": (1795, 1833, 1834, 1973, 1974),
+            "initial_choice_settle_s": 0.25,
+            "capture_id": "USER-20261023-HOC-BLESSING-1",
+        },
         "path": [
             (16657.0, -12876.0),
             (10846.0, -11145.0),
@@ -76,7 +88,19 @@ HoldingsOfChokhin = [
         ]
     },
     {
-        "bless": (-14951.0, 5922.0),
+        "bless": {
+            "name": "Holdings of Chokhin - Minotaur Hunt",
+            "interaction_mode": "first",
+            "route_standoff_xy": (-14952.78, 5900.21),
+            "player_approach_xy": (-14952.78, 5900.21),
+            "target_xy": (-15027.0, 5934.0),
+            "model_id": 5683,
+            "target_name": "Vabbian Scout",
+            "encoded_name": "\\x8101\\x525C\\xE171\\xB93D\\x1500",
+            "effect_ids": (1832, 1969, 1970),
+            "initial_choice_settle_s": 0.25,
+            "capture_id": "USER-20261023-HOC-BLESSING-2",
+        },
         "path": [
             (-17416.0, 5274.0),
             (-16549.0, 2521.0),
@@ -97,12 +121,22 @@ HoldingsOfChokhin = [
             (-16619.0, -13305.0),
             (-16684.0, -15626.0),
             (-15641.0, -14058.0),
-            (-10036.0, 5369.0),
-            (-15641.0, -14058.0),
         ]
     },
     {
-        "bless": (-14563.0, -14857.0),
+        "bless": {
+            "name": "Holdings of Chokhin - Skree Battle",
+            "interaction_mode": "first",
+            "route_standoff_xy": (-14574.21, -14842.1),
+            "player_approach_xy": (-14574.21, -14842.1),
+            "target_xy": (-14590.0, -14915.0),
+            "model_id": 5683,
+            "target_name": "Vabbian Scout",
+            "encoded_name": "\\x8101\\x5259\\xC2B5\\x8AAC\\x34E3",
+            "effect_ids": (1792, 1828, 1965, 1966),
+            "initial_choice_settle_s": 0.25,
+            "capture_id": "USER-20261023-HOC-BLESSING-3",
+        },
         "path": [
             (-14259.0, -12932.0),
             (-13468.0, -9040.0),
@@ -115,10 +149,39 @@ HoldingsOfChokhin = [
             (-8792.0, -1604.0),
             (-7908.0, 1591.0),
             (-8546.0, -1995.0),
+            # ROUTE-20261023-152229-045: HoC: Route to Replace Part of 124.
+            (-7323.59, 2212.04),
+            (-7776.17, 1993.61),
+            (-8280.03, 2062.96),
+            (-8715.53, 2309.48),
+            (-9084.69, 2654.49),
+            (-9372.8, 3076.21),
+            (-9435.71, 3207.02),
+            (-10036.0, 5369.0),
+            # Leave the northern spur through the same captured corridor.
+            (-9435.71, 3207.02),
+            (-9372.8, 3076.21),
+            (-9084.69, 2654.49),
+            (-8715.53, 2309.48),
+            (-8280.03, 2062.96),
+            (-7776.17, 1993.61),
+            (-7323.59, 2212.04),
         ]
     },
     {
-        "bless": (-6527.0, -3880.0),
+        "bless": {
+            "name": "Holdings of Chokhin - Insect Hunt",
+            "interaction_mode": "first",
+            "route_standoff_xy": (-6481.82, -3883.29),
+            "player_approach_xy": (-6481.82, -3883.29),
+            "target_xy": (-6430.0, -3842.0),
+            "model_id": 5683,
+            "target_name": "Vabbian Scout",
+            "encoded_name": "\\x8101\\x525A\\xBF18\\x8237\\x5499",
+            "effect_ids": (1793, 1829, 1830, 1967, 1968),
+            "initial_choice_settle_s": 0.25,
+            "capture_id": "USER-20261023-HOC-BLESSING-4",
+        },
         "path": [
             (-5244.0, -8209.0),
             (-3302.0, -5919.0),
