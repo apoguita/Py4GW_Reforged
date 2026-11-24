@@ -203,6 +203,7 @@ class ParagonSkills:
         skill.TargetAllegiance = Skilltarget.Self.value
         skill.Nature = SkillNature.Buff.value
         skill.Conditions.IsOutOfCombat = True
+        skill.Conditions.IsMoving = True
         skill.Conditions.SharedEffects = [GLOBAL_CACHE.Skill.GetID("Incoming")]
         skill_data[skill.SkillID] = skill
 

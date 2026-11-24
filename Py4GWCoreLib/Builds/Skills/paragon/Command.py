@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from Py4GWCoreLib.BuildMgr import BuildCoroutine
-from Py4GWCoreLib import GLOBAL_CACHE, Player, Routines
+from Py4GWCoreLib import Agent, GLOBAL_CACHE, Player, Routines
 from Py4GWCoreLib.Skill import Skill
 
 if TYPE_CHECKING:
@@ -78,6 +78,8 @@ class Command:
         if not self.build.IsSkillEquipped(fall_back_id):
             return False
         if self.build.IsInAggro() or self.build.IsCloseToAggro():
+            return False
+        if not Agent.IsMoving(player_agent_id):
             return False
         if Routines.Checks.Agents.HasEffect(player_agent_id, fall_back_id):
             return False
