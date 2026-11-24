@@ -59,6 +59,17 @@ GyalaHatchery = [
     (-2966.0, 10490.0)
 ]
 
+# Blessing geometry belongs to this route; upstream TakeBlessing owns dialogue.
+# Target geometry comes from the retained Gyala Hatchery BT priest capture.
+GyalaHatchery = [
+    {"bless": {
+        "name": "Take the Luxon blessing",
+        "faction": "luxon",
+        "target_xy": (7631.0, -19239.0),
+    }},
+    {"path": GyalaHatchery},
+]
+
 GyalaHatchery_outpost_path = [
     (9177, -20845), (8500, -19800)
 ]
