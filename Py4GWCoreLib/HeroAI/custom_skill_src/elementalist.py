@@ -89,6 +89,14 @@ class ElementalistSkills:
         skill.Conditions.IsOutOfCombat = True
         skill_data[skill.SkillID] = skill
 
+        skill = CustomSkill()
+        skill.SkillID = GLOBAL_CACHE.Skill.GetID("Soul_Ignition") or 3446
+        skill.SkillType = SkillType.Enchantment.value
+        skill.TargetAllegiance = Skilltarget.Self.value
+        skill.Nature = SkillNature.CustomA.value
+        skill.Conditions.IsOutOfCombat = True
+        skill_data[skill.SkillID] = skill
+
         #region AIR_MAGIC
 
         skill = CustomSkill()

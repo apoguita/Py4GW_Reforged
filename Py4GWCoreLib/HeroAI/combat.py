@@ -16,7 +16,7 @@ from .targeting import GetEnemyHexed, GetEnemyDegenHexed, GetEnemyEnchanted, Get
 from .targeting import GetEnemyBleeding, GetEnemyPoisoned, GetEnemyCrippled
 from .interrupt import is_interrupt_feasible, _queue_outcome
 from .types import SkillNature, Skilltarget, SkillType
-from .constants import MAX_NUM_PLAYERS
+from .constants import MAX_NUM_PLAYERS, SOUL_IGNITION, should_activate_soul_ignition, should_drop_soul_ignition
 from .call_target import CallTarget
 from .settings import Settings
 
@@ -246,11 +246,53 @@ class CombatClass:
         self._next_alcohol_duration_check_ms: int = 0
         
         #junundu
+        self.soul_ignition = SOUL_IGNITION
+        self._next_soul_ignition_drop_ms: int = 0
+
         self.junundu_wail = GLOBAL_CACHE.Skill.GetID("Junundu_Wail")
         self.unknown_junundu_ability = GLOBAL_CACHE.Skill.GetID("Unknown_Junundu_Ability")
         self.leave_junundu = GLOBAL_CACHE.Skill.GetID("Leave_Junundu")
         self.junundu_tunnel = GLOBAL_CACHE.Skill.GetID("Junundu_Tunnel")
         self.junundu_siege = GLOBAL_CACHE.Skill.GetID("Junundu_Siege") or 1441
+
+    def _enabled_skill_slot(self, skill_id: int) -> int:
+        for slot, skill in enumerate(self.skills):
+            if skill.skill_id != skill_id:
+                continue
+            original_slot = self.skill_order[slot]
+            if original_slot < len(self.is_skill_enabled) and self.is_skill_enabled[original_slot]:
+                return slot
+        return -1
+
+
+    def _manage_soul_ignition_upkeep(self) -> bool:
+        """Drop Soul Ignition at its upper overcast or low-health boundary."""
+        if self._enabled_skill_slot(self.soul_ignition) < 0:
+            self._next_soul_ignition_drop_ms = 0
+            return False
+
+        buff_id = int(GLOBAL_CACHE.Effects.GetBuffID(self.soul_ignition) or 0)
+        if buff_id == 0:
+            self._next_soul_ignition_drop_ms = 0
+            return False
+
+        player_id = Player.GetAgentID()
+        if not should_drop_soul_ignition(
+            Agent.GetHealth(player_id),
+            Agent.GetOvercast(player_id),
+            Agent.GetMaxEnergy(player_id),
+        ):
+            return False
+
+        now_ms = int(Utils.GetBaseTimestamp())
+        if now_ms < self._next_soul_ignition_drop_ms:
+            return False
+
+        # DropBuff requires the runtime buff id, not the skill id.
+        GLOBAL_CACHE.Effects.DropBuff(buff_id)
+        self._next_soul_ignition_drop_ms = now_ms + 1000
+        return True
+
 
     @staticmethod
     def _normalize_weapon_requirement_name(value: str) -> str:
@@ -1612,6 +1654,14 @@ class CombatClass:
         player_id = Player.GetAgentID()
         player_is_casting = Agent.IsCasting(player_id)
 
+        if skill_id == self.soul_ignition and not should_activate_soul_ignition(
+            Agent.GetHealth(player_id),
+            Agent.GetOvercast(player_id),
+            Agent.GetMaxEnergy(player_id),
+        ):
+            self.in_casting_routine = False
+            return False, 0
+
         if player_is_casting:
             self.in_casting_routine = False
             return False, 0
@@ -2121,6 +2171,10 @@ class CombatClass:
         """
         Execute the first castable skill in the prioritized skill order.
         """
+        if self._manage_soul_ignition_upkeep():
+            self.ResetSkillPointer()
+            return True
+
         if not ooc:
             self._maybe_call_leader_selected_target(cached_data)
 
