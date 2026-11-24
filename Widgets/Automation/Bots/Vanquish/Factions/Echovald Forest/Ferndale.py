@@ -10,6 +10,7 @@ BOT_NAME = "VQ Ferndale"
 TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Sources", "ApoSource", "textures", "VQ_Helmet.png")
 HOUSE_ZU_HELZER = 77
 FERNDALE = 210
+COORDS_FOR_PRIEST = (-12909.00, 15616.00)
 
 RETURN_TO_OUTPOST_HEADER = "[H]Return to Outpost_4"
 
@@ -44,6 +45,18 @@ Vanquish_Path: list[tuple[float, float]] = [
     (3388.01, 5963.63),
     (-2324.46, 224.24),
     (4964.69, 4695.06),
+    (5032.51, 4820.28),
+    (5238.35, 4587.86),
+    (5450.09, 4452.25),
+    (5670.98, 4332.43),
+    (5890.77, 4202.19),
+    (6131.49, 4119.66),
+    (6385.12, 4102.94),
+    (6637.95, 4107.18),
+    (6891.35, 4115.85),
+    (7148.72, 4108.70),
+    (7395.43, 4065.94),
+    (7541.51, 4000.25),
     (9769.06, 3201.43),
     (11953.75, 9212.22),
     (14419.30, 1311.15),
@@ -72,7 +85,23 @@ Vanquish_Path: list[tuple[float, float]] = [
     (-2540.95, -3791.90),
     (-5708.50, -3462.03),
     (-7744.69, -4578.63),
-    (-7268.23, -1897.74),
+    (-8614.02, -3314.33),
+    (-8487.01, -3092.58),
+    (-8337.43, -2889.49),
+    (-8168.50, -2701.54),
+    (-7991.30, -2515.37),
+    (-7816.38, -2332.85),
+    (-7641.11, -2152.10),
+    (-7460.12, -1976.07),
+    (-7276.71, -1803.74),
+    (-7090.80, -1629.06),
+    (-6903.61, -1455.82),
+    (-6720.03, -1286.00),
+    (-6534.74, -1114.59),
+    (-6348.03, -941.87),
+    (-6144.84, -792.52),
+    (-5925.72, -668.20),
+    (-5847.54, -626.60),
     (-4026.24, 152.70),
     (-10708.04, 1472.96),
     (-12390.78, 6997.02),
@@ -216,7 +245,7 @@ def _draw_help():
         PyImGui.text("Vanquish progress is available once the run is inside the explorable area.")
 
     PyImGui.separator()
-    PyImGui.bullet_text("PrepareForFarm already wires regroup and party-danger callbacks.")
+    PyImGui.bullet_text("Farm preparation wires regroup and party-danger callbacks.")
     PyImGui.bullet_text("Party wipe recovery now jumps to a stable return-to-outpost header.")
     PyImGui.bullet_text("The route still contains a known sticky segment around the fork section.")
 
@@ -283,32 +312,68 @@ def _vanquish_watchdog(bot: "Botting"):
             return
 
 
+def _take_kurzick_blessing(bot: Botting):
+    """Run the existing faction-blessing owner from this route state."""
+    from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
+    from Sources.ApoSource.ApoBottingLib import wrappers as BT
+
+    tree = BT.TakeBlessing(pos=COORDS_FOR_PRIEST, faction="kurzick", multi_account=True, log=True, verify_effect=True)
+    saved_pause = bool(bot.Properties.Get("hero_ai_paused", "active"))
+    bot.Properties.ApplyNow("hero_ai_paused", "active", True)
+    try:
+        yield from Routines.Yield.wait(100)
+        while True:
+            state = tree.tick()
+            if state == BehaviorTree.NodeState.SUCCESS:
+                return True
+            if state == BehaviorTree.NodeState.FAILURE:
+                bot.Stop()
+                raise RuntimeError("Kurzick blessing owner failed")
+            yield from Routines.Yield.wait(100)
+    finally:
+        try:
+            tree.reset()
+        finally:
+            if bool(bot.Properties.Get("hero_ai_paused", "active")):
+                bot.Properties.ApplyNow("hero_ai_paused", "active", saved_pause)
+
+
+def _prepare_for_farm(bot: Botting, map_id_to_travel: int, single_account: bool = True) -> None:
+    """Keep this widget's single-account party preparation out of shared templates."""
+    routines = bot.Templates.Routines
+    if not single_account:
+        routines.PrepareForFarm(map_id_to_travel=map_id_to_travel)
+        return
+    bot.States.AddHeader("Prepare For Farm")
+    bot.Events.OnPartyMemberBehindCallback(lambda: routines.OnPartyMemberBehind())
+    bot.Events.OnPartyMemberInDangerCallback(lambda: routines.OnPartyMemberInDanger())
+    bot.Events.OnPartyMemberDeadBehindCallback(lambda: routines.OnPartyMemberDeathBehind())
+    bot.Travel_To_Random_District(target_map_id=map_id_to_travel)
+
+
 def bot_routine(bot: Botting) -> None:
     bot.Events.OnPartyWipeCallback(lambda: OnPartyWipe(bot))
 
     bot.States.AddHeader(BOT_NAME)
     bot.Templates.Multibox_Aggressive()
-    bot.Templates.Routines.PrepareForFarm(map_id_to_travel=HOUSE_ZU_HELZER)
+    _prepare_for_farm(bot, map_id_to_travel=HOUSE_ZU_HELZER)
 
     bot.Party.SetHardMode(True)
     bot.Wait.ForTime(1000)
     bot.Move.XYAndExitMap(10446, -1147, FERNDALE)
     bot.Wait.ForTime(5000)
 
-    current_luxon = Player.GetLuxonData()[0]
-    current_kurzick = Player.GetKurzickData()[0]
-
-    bot.Move.XYAndInteractNPC(-12909.00, 15616.00)
-    if current_luxon >= current_kurzick:
-        bot.Multibox.SendDialogToTarget(0x84)
-    bot.Multibox.SendDialogToTarget(0x86)
+    bot.States.AddCustomState(
+        lambda: _take_kurzick_blessing(bot),
+        "Take the Kurzick blessing",
+    )
 
     bot.States.AddHeader("Start Combat")
     bot.UI.PrintMessageToConsole(BOT_NAME, "Starting Ferndale kill route.")
     bot.Items.UseAllConsumables()
     bot.States.AddManagedCoroutine("FerndaleFollowerConsumables", lambda: _upkeep_multibox_consumables(bot))
     bot.States.AddManagedCoroutine("FerndaleVanquishWatchdog", lambda: _vanquish_watchdog(bot))
-    bot.Move.FollowAutoPath(Vanquish_Path, "Kill Route")
+    bot.Move.FollowPath(Vanquish_Path, "Kill Route")
     bot.Wait.UntilOutOfCombat()
 
     bot.States.AddHeader("Return to Outpost")
