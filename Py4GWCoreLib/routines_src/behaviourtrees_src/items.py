@@ -171,6 +171,17 @@ def _salvage_usage_fact(item_id: int, name: str) -> bool:
         return False
 
 
+def _kit_matches_tier(item_id: int, model_id: int, tier_model_ids: tuple[ModelID, ...], native_facts: tuple[str, ...]) -> bool:
+    """Whether a kit belongs to a salvage tier by known model ID or by its native capability flag.
+
+    The native flag keeps newer kits (e.g. the Infinite Superior Salvage Kit) working without a
+    per-model whitelist entry; the model IDs preserve the previous behavior for existing kits.
+    """
+    if model_id in tier_model_ids:
+        return True
+    return any(_salvage_usage_fact(item_id, fact) for fact in native_facts)
+
+
 def scan_salvage_kits(bag_ids: Iterable[int]) -> list[SalvageKitInfo]:
     """Read usable kits from the exact bag scope supplied by the caller."""
     output: list[SalvageKitInfo] = []
@@ -2162,7 +2173,7 @@ class BTItems:
                 return
             PySystem.Console.Log("BTNodes.Items.SalvageItem", message, msg_type)
 
-        def _resolve_preferred_kit(valid_model_ids: tuple[ModelID, ...]) -> int:
+        def _resolve_preferred_kit(valid_model_ids: tuple[ModelID, ...], native_facts: tuple[str, ...] = ()) -> int:
             if preferred_kit_id is None or preferred_kit_id <= 0:
                 return 0
 
@@ -2170,15 +2181,12 @@ class BTItems:
             if preferred is None or not preferred.is_valid or not preferred.is_salvage_kit or preferred.uses <= 0:
                 return 0
 
-            try:
-                preferred_model_id = ModelID(preferred.model_id)
-            except ValueError:
-                return 0
-
-            return preferred.id if preferred_model_id in valid_model_ids else 0
+            return preferred.id if _kit_matches_tier(preferred.id, preferred.model_id, valid_model_ids, native_facts) else 0
 
         def _get_expert_salvage_kit() -> int:
-            preferred = _resolve_preferred_kit((ModelID.Expert_Salvage_Kit, ModelID.Superior_Salvage_Kit))
+            expert_model_ids = (ModelID.Expert_Salvage_Kit, ModelID.Superior_Salvage_Kit)
+            expert_facts = ("IsExpertSalvageKit",)
+            preferred = _resolve_preferred_kit(expert_model_ids, expert_facts)
             if preferred > 0:
                 return preferred
 
@@ -2190,7 +2198,7 @@ class BTItems:
                 if item is not None
                 and item.is_valid
                 and item.is_salvage_kit
-                and item.model_id in (ModelID.Expert_Salvage_Kit, ModelID.Superior_Salvage_Kit)
+                and _kit_matches_tier(item.id, item.model_id, expert_model_ids, expert_facts)
             ]
             if not expert_kits:
                 return 0
@@ -2221,7 +2229,8 @@ class BTItems:
                 ModelID.Expert_Salvage_Kit,
                 ModelID.Superior_Salvage_Kit,
             )
-            preferred = _resolve_preferred_kit(valid_model_ids)
+            upgrade_facts = ("IsPerfectSalvageKit", "IsExpertSalvageKit")
+            preferred = _resolve_preferred_kit(valid_model_ids, upgrade_facts)
             if preferred > 0:
                 return preferred
 
@@ -2233,7 +2242,7 @@ class BTItems:
                 if item is not None
                 and item.is_valid
                 and item.is_salvage_kit
-                and item.model_id in valid_model_ids
+                and _kit_matches_tier(item.id, item.model_id, valid_model_ids, upgrade_facts)
             ]
             if not upgrade_kits:
                 return 0
