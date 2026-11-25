@@ -586,6 +586,7 @@ _farm_to_max: bool = False
 _active_farm_key: str = ""
 _activate_conset: bool = True
 _activate_pcons: bool = True
+_use_hard_mode: bool = True
 
 
 def _enabled_consumable_upkeeps() -> Tuple[int, ...]:
@@ -1567,7 +1568,7 @@ def _build_farm_sequence(route: Route) -> BehaviorTree:
                 BehaviorTree(
                     BehaviorTree.ActionNode(name="Goal Reached?", action_fn=_goal_reached)
                 ),
-                BT.Travel(target_map_id=route.outpost_id, random_travel=True, hard_mode=True),
+                BT.Travel(target_map_id=route.outpost_id, random_travel=True, hard_mode=_use_hard_mode),
             ],
         )
 
@@ -2071,10 +2072,14 @@ def _draw_farm_controls(id_suffix: str = "") -> None:
     one place at once (Main body + Settings tab), or ImGui raises conflicting
     ID errors.
     """
-    global _farm_all, _farm_to_max
+    global _farm_all, _farm_to_max, _use_hard_mode
     new_all = PyImGui.checkbox(f"Auto-rotate all reputation factions##{id_suffix}", _farm_all)
     if new_all != _farm_all:
         _apply_rotation_mode(new_all)
+    PyImGui.same_line(0, 8)
+    new_hm = PyImGui.checkbox("Enable Hard Mode (HM)", _use_hard_mode)
+    if new_hm != _use_hard_mode:
+        _use_hard_mode = new_hm
     only_max = _all_farmed_routes_at_target()
     if only_max and not _farm_to_max:
         _farm_to_max = True
