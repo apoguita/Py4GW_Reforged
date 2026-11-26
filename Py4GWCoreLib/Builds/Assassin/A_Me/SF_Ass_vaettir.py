@@ -1,4 +1,5 @@
 import Py4GW
+import PySystem
 import math
 from typing import Tuple
 from Py4GWCoreLib import Profession
@@ -50,8 +51,14 @@ class SF_Ass_vaettir(BuildMgr):
 
         self.stuck_signal = False
         self.waypoint = (0,0)
+        # Echo must copy slot 6 before another spell is cast.
+        self._echo_pending_copy = False
+        self._echo_pending_since = 0
+        self._last_wastrels_slot = self.arcane_echo_slot
         
     def SetKillingRoutine(self, in_killing_routine: bool):
+        if not in_killing_routine:
+            self._echo_pending_copy = False
         self.in_killing_routine = in_killing_routine
         
     def SetRoutineFinished(self, routine_finished: bool):
@@ -81,7 +88,8 @@ class SF_Ass_vaettir(BuildMgr):
         if (yield from Routines.Yield.Skills.IsSkillIDUsable(self.shadow_form)):
             if (yield from self._CastSkillID(self.deadly_paradox,extra_condition=(not has_deadly_paradox), log=False, aftercast_delay=100)):
                 ConsoleLog(self.build_name, "Casting Deadly Paradox.", PySystem.Console.MessageType.Info, log=False)
-            if (yield from self._CastSkillID(self.shadow_form, extra_condition=(has_deadly_paradox), log=False, aftercast_delay=1750)):
+            has_deadly_paradox = Routines.Checks.Effects.HasBuff(player_agent_id, self.deadly_paradox)
+            if (yield from self._CastSkillID(self.shadow_form, extra_condition=has_deadly_paradox, log=False, aftercast_delay=1750)):
                 ConsoleLog(self.build_name, "Casting Shadow Form.", PySystem.Console.MessageType.Info, log=False)
             if (yield from self._CastSkillID(self.shroud_of_distress, log=False, aftercast_delay=1750)):
                 ConsoleLog(self.build_name, "Casting Shroud of Distress.", PySystem.Console.MessageType.Info, log=False)
@@ -204,32 +212,42 @@ class SF_Ass_vaettir(BuildMgr):
         has_shadow_form = has_shadow_form and shadow_form_buff_time_remaining > 1500
         
 
+        # Preserve the original defensive priority. Do not erase the shared ACTION
+        # queue on every upkeep: the bot and this rotation must not cancel each other.
         if Routines.Checks.Agents.InDanger(Range.Spellcast):
             has_deadly_paradox = Routines.Checks.Effects.HasBuff(player_agent_id, self.deadly_paradox)
             if (yield from Routines.Yield.Skills.IsSkillIDUsable(self.shadow_form)):
-                GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")
-                if (yield from self._CastSkillID(self.deadly_paradox, extra_condition=(not has_deadly_paradox), log=False, aftercast_delay=200)):
-                    ConsoleLog(self.build_name, "Casting Deadly Paradox.", PySystem.Console.MessageType.Info, log=False)
-                    
-                GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")
-                if (yield from self._CastSkillID(self.shadow_form, log=False, aftercast_delay=1950)):
-                    ConsoleLog(self.build_name, "Casting Shadow Form.", PySystem.Console.MessageType.Info, log=False)
-                    return
+                if not has_deadly_paradox:
+                    if (yield from self._CastSkillID(self.deadly_paradox, log=False, aftercast_delay=200)):
+                        ConsoleLog(self.build_name, "Casting Deadly Paradox.", PySystem.Console.MessageType.Info, log=False)
+                        # Re-read the buff rather than using the stale pre-cast value.
+                        has_deadly_paradox = Routines.Checks.Effects.HasBuff(player_agent_id, self.deadly_paradox)
+                if has_deadly_paradox:
+                    if (yield from self._CastSkillID(self.shadow_form, log=False, aftercast_delay=1950)):
+                        self._echo_pending_copy = False
+                        ConsoleLog(self.build_name, "Casting Shadow Form.", PySystem.Console.MessageType.Info, log=False)
+                        return
 
-        has_shroud_of_distress = Routines.Checks.Effects.HasBuff(player_agent_id, self.shroud_of_distress) and GLOBAL_CACHE.Effects.GetEffectTimeRemaining(player_agent_id, self.shroud_of_distress) > min_remaining_buff_duration
+        has_shroud_of_distress = (
+            Routines.Checks.Effects.HasBuff(player_agent_id, self.shroud_of_distress)
+            and GLOBAL_CACHE.Effects.GetEffectTimeRemaining(player_agent_id, self.shroud_of_distress) > min_remaining_buff_duration
+        )
+        # Once Arcane Echo has been cast, slot 6 must be the next SPELL.
+        # Defensive emergencies still take priority over a successful copy.
         if not has_shroud_of_distress:
-            ConsoleLog(self.build_name, "Casting Shroud of Distress.", PySystem.Console.MessageType.Info, log=False)
-            GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")
             if (yield from self._CastSkillID(self.shroud_of_distress, log=False, aftercast_delay=1950)):
+                self._echo_pending_copy = False
                 return
 
-        has_channeling = Routines.Checks.Effects.HasBuff(player_agent_id, self.channeling) and GLOBAL_CACHE.Effects.GetEffectTimeRemaining(player_agent_id, self.channeling) > min_remaining_buff_duration
-        if not has_channeling:
-            ConsoleLog(self.build_name, "Casting Channeling.", PySystem.Console.MessageType.Info, log=False)
+        has_channeling = (
+            Routines.Checks.Effects.HasBuff(player_agent_id, self.channeling)
+            and GLOBAL_CACHE.Effects.GetEffectTimeRemaining(player_agent_id, self.channeling) > min_remaining_buff_duration
+        )
+        if not has_channeling and not self._echo_pending_copy:
             if (yield from self._CastSkillID(self.channeling, log=False, aftercast_delay=1850)):
                 return
 
-        if has_shadow_form:
+        if has_shadow_form and not self._echo_pending_copy:
             if (yield from self._CastSkillID(self.way_of_perfection, log=False, aftercast_delay=1000)):
                 ConsoleLog(self.build_name, "Casting Way of Perfection.", PySystem.Console.MessageType.Info, log=False)
                 return
@@ -271,26 +289,59 @@ class SF_Ass_vaettir(BuildMgr):
                     yield from self._CastSkillID(self.heart_of_shadow, log=False, aftercast_delay=350)
                     return
 
-        if self.in_killing_routine and has_shadow_form and has_shroud_of_distress and has_channeling:
-            both_ready = Routines.Checks.Skills.IsSkillSlotReady(self.wastrels_demise_slot) and Routines.Checks.Skills.IsSkillSlotReady(self.arcane_echo_slot)
+        if self.in_killing_routine and has_shadow_form and has_shroud_of_distress:
+            # The skillbar changes slot 7 from Arcane Echo to its copied spell.
+            # Query the already-existing GetSlotBySkillID API instead of assuming
+            # a cast succeeded or guessing based solely on recharge.
+            echo_is_original = GLOBAL_CACHE.SkillBar.GetSlotBySkillID(
+                GLOBAL_CACHE.Skill.GetID("Arcane_Echo")
+            ) == self.arcane_echo_slot
+            slot6_ready = Routines.Checks.Skills.IsSkillSlotReady(self.wastrels_demise_slot)
+            slot7_ready = Routines.Checks.Skills.IsSkillSlotReady(self.arcane_echo_slot)
             target = GetWastrelsTarget()
-            if target and shadow_form_buff_time_remaining >= 5000:
-                GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")
-                Player.ChangeTarget(target)
-                if (yield from self._CastSkillSlot(self.arcane_echo_slot, extra_condition=both_ready, log=False, aftercast_delay=2750)):
-                    Player.Interact(target, False)
-                    ConsoleLog(self.build_name, "Casting Arcane Echo.", PySystem.Console.MessageType.Info, log=False)
-                else:
-                    if (yield from self._CastSkillSlot(self.arcane_echo_slot, log=False, aftercast_delay=750)):
-                        Player.Interact(target, False)
-                        ConsoleLog(self.build_name, "Casting Echoed Wastrel.", PySystem.Console.MessageType.Info, log=False)
 
-            target = GetWastrelsTarget()
-            if target and not Routines.Checks.Skills.IsSkillSlotReady(self.arcane_echo_slot):
-                GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")
-                Player.ChangeTarget(target)
-                if (yield from self._CastSkillSlot(self.wastrels_demise_slot, log=False, aftercast_delay=750)):
-                    Player.Interact(target, False)
+            if self._echo_pending_copy and Utils.GetBaseTimestamp() - self._echo_pending_since > 10000:
+                self._echo_pending_copy = False  # Echo expired or the copy could not be completed.
+            if self._echo_pending_copy and not echo_is_original:
+                # Copy materialized; no longer need to reserve the next spell.
+                self._echo_pending_copy = False
+
+            if target and shadow_form_buff_time_remaining >= 5000:
+                # Prepare Echo only when slot 6 is ready to be copied immediately.
+                # Do not recast Arcane Echo when slot 7 currently contains Wastrel's.
+                if not self._echo_pending_copy and echo_is_original and slot6_ready and slot7_ready and has_channeling:
+                    if (yield from self._CastSkillSlot(self.arcane_echo_slot, log=False, aftercast_delay=2100)):
+                        self._echo_pending_copy = True
+                        self._echo_pending_since = Utils.GetBaseTimestamp()
+                        ConsoleLog(self.build_name, "Arcane Echo prepared; next spell: Wastrel's Demise.", PySystem.Console.MessageType.Info, log=False)
+                        # Re-evaluate the target after the Echo animation.
+                        target = GetWastrelsTarget()
+                        slot6_ready = Routines.Checks.Skills.IsSkillSlotReady(self.wastrels_demise_slot)
+
+                if self._echo_pending_copy:
+                    # Shadow Form / Shroud can still preempt this if needed above.
+                    if target and slot6_ready:
+                        yield from Routines.Yield.Agents.ChangeTarget(target)
+                        if (yield from self._CastSkillSlot(self.wastrels_demise_slot, log=False, aftercast_delay=400)):
+                            self._echo_pending_copy = False
+                            self._last_wastrels_slot = self.wastrels_demise_slot
+                    return
+
+                # Prefer the opposite Wastrel's slot when both are ready.
+                # Every offensive cast selects a fresh unhexed, enchanted Vaettir.
+                slots = (self.wastrels_demise_slot, self.arcane_echo_slot) if self._last_wastrels_slot == self.arcane_echo_slot else (self.arcane_echo_slot, self.wastrels_demise_slot)
+                for slot in slots:
+                    if slot == self.arcane_echo_slot and echo_is_original:
+                        continue  # Arcane Echo is NOT a damage spell.
+                    if not Routines.Checks.Skills.IsSkillSlotReady(slot):
+                        continue
+                    target = GetWastrelsTarget()
+                    if not target:
+                        break
+                    yield from Routines.Yield.Agents.ChangeTarget(target)
+                    if (yield from self._CastSkillSlot(slot, log=False, aftercast_delay=400)):
+                        self._last_wastrels_slot = slot
+                        return
 
         yield from Routines.Yield.wait(100)
 

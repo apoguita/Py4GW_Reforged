@@ -9,6 +9,9 @@ import PyImGui
 
 from Py4GWCoreLib import Agent, AgentArray, GLOBAL_CACHE, Inventory, Map, Player, Routines, SharedCommandType
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib.py4gwcorelib_src.Color import Color
+from Py4GWCoreLib import ImGui
 from Py4GWCoreLib.Listeners import Listeners
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
@@ -2860,12 +2863,75 @@ def ensure_botting_tree() -> BottingTree:
 
 
 def tooltip() -> None:
-    """Author attribution, consistent with the Shards of Orr tooltip."""
+    """Tunnels of the Forsaken overview and author credits."""
+    PyImGui.set_next_window_size((600, 0))
     PyImGui.begin_tooltip()
-    PyImGui.text(MODULE_NAME)
+
+    title_color = Color(255, 200, 100, 255)
+    ImGui.image(MODULE_ICON, (32, 32))
+    PyImGui.same_line(0, 10)
+    ImGui.push_font("Regular", 20)
+    ImGui.text_aligned(
+        MODULE_NAME,
+        alignment=Alignment.MidLeft,
+        color=title_color.color_tuple,
+        height=32,
+    )
+    ImGui.pop_font()
+
+    PyImGui.spacing()
+    PyImGui.spacing()
     PyImGui.separator()
-    PyImGui.text("Script by Sky (Oo SKY oO).")
-    PyImGui.text("Built with Py4GW / BottingTree by Apo and contributors.")
+    PyImGui.spacing()
+
+    PyImGui.text_wrapped(
+        "A complete multibox BottingTree expedition through Tunnels of the Forsaken. "
+        "Choose the standard four-player departure from Piken Square or the "
+        "six-player approach from Yak's Bend. The bot travels to the dungeon, "
+        "clears all three levels, completes the quest, opens the final chest "
+        "and returns the party to its selected starting outpost."
+    )
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text(
+        "Supports four-player and six-player multibox runs, with dedicated "
+        "surface travel for the Yak's Bend start."
+    )
+    PyImGui.bullet_text(
+        "Follows detailed BottingTree checkpoints through all three dungeon levels, "
+        "including combat routes and level transitions."
+    )
+    PyImGui.bullet_text(
+        "Handles the Elemental Keystone route, dungeon door interactions "
+        "and the final boss approach."
+    )
+    PyImGui.bullet_text(
+        "Offers Normal/Hard Mode, consets, personal PCons, independently managed "
+        "morale consumables and summoning stones."
+    )
+    PyImGui.bullet_text(
+        "Includes per-item restock quantities and multibox MerchantRules inventory "
+        "maintenance with configurable free-slot and kit thresholds."
+    )
+    PyImGui.bullet_text(
+        "Tracks full-run and floor timings, including the optional Yak's Bend "
+        "surface journey, plus Eternal Blade drops by account."
+    )
+    PyImGui.bullet_text(
+        "Collects the dungeon reward, records final-chest drops and prepares "
+        "the next automated run."
+    )
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text(
+        "Tunnels of the Forsaken BottingTree implementation and multibox automation: Sky (Oo SKY oO)."
+    )
+    PyImGui.bullet_text(
+        "Built on Py4GW and the BottingTree framework by Apo and contributors."
+    )
+
     PyImGui.end_tooltip()
 
 

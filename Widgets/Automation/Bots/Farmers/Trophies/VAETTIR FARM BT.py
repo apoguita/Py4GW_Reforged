@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import math
 import zlib
+import traceback
 from collections.abc import Callable, Generator
 from typing import Any, cast
 
@@ -17,7 +18,6 @@ from Py4GWCoreLib.Builds.Assassin.A_Me.SF_Ass_vaettir import SF_Ass_vaettir
 from Py4GWCoreLib.Builds.Mesmer.Me_A.SF_Mes_vaettir import SF_Mes_vaettir
 from Py4GWCoreLib.Item import Item
 from Py4GWCoreLib.enums import Range, TitleID
-from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Py4GWCoreLib.py4gwcorelib_src.AutoInventoryHandler import AutoInventoryHandler
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
@@ -25,27 +25,25 @@ from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters import LootFilte
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
-MODULE_NAME = "VAETTIR DRIFT"
+
+MODULE_NAME = "VAETTIR FARM BT"
 MODULE_CATEGORY = "Automation"
-MODULE_TAGS = ["Vaettir", "Farm", "BottingTree", "Hard Mode"]
-MODULE_ALIASES = ["YAVB", "YAVB 2.0", "YAVB 2.0 BT", "Vaettir Drift"]
+MODULE_TAGS = ["Vaettir", "Farm", "BT", "Hard Mode"]
+MODULE_ALIASES = ["BT", "Vaettir"]
 MODULE_DESCRIPTION = """Jaga Moraine Vaettir farm for A/Me and Me/A Shadow Form builds.
 Handles the Norn blessing, aggro route, wall positioning, loot and repeat.
 Includes session timings, movement watchdog and explicit failure diagnostics.
 Prepares the original YAVB Assassin/Mesmer or Mesmer/Assassin skillbar in Longeyes.
 Consumables, merchants and inventory restocking remain manual.
-BT Planner workflow based on Drift, with YAVB build preparation.
 """
-MODULE_ICON = "Assets\\Textures\\Module_Icons\\VAETTIR DRIFT.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Vaettir.png"
 BOT_TEXTURE = os.path.join(PySystem.Console.get_projects_path(), MODULE_ICON)
-INI_PATH = "Widgets/Automation/Bots/YAVB 2.0"
-INI_FILENAME = "YAVB_2_0_BT.ini"
+INI_PATH = "Widgets/Automation/Bots/Farmers"
+INI_FILENAME = "VAETTIR_FARM_BT.ini"
 # Keep the existing account settings path when renaming the widget.
 LONGEYES, BJORA, JAGA = 650, 482, 546
 NORN_RANK_TWO_POINTS = 4_000
 OUTPOST_DEATH_PENALTY = 60
-TOT_BAG_MODEL_ID = int(ModelID.Trick_Or_Treat_Bag.value)
-TOT_BATCH_SIZE = 250
 JAGA_KILL_TARGET = 50
 BALLING_STEP_TIMEOUT_MS = 120_000
 HEART_ATTEMPT_TIMEOUT_MS = 8000
@@ -211,11 +209,11 @@ runtime: dict[str, Any] = {
     "step_retry_at": 0,
     "step_failures": {},
     "current_step": "",
-    "opening_tot_bags": False,
-    "tot_progress": "",
     "jaga_kills": 0,
     "reset_after_clear": False,
     "exiting_jaga": False,
+    "death_phase": "",
+    "force_outpost": False,
 }
 stats: dict[str, int | float] = {
     "attempts": 0,
@@ -232,8 +230,6 @@ stats: dict[str, int | float] = {
     "route_retries": 0,
     "route_rebuilds": 0,
     "step_retries": 0,
-    "tot_bags_opened": 0,
-    "tot_batches_opened": 0,
     "threshold_resets": 0,
 }
 
@@ -335,11 +331,11 @@ def _reset_farm_state() -> None:
         step_retry_at=0,
         step_failures={},
         current_step="",
-        opening_tot_bags=False,
-        tot_progress="",
         jaga_kills=0,
         reset_after_clear=False,
         exiting_jaga=False,
+        death_phase="",
+        force_outpost=False,
     )
     build = runtime["build"]
     if build is not None:
@@ -385,7 +381,7 @@ def _restart_planner(tree: BottingTree, step: str) -> None:
     steps = get_execution_steps()
     if step not in {name for name, _factory in steps}:
         step = "Initialize Bot"
-    tree.SetNamedPlannerSteps(steps, start_from=step, name="VaettirDriftSequence", repeat=True)
+    tree.SetNamedPlannerSteps(steps, start_from=step, name="VaettirSequence", repeat=True)
     tree.Reset()
 
 
@@ -579,7 +575,7 @@ def _isolation_ready_for_tick() -> bool:
 
 def _travel_to_start() -> BehaviorTree:
     def build(_node: BehaviorTree.Node) -> BehaviorTree:
-        if Map.GetMapID() in (BJORA, JAGA):
+        if Map.GetMapID() in (BJORA, JAGA) and not runtime["force_outpost"]:
             # Never travel back to Longeyes merely because Planner/runtime was reset.
             # Field characters resume from the current explorable instance.
             return BT.Succeeder("Continue in current Bjora/Jaga instance")
@@ -597,20 +593,26 @@ def _death_penalty_percent() -> int | None:
 
 
 def _tick_death_recovery(tree: BottingTree) -> bool:
+    """Resume the actual phase, not the generic startup planner after every death."""
     global _death_recovery_tree
     dead = Agent.IsDead(Player.GetAgentID())
-    defeated = GLOBAL_CACHE.Party.IsPartyDefeated()
-    # Do not classify a completed solo clear as a wipe if the player is alive.
-    if not dead:
-        defeated = False
+    defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated()) if dead else False
     if not runtime["recovering"]:
         if not dead and not defeated:
             return False
+        map_id = Map.GetMapID()
+        current_step = str(runtime.get("current_step") or "")
+        # Preserve the phase BEFORE resetting suspended actions/runtime.
+        if map_id == BJORA:
+            phase = "reset" if runtime["returning_from_jaga"] else "travel"
+        elif map_id == JAGA:
+            phase = "exit" if (runtime["exiting_jaga"] or current_step == "Exit Jaga Moraine" or runtime["finished"]) else "farm"
+        else:
+            phase = "outpost"
         _finish_run(interrupted=True)
-        # Reset suspended loot/combat work without Stop/Start: keep the original
-        # isolation snapshot so a later user Stop still restores the prior state.
         tree.Reset()
         _reset_farm_state()
+        runtime["death_phase"] = phase
         runtime["recovering"] = True
         stats["deaths"] += 1
         _death_recovery_tree = tree.PartyWipeRecoveryServiceTree(default_step_name="Initialize Bot")
@@ -619,7 +621,7 @@ def _tick_death_recovery(tree: BottingTree) -> bool:
             "named_planner_step_names": tree.GetNamedPlannerStepNames(),
         }
         _log(
-            "Death detected. Waiting for revival; return to outpost requires 60% death penalty.",
+            f"Death during {phase}. Waiting for resurrection; outpost recovery only at {OUTPOST_DEATH_PENALTY}% DP.",
             PySystem.Console.MessageType.Warning,
         )
 
@@ -627,33 +629,40 @@ def _tick_death_recovery(tree: BottingTree) -> bool:
     runtime["death_penalty"] = penalty
     return_allowed = penalty is not None and penalty >= OUTPOST_DEATH_PENALTY
     if not dead and not defeated:
-        # Rebuild the ball in the same instance below the requested threshold.
-        # At 60%, reset preparation so normal startup travel clears the penalty.
         map_id = Map.GetMapID()
+        phase = str(runtime["death_phase"])
         resume_here = not return_allowed and map_id in (BJORA, JAGA)
-        if runtime["build"] is not None:
-            _set_balling(False)
         runtime["prepared"] = resume_here
-        runtime["restore_revival_skills"] = resume_here
-        runtime["farming"] = bool(resume_here and map_id == JAGA and _jaga_kill_target_met())
-        _restart_planner(tree, "Initialize Bot")
+        runtime["force_outpost"] = bool(return_allowed and map_id in (BJORA, JAGA))
+        runtime["restore_revival_skills"] = False  # Farm death resets the instance via both portals, no skill restoration.
+        runtime["farming"] = bool(resume_here and map_id == JAGA and phase == "farm" and _jaga_kill_target_met())
+        runtime["returning_from_jaga"] = bool(resume_here and map_id == BJORA and phase == "reset")
+        if resume_here and map_id == BJORA:
+            step = "Traverse Bjora Marches"
+        elif resume_here and map_id == JAGA and phase in ("farm", "exit"):
+            # A death in Jaga follows the normal completed-farm portal reset:
+            # Jaga -> Bjora -> Jaga, then a brand-new clear.
+            runtime["farming"] = False
+            runtime["finished"] = False
+            step = "Exit Jaga Moraine"
+        elif resume_here and map_id == JAGA:
+            step = "Clear 01 - Prepare Jaga"
+        else:
+            step = "Initialize Bot"
+        _restart_planner(tree, step)
         if _death_recovery_tree is not None:
             _death_recovery_tree.reset()
             _death_recovery_tree = None
         runtime["recovering"] = False
         stats["restarts_after_death"] += 1
-        _log(
-            "Revival confirmed. Restarting in the current instance below 60% death penalty."
-            if resume_here
-            else "Revival confirmed. Restarting outpost preparation (60% penalty or already outside the farm)."
-        )
+        _log(f"Revived after {phase}: resuming '{step}' (map {map_id}, DP {penalty if penalty is not None else '?'}%).")
         return True
 
-    # The shared defeat service can issue ReturnToOutpost. Never tick it below
-    # the threshold, including when the morale read is unavailable.
+    # Never trigger a forced outpost return below 60%, or with unknown morale.
     if return_allowed and _death_recovery_tree is not None:
         _death_recovery_tree.tick()
     return True
+
 
 
 def _assign_build() -> bool:
@@ -672,7 +681,24 @@ def _assign_build() -> bool:
         _log(f"Preparing {primary}/{target_secondary} from {primary}/{secondary} via skill template.")
     if not isinstance(runtime["build"], build_type):
         runtime["build"] = build_type()
-        # Use original build methods only; no suppression API exists in Apo CoreLib.
+    build = runtime["build"]
+    # The base BuildMgr.ProcessSkillCasting deliberately raises NotImplementedError.
+    # Check the REAL imported class instead of assuming the installed CoreLib
+    # matches the separate source file supplied for this bot.
+    implementation = getattr(type(build), "ProcessSkillCasting", None)
+    if implementation is None or implementation is BuildMgr.ProcessSkillCasting:
+        _log(
+            f"Vaettir build {type(build).__module__}.{type(build).__name__} has no "
+            "ProcessSkillCasting override. The installed CoreLib build is incorrect "
+            "or outdated; install the matching SF_Ass_vaettir.py / SF_Mes_vaettir.py. "
+            "Not starting the rotation.",
+            PySystem.Console.MessageType.Error,
+        )
+        return False
+    _log(
+        f"Vaettir caster verified: {type(build).__module__}.{type(build).__name__}, "
+        f"ProcessSkillCasting={implementation.__qualname__}."
+    )
     return True
 
 
@@ -840,7 +866,7 @@ def _resume_field_preparation() -> bool:
     The build is selected by Initialize Bot. Preparation from an outpost still
     performs the ordinary skillbar loading and HM setup.
     """
-    if Map.GetMapID() in (BJORA, JAGA) and runtime["build"] is not None:
+    if Map.GetMapID() in (BJORA, JAGA) and runtime["build"] is not None and not runtime["force_outpost"]:
         if not runtime["prepared"]:
             _log("Already in explorable zone: resuming existing build; no Longeyes travel.")
         runtime["prepared"] = True
@@ -870,6 +896,7 @@ def _refresh_prepared_build() -> bool:
         return True
     if Map.GetMapID() != LONGEYES:
         return False
+    runtime["force_outpost"] = False
     _refresh_build_after_skillbar()
     return True
 
@@ -1299,60 +1326,6 @@ def _leave_jaga() -> BehaviorTree:
     return BehaviorTree(action)
 
 
-def _open_tot_bags_in_bjora() -> Generator[Any, Any, bool]:
-    if Map.GetMapID() != BJORA or not runtime["returning_from_jaga"]:
-        return True
-    count = GLOBAL_CACHE.Inventory.GetModelCount(TOT_BAG_MODEL_ID)
-    target = count
-    if not target:
-        _log("Bjora reset: no Trick-or-Treat Bags in inventory.")
-        return True
-    runtime["opening_tot_bags"] = True
-    runtime["tot_progress"] = f"0/{target}"
-    opened = 0
-    _log(f"Bjora reset: opening {target} Trick-or-Treat Bags from {count} in inventory.")
-    try:
-        while opened < target:
-            if Map.GetMapID() != BJORA or Agent.IsDead(Player.GetAgentID()):
-                return True
-            if GLOBAL_CACHE.Inventory.GetFreeSlotCount() <= 0:
-                _log(
-                    "Trick-or-Treat opening paused: inventory is full; remaining bags are kept.",
-                    PySystem.Console.MessageType.Warning,
-                )
-                return True
-            item_id = GLOBAL_CACHE.Inventory.GetFirstModelID(TOT_BAG_MODEL_ID)
-            before = GLOBAL_CACHE.Inventory.GetModelCount(TOT_BAG_MODEL_ID)
-            if not item_id or before <= 0:
-                return True
-            GLOBAL_CACHE.Inventory.UseItem(item_id)
-            deadline = Utils.GetBaseTimestamp() + 3000
-            while True:
-                yield from Routines.Yield.wait(100)
-                if Map.GetMapID() != BJORA or Agent.IsDead(Player.GetAgentID()):
-                    return True
-                after = GLOBAL_CACHE.Inventory.GetModelCount(TOT_BAG_MODEL_ID)
-                if after < before:
-                    consumed = before - after
-                    prior_batches = opened // TOT_BATCH_SIZE
-                    opened += consumed
-                    stats["tot_bags_opened"] += consumed
-                    stats["tot_batches_opened"] += opened // TOT_BATCH_SIZE - prior_batches
-                    runtime["tot_progress"] = f"{opened}/{target}"
-                    break
-                if Utils.GetBaseTimestamp() >= deadline:
-                    _log(
-                        "Trick-or-Treat Bag use was not confirmed; ending this opening pass without resending.",
-                        PySystem.Console.MessageType.Warning,
-                    )
-                    return True
-            yield from Routines.Yield.wait(150)
-        return True
-    finally:
-        runtime["opening_tot_bags"] = False
-        _log(f"Bjora reset: {opened}/{target} Trick-or-Treat Bags opened this pass.")
-
-
 def _request_heart(reason: str) -> bool:
     """Request a single serialized HoS attempt, respecting a shared cooldown."""
     now = Utils.GetBaseTimestamp()
@@ -1379,6 +1352,12 @@ def _build_rotation_service() -> BehaviorTree:
             if build is None or not runtime["prepared"] or not Map.IsExplorable() or Agent.IsDead(Player.GetAgentID()):
                 yield
                 continue
+            if getattr(type(build), "ProcessSkillCasting", None) is BuildMgr.ProcessSkillCasting:
+                raise RuntimeError(
+                    f"Installed {type(build).__module__}.{type(build).__name__} inherits the abstract "
+                    "BuildMgr.ProcessSkillCasting; replace the installed Vaettir build with "
+                    "a version implementing ProcessSkillCasting."
+                )
             map_id = Map.GetMapID()
             restoring = bool(runtime["restore_revival_skills"])
             recovery_phase = "balling" if runtime["balling"] else "exiting_jaga"
@@ -1452,7 +1431,7 @@ def _build_rotation_service() -> BehaviorTree:
                         _set_clear_zone_heart_suppression(not runtime["balling"])
             yield
 
-    return _generator_step("VAETTIR DRIFT build rotation", rotate)
+    return _generator_step("VAETTIR build rotation", rotate)
 
 
 def _norn_henchmen_service() -> BehaviorTree:
@@ -1568,7 +1547,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         (
             "Initialize Bot",
             lambda: BT.Sequence(
-                "Configure VAETTIR DRIFT",
+                "Configure VAETTIR",
                 children=[
                     ensure_botting_tree().Config.PacifistTree(
                         account_isolation=True, multi_account=False,
@@ -1598,10 +1577,6 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
                 BT.Move((13372.44, -20758.50), pause_on_combat=False),
             ]),
         ),
-        # The original Drift source deliberately disables these steps.
-        # Preserve this setting in the refactor; do not silently re-enable it.
-        # ("Clear 03 - Norn Blessing", lambda: _generator_step("Take Norn blessing", _take_norn_blessing)),
-        # ("Clear 04 - Flag Companions", lambda: _action("Flag companions", _flag_companions_at_portal)),
     ]
     labels = ("Inner Packs", "Left Packs", "Log Side Packs", "Big Pack", "Right Packs")
     timeouts = (7500, 15000, 7500, 15000, 15000)
@@ -1618,7 +1593,6 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Clear 19 - Identify and Salvage", lambda: _generator_step("Process field loot", _inventory_pass)),
         ("Clear 20 - Record Statistics", lambda: _action("Record Jaga run", _finish_run)),
         ("Exit Jaga Moraine", _leave_jaga),
-        ("Open Trick-or-Treat Bags in Bjora", lambda: _generator_step("Open available ToT bags", _open_tot_bags_in_bjora)),
     ])
     return [(name, lambda name=name, factory=factory: _checked_step(name, factory)) for name, factory in steps]
 
@@ -1629,7 +1603,7 @@ def ensure_botting_tree() -> BottingTree:
         botting_tree = BottingTree.Create(
             MODULE_NAME,
             main_routine=get_execution_steps(),
-            routine_name="VaettirDriftSequence",
+            routine_name="VaettirSequence",
             repeat=True,
             reset=False,
             pause_on_combat=False,
@@ -1643,6 +1617,8 @@ def ensure_botting_tree() -> BottingTree:
                 consumable_upkeeps=[],
             ),
         )
+
+        botting_tree.DisableHeroAITree()
         botting_tree.SetHeroAIStateLogging(False)
         botting_tree.AddServiceTree("Vaettir build rotation", _build_rotation_service)
         botting_tree.AddServiceTree("Norn rank 2 henchmen removal", _norn_henchmen_service)
@@ -1653,7 +1629,7 @@ def ensure_botting_tree() -> BottingTree:
 
 def tooltip() -> None:
     PyImGui.begin_tooltip()
-    PyImGui.text("VAETTIR DRIFT - Jaga Moraine Vaettir farm")
+    PyImGui.text("VAETTIR - Jaga Moraine Vaettir farm")
     PyImGui.text("Builds: Assassin/Mesmer or Mesmer/Assassin Shadow Form.")
     PyImGui.text("Automatic travel to Longeyes; verified single-account isolation.")
     PyImGui.text("Hard mode; detailed aggro, balling, kill and loot steps.")
@@ -1667,7 +1643,7 @@ def _draw_statistics() -> None:
         seconds = int(milliseconds / 1000)
         return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
-    PyImGui.text("VAETTIR DRIFT - Session statistics")
+    PyImGui.text("VAETTIR - Session statistics")
     PyImGui.separator()
     isolation = "VERIFIED" if runtime["isolation_verified"] else "PENDING / INACTIVE"
     PyImGui.text(f"Account isolation: {isolation} | Group: {runtime['isolation_group']}")
@@ -1683,20 +1659,16 @@ def _draw_statistics() -> None:
     PyImGui.text(
         f"Jaga enemies killed: {runtime['jaga_kills']}/{JAGA_KILL_TARGET} | Threshold resets: {stats['threshold_resets']}"
     )
-    PyImGui.text(
-        f"Trick-or-Treat Bags opened: {stats['tot_bags_opened']} | Full batches: {stats['tot_batches_opened']}"
-    )
-    if runtime["opening_tot_bags"]:
-        PyImGui.text(f"Opening bags in Bjora: {runtime['tot_progress']}")
     if runtime["route_recovery_reason"]:
         PyImGui.text_wrapped(f"Recovery pending: {runtime['route_recovery_reason']}")
     if runtime["recovering"]:
+        PyImGui.text(f"Death phase: {runtime['death_phase']}")
         penalty = runtime["death_penalty"]
         PyImGui.text_wrapped(
             f"Recovery: death penalty {penalty if penalty is not None else '?'}%. Outpost return only at 60%."
         )
     elif runtime["restore_revival_skills"]:
-        PyImGui.text_wrapped("Revival: restoring Shadow Form and Shroud of Distress before resuming the clear route.")
+        PyImGui.text_wrapped("Revival in Jaga: restoring Shadow Form and Shroud of Distress before a fresh clear.")
     PyImGui.text(f"Last run: {duration(stats['last_ms'])} | Best clear: {duration(stats['best_ms'])}")
     average = stats["total_ms"] / stats["completed"] if stats["completed"] else 0
     PyImGui.text(f"Average clear: {duration(average)} | Unstuck requests: {stats['unstuck']}")
@@ -1745,7 +1717,17 @@ def main() -> None:
                     tree.tick()
                     _tick_route_recovery(tree)
         except Exception as exc:
-            runtime["stop_reason"] = f"Runtime error ({type(exc).__name__}): {exc}"
+            step = str(runtime.get("current_step", "unknown"))
+            map_id = Map.GetMapID()
+            runtime["stop_reason"] = (
+                f"Runtime error ({type(exc).__name__}) in step '{step}', map {map_id}: {exc!r}"
+            )
+            # A bare NotImplementedError has no message. Print its *actual*
+            # source location rather than guessing at the failing BT wrapper.
+            _log("Python traceback follows:", PySystem.Console.MessageType.Error)
+            for line in traceback.format_exception(type(exc), exc, exc.__traceback__):
+                for part in line.rstrip().splitlines():
+                    _log(part, PySystem.Console.MessageType.Error)
     if runtime["stop_reason"]:
         reason = str(runtime["stop_reason"])
         runtime["last_stop"] = reason

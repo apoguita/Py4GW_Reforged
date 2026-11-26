@@ -49,6 +49,8 @@ MODULE_CATEGORY = "Automation"
 MODULE_TAGS = ["Underworld", "UW", "Multibox", "BottingTree"]
 MODULE_DESCRIPTION = "BT-only UW migration: Chamber through Dhuum, with configurable Dhuum party options."
 UW_MAP_ID = 72
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), 'Assets', 'Textures', 'Module_Icons', 'Underworld.png')
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Underworld.png"
 
 # Original Underworld.py dialogue and quest IDs; kept unmodified.
 QUEST_CLEAR = 101
@@ -4045,7 +4047,7 @@ def tooltip() -> None:
     PyImGui.begin_tooltip()
 
     title_color = Color(255, 200, 100, 255)
-    ImGui.image("Assets/Textures/Module_Icons/Underworld.png", (32, 32))
+    ImGui.image(MODULE_ICON, (32, 32))
     PyImGui.same_line(0, 10)
     ImGui.push_font("Regular", 20)
     ImGui.text_aligned(
@@ -4118,7 +4120,7 @@ def main() -> None:
     _stats().watch_planner(tree)
     _tick_direct_pcon_upkeep()
     attach_botting_tree_support(tree)
-    tree.UI.draw_window(icon_path="Assets/Textures/Module_Icons/Underworld.png", iconwidth=80, main_child_dimensions=(550, 380), extra_tabs=[
+    tree.UI.draw_window(icon_path=MODULE_ICON, iconwidth=80, main_child_dimensions=(550, 380), extra_tabs=[
         ("Party", _party_config.draw_tab),
         ("Config", _draw_run_config),
         ("Restock", _draw_restock_config),

@@ -17,9 +17,6 @@ from Py4GWCoreLib import Player
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import SharedCommandType
 from Py4GWCoreLib.BottingTree import BottingTree
-from Py4GWCoreLib.ImGui_src.types import Alignment
-from Py4GWCoreLib import ImGui
-from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Hero_enums import HeroType
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -1941,43 +1938,6 @@ def PrepareInKaineng() -> BehaviorTree:
         ],
     )
 
-
-def _move_to_mission_npc_smooth() -> BehaviorTree:
-    """
-    Kaineng-only movement to the A Chance Encounter NPC.
-
-    The generic Apo wrapper currently fixes stall_threshold_ms at 500ms.
-    Here we call the native movement primitive directly so a short period
-    without measurable progress does not cause repeated jitter/nudge commands.
-    """
-    return BT.Sequence(
-        name='Smooth Kaineng Mission NPC Approach',
-        children=[
-            RoutinesBT.Movement.Move(
-                x=2240.0,
-                y=-1264.0,
-                tolerance=150.0,
-                timeout_ms=45_000,
-                stall_threshold_ms=2_000,
-                pause_on_combat=False,
-                avoid_obstacles=False,
-                ignore_destination_obstacles=True,
-                ignore_destination_npcs=True,
-                ignore_destination_gadgets=True,
-                log=True,
-            ),
-            BT.Wait(125),
-            BT.TargetNearestAndSendDialog(
-                pos=(2240.0, -1264.0),
-                dialog_id=MISSION_DIALOG,
-                target_distance=Range.Nearby.value,
-                log=True,
-                multi_account=False,
-            ),
-        ],
-    )
-
-
 def EnterAChanceEncounter() -> BehaviorTree:
     def _approach_if_needed(_node: BehaviorTree.Node) -> BehaviorTree:
         x, y = Player.GetXY()
@@ -2004,7 +1964,13 @@ def EnterAChanceEncounter() -> BehaviorTree:
             PrepareHeroSkillbarsForQuest(),
             _mark_run_statistics_start_node(),
             BT.Subtree('Optional Kaineng Approach', _approach_if_needed),
-            _move_to_mission_npc_smooth(),
+            BT.MoveAndDialog(
+                            pos=(2240.0, -1264.0),
+                            dialog_id=MISSION_DIALOG,
+                            target_distance=Range.Nearby.value,
+                            log=True,
+                            multi_account=False,
+                        ),
             BT.WaitForMapLoad(A_CHANCE_ENCOUNTER, timeout_ms=45_000),
         ],
     )
@@ -2817,6 +2783,37 @@ def WaitForPurityBall() -> BehaviorTree:
     )
 
 
+def _unflag_spike_heroes() -> BehaviorTree:
+    """Release each individually flagged hero after the spike.
+
+    UnflagAllHeroes does not clear independently assigned hero flags.
+    """
+    def _unflag(hero_position: int) -> BehaviorTree:
+        def _action() -> BehaviorTree.NodeState:
+            try:
+                GLOBAL_CACHE.Party.Heroes.UnflagHero(hero_position)
+                return BehaviorTree.NodeState.SUCCESS
+            except Exception as exc:
+                _log(
+                    f'Post-spike: unable to unflag hero {hero_position}: {exc}',
+                    PySystem.Console.MessageType.Warning,
+                )
+                return BehaviorTree.NodeState.FAILURE
+
+        return BehaviorTree(
+            BehaviorTree.ActionNode(
+                name=f'Post-Spike Unflag Hero {hero_position}',
+                action_fn=_action,
+                aftercast_ms=125,
+            )
+        )
+
+    return BT.Sequence(
+        name='Release Individually Flagged Heroes After Spike',
+        children=[_unflag(hero_position) for hero_position in range(1, 8)],
+    )
+
+
 def SpikeMinistryOfPurity() -> BehaviorTree:
     """
     Reference spike sequence:
@@ -2835,6 +2832,7 @@ def SpikeMinistryOfPurity() -> BehaviorTree:
             _player_skill_node(2, name='Player: Hundred Blades'),
             BT.Wait(250),
             _player_skill_node(4,target=lambda: _nearest_enemy(Player.GetXY(), 200.0),name='Player: Whirlwind Attack',),
+            _unflag_spike_heroes(),
             BT.Wait(3_000),
         ],
     )
@@ -3015,50 +3013,6 @@ def _configure_botting_tree(tree: BottingTree) -> None:
     # SetMainRoutine adds the native wipe service after this anchor. This order
     # lets the anchor replace the current step before native recovery captures it.
     tree.AddServiceTree('MissionRestartAnchor', MissionRestartAnchorService)
-
-
-def tooltip() -> None:
-    """Detailed module overview and author credits."""
-    PyImGui.set_next_window_size((600, 0))
-    PyImGui.begin_tooltip()
-
-    title_color = Color(255, 200, 100, 255)
-    ImGui.image(MODULE_ICON, (32, 32))
-    PyImGui.same_line(0, 10)
-    ImGui.push_font("Regular", 20)
-    ImGui.text_aligned(
-        MODULE_NAME,
-        alignment=Alignment.MidLeft,
-        color=title_color.color_tuple,
-        height=32,
-    )
-    ImGui.pop_font()
-
-    PyImGui.spacing()
-    PyImGui.spacing()
-    PyImGui.separator()
-    PyImGui.spacing()
-
-    PyImGui.text_wrapped('A single-account BottingTree farm for Ministerial Commendations in A Chance Encounter. Sets up a dedicated seven-hero team, executes the opening fight and stairway defense, then gathers the rewards and repeats the mission.')
-    PyImGui.spacing()
-
-    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
-    PyImGui.bullet_text('Travels from Kaineng Center into A Chance Encounter and prepares the encounter-specific team.')
-    PyImGui.bullet_text('Can load the player build and configure seven heroes with predefined builds and positions.')
-    PyImGui.bullet_text('Controls the opening combat, staircase positioning, Purity Ball timing and final Ministry of Purity spike.')
-    PyImGui.bullet_text('Offers Normal/Hard Mode, optional Birthday Cupcake use and configurable party preparation.')
-    PyImGui.bullet_text('Collects drops, returns to the outpost and repeats using explicit BottingTree Planner stages.')
-    PyImGui.bullet_text('Uses single-account MerchantRules maintenance with configurable inventory and kit thresholds.')
-    PyImGui.bullet_text('Tracks lifetime/session runs, Ministerial Commendations earned and runs with drops.')
-    PyImGui.spacing()
-
-    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
-    PyImGui.bullet_text('Ministerial Commendations BottingTree farming implementation: Sky.')
-    PyImGui.bullet_text('Encounter ReBuilt reference builds and team setup are acknowledged in the script.')
-    PyImGui.bullet_text('Built on Py4GW and the BottingTree framework by Apo and contributors.')
-
-    PyImGui.end_tooltip()
-
 
 
 def main() -> None:
