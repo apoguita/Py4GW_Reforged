@@ -1210,6 +1210,7 @@ class ModelID(IntEnum):
     Emerald_Blade = 1976
     Empowering_Feast = 38618
     Enchanted_Lodestone = 431
+    Empowering_Feast = 38618
     Elemental_Crystal_Shard = 38302
     Elemental_Keystone = 38301
     Enchanted_Vine = 834
@@ -1332,6 +1333,7 @@ class ModelID(IntEnum):
     Heavy_Equipment_Pack = 31224
     Heket_Tongue = 19199
     Heket_Warrior_Mini = 22760
+    Heroes_Trifectas = 38619
     Heleynes_Insight = 36676
     Heroes_Trifecta = 38619
     Heros_Handbook = 26899
@@ -1355,6 +1357,8 @@ class ModelID(IntEnum):
     Imperial_Commendation = 6068
     Imperial_Dragons_Tear = 30205
     Imperial_Guard_Lockbox = 30212
+    Infinite_Birds_Eye_Compass = 38616
+    Infinite_Stalkers_Ration = 38615
     Imperial_Guard_Requisition_Order = 29108
     Imperial_Guard_Summon = 30210
     Incubus_Wing = 27034
