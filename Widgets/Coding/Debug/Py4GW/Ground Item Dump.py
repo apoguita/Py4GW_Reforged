@@ -1,17 +1,18 @@
 """Ground Item Dump — diagnostic widget.
 
-Target an item on the ground, dump it, pick it up, dump it again. The two dumps land in one
-log file so the ground-vs-bag difference for the SAME item is a straight comparison.
+Target an item on the ground, dump it, pick it up, then capture both the saved item object
+and the player's actual held-slot identity. The evidence lands in one log file so these
+different identity surfaces can be compared without treating one as a substitute for another.
 
   1. Target an item on the floor.
   2. Press "1. Dump Targeted Ground Item".
   3. Pick it up.
-  4. Press "2. Dump It Again (in bag)".
+  4. Press "2. Dump Saved Item + Held Slot".
 
 Every accessor is called defensively: if one throws or returns nothing for a ground item,
 that fact is recorded in the dump rather than aborting it.
 
-Log file: docs/loot/redesign/ground_item_dump.log (appended; "Clear Log" empties it).
+Log file: diagnostics/ground_item_dump.log (appended; "Clear Log" empties it).
 """
 
 import os
@@ -37,13 +38,16 @@ INI_KEY = ""
 INI_PATH = "Widgets/GroundItemDump"
 INI_FILENAME = "GroundItemDump.ini"
 
-LOG_RELATIVE_PATH = os.path.join("docs", "automation", "loot_redesign", "ground_item_dump.log")
+LOG_RELATIVE_PATH = os.path.join("diagnostics", "ground_item_dump.log")
 
 # --- state -------------------------------------------------------------------
 # The item id captured by step 1, so step 2 needs no typing.
 pending_item_id = 0
+pending_ground_model_id = 0
+pending_ground_model_error = ""
 pending_label = ""
 status_line = ""
+last_held_slot_summary = None
 initialized = False
 
 
@@ -75,6 +79,20 @@ def _safe(label: str, getter) -> str:
     except Exception as exc:
         return f"  {label:<28} !! {type(exc).__name__}: {exc}\n"
     return f"  {label:<28} {_render(value)}\n"
+
+
+def _try_value(getter):
+    """Return one diagnostic observation without allowing an accessor failure to escape."""
+    try:
+        return getter(), ""
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}"
+
+
+def _evidence_line(label: str, value, error: str = "") -> str:
+    if error:
+        return f"  {label:<36} !! {error}\n"
+    return f"  {label:<36} {_render(value)}\n"
 
 
 def _render(value) -> str:
@@ -239,6 +257,183 @@ def _dump_corelib(item_id: int) -> str:
     return out
 
 
+def _build_held_slot_evidence(
+    captured_item_id: int,
+    captured_ground_model_id: int,
+    captured_ground_model_error: str = "",
+):
+    """Capture log text and a compact UI result from the live player held slot."""
+    out = (
+        f"\n{'-' * 78}\n"
+        "[HELD_SLOT] live player possession evidence (not saved-item evidence)\n"
+        f"{'-' * 78}\n"
+    )
+
+    player_id, player_error = _try_value(Player.GetAgentID)
+    out += _evidence_line("player_id", player_id, player_error)
+
+    if player_error or player_id is None:
+        holding, holding_error = None, "unavailable because player_id lookup failed"
+        weapon_extra, weapon_error = None, "unavailable because player_id lookup failed"
+    else:
+        holding, holding_error = _try_value(lambda: Agent.IsHoldingItem(player_id))
+        weapon_extra, weapon_error = _try_value(lambda: Agent.GetWeaponExtraData(player_id))
+
+    out += _evidence_line("Agent.IsHoldingItem(player_id)", holding, holding_error)
+    out += _evidence_line("Agent.GetWeaponExtraData raw", weapon_extra, weapon_error)
+
+    held_item_id = 0
+    held_item_id_error = ""
+    if weapon_error or weapon_extra is None:
+        held_item_id_error = "unavailable because weapon extra data lookup failed"
+    else:
+        try:
+            held_item_id = int(weapon_extra[0] or 0)
+        except Exception as exc:
+            held_item_id_error = f"{type(exc).__name__}: tuple index 0 unavailable: {exc}"
+    out += _evidence_line("held item id (tuple index 0)", held_item_id, held_item_id_error)
+    out += _evidence_line("captured ground item id", captured_item_id)
+    out += _evidence_line(
+        "held id matches captured item id",
+        held_item_id == captured_item_id if not held_item_id_error and held_item_id > 0 else "UNAVAILABLE",
+    )
+    out += _evidence_line(
+        "captured ground model id",
+        captured_ground_model_id if not captured_ground_model_error else None,
+        captured_ground_model_error,
+    )
+
+    held_models = []
+    if held_item_id > 0 and not held_item_id_error:
+        held_item, held_item_error = _try_value(lambda: PyItem.PyItem(held_item_id))
+        out += _evidence_line("PyItem.PyItem(held_item_id)", repr(held_item), held_item_error)
+        if held_item_error or held_item is None:
+            pyitem_model, pyitem_model_error = None, "unavailable because PyItem construction failed"
+            pyitem_type_int, pyitem_type_int_error = None, "unavailable because PyItem construction failed"
+            pyitem_type_name, pyitem_type_name_error = None, "unavailable because PyItem construction failed"
+            pyitem_name, pyitem_name_error = None, "unavailable because PyItem construction failed"
+            pyitem_get_name, pyitem_get_name_error = None, "unavailable because PyItem construction failed"
+            pyitem_single_name, pyitem_single_name_error = None, "unavailable because PyItem construction failed"
+        else:
+            pyitem_model, pyitem_model_error = _try_value(lambda: held_item.model_id)
+            pyitem_type_int, pyitem_type_int_error = _try_value(lambda: held_item.item_type.ToInt())
+            pyitem_type_name, pyitem_type_name_error = _try_value(lambda: held_item.item_type.GetName())
+            pyitem_name, pyitem_name_error = _try_value(lambda: held_item.name)
+            pyitem_get_name, pyitem_get_name_error = _try_value(held_item.GetName)
+            pyitem_single_name, pyitem_single_name_error = _try_value(held_item.GetSingleItemName)
+
+        out += _evidence_line("PyItem.model_id", pyitem_model, pyitem_model_error)
+        out += _evidence_line("PyItem.item_type.ToInt()", pyitem_type_int, pyitem_type_int_error)
+        out += _evidence_line("PyItem.item_type.GetName()", pyitem_type_name, pyitem_type_name_error)
+        out += _evidence_line("PyItem.name", pyitem_name, pyitem_name_error)
+        out += _evidence_line("PyItem.GetName()", pyitem_get_name, pyitem_get_name_error)
+        out += _evidence_line("PyItem.GetSingleItemName()", pyitem_single_name, pyitem_single_name_error)
+
+        core_model, core_model_error = _try_value(lambda: Item.GetModelID(held_item_id))
+        core_type, core_type_error = _try_value(lambda: Item.GetItemType(held_item_id))
+        core_name, core_name_error = _try_value(lambda: Item.GetName(held_item_id))
+        out += _evidence_line("Item.GetModelID", core_model, core_model_error)
+        out += _evidence_line("Item.GetItemType", core_type, core_type_error)
+        out += _evidence_line("Item.GetName", core_name, core_name_error)
+
+        for value, error in ((pyitem_model, pyitem_model_error), (core_model, core_model_error)):
+            if not error:
+                try:
+                    model_id = int(value or 0)
+                except Exception:
+                    model_id = 0
+                if model_id > 0:
+                    held_models.append(model_id)
+    else:
+        out += "  held item detail fields              <SKIPPED: no positive held item id>\n"
+
+    unique_held_models = sorted(set(held_models))
+    exact_model_available = len(unique_held_models) == 1
+    exact_held_model = unique_held_models[0] if exact_model_available else 0
+    if exact_model_available and captured_ground_model_id > 0 and not captured_ground_model_error:
+        model_match = exact_held_model == captured_ground_model_id
+        match_text = "YES" if model_match else "NO"
+    else:
+        match_text = "UNAVAILABLE"
+
+    if len(unique_held_models) > 1:
+        proof_reason = f"NO (held model APIs disagree: {unique_held_models})"
+    elif exact_model_available:
+        proof_reason = f"YES (exact held model {exact_held_model})"
+    elif held_item_id <= 0 or held_item_id_error:
+        proof_reason = "NO (positive held-slot item ID unavailable)"
+    else:
+        proof_reason = "NO (held-slot model unavailable)"
+
+    out += "-- explicit conclusion --\n"
+    out += f"  exact held-model proof available: {proof_reason}\n"
+    out += f"  held model matches captured ground model: {match_text}\n"
+    summary = {
+        "player_id": player_id if not player_error else None,
+        "is_holding": holding if not holding_error else None,
+        "held_item_id": held_item_id if held_item_id > 0 and not held_item_id_error else None,
+        "captured_item_id": captured_item_id,
+        "item_id_match": (
+            held_item_id == captured_item_id
+            if held_item_id > 0 and not held_item_id_error
+            else None
+        ),
+        "held_model_id": exact_held_model if exact_model_available else None,
+        "captured_ground_model_id": (
+            captured_ground_model_id
+            if captured_ground_model_id > 0 and not captured_ground_model_error
+            else None
+        ),
+        "exact_model_available": exact_model_available,
+        "model_match": match_text,
+        "proof_reason": proof_reason,
+    }
+    return out, summary
+
+
+def _dump_held_slot(
+    captured_item_id: int,
+    captured_ground_model_id: int,
+    captured_ground_model_error: str = "",
+) -> str:
+    """Return the full held-slot log block for focused diagnostics and tests."""
+    text, _summary = _build_held_slot_evidence(
+        captured_item_id,
+        captured_ground_model_id,
+        captured_ground_model_error,
+    )
+    return text
+
+
+def _format_held_slot_summary(summary) -> list[str]:
+    """Render the decisive held-slot observations directly in the widget."""
+    if not summary:
+        return []
+
+    def shown(value) -> str:
+        return "UNAVAILABLE" if value is None else str(value)
+
+    if summary["item_id_match"] is None:
+        item_match = "UNAVAILABLE"
+    else:
+        item_match = "YES" if summary["item_id_match"] else "NO"
+    proof = "YES" if summary["exact_model_available"] else "NO"
+    return [
+        "Held-slot result",
+        f"Player: {shown(summary['player_id'])} | IsHoldingItem: {shown(summary['is_holding'])}",
+        (
+            f"Held item ID: {shown(summary['held_item_id'])} | "
+            f"captured item ID: {shown(summary['captured_item_id'])} | match: {item_match}"
+        ),
+        (
+            f"Held model: {shown(summary['held_model_id'])} | "
+            f"ground model: {shown(summary['captured_ground_model_id'])} | "
+            f"match: {summary['model_match']}"
+        ),
+        f"Exact held-model proof: {proof}",
+    ]
+
+
 def _dump_agent(agent_id: int) -> str:
     """The item-agent side: what the ground object itself carries."""
     out = "-- AgentItem (the object on the floor) --\n"
@@ -285,8 +480,8 @@ def dump_by_agent(agent_id: int, tag: str = "GROUND") -> str:
     return text
 
 
-def dump_by_item(item_id: int, tag: str = "BAG") -> str:
-    """Full dump addressed by ITEM id — use after pickup to compare against the ground dump."""
+def dump_by_item(item_id: int, tag: str = "SAVED_ITEM_OBJECT") -> str:
+    """Dump the previously captured ITEM id without claiming that it is the held slot."""
     header = (
         f"\n{'=' * 78}\n"
         f"[{tag}] item_id={item_id}   t={time.strftime('%Y-%m-%d %H:%M:%S')}   "
@@ -299,9 +494,27 @@ def dump_by_item(item_id: int, tag: str = "BAG") -> str:
     return text
 
 
+def dump_after_pickup(
+    captured_item_id: int,
+    captured_ground_model_id: int,
+    captured_ground_model_error: str = "",
+) -> str:
+    """Append saved-item evidence followed by independent live held-slot evidence."""
+    global last_held_slot_summary
+    saved_item_text = dump_by_item(captured_item_id)
+    held_slot_text, last_held_slot_summary = _build_held_slot_evidence(
+        captured_item_id,
+        captured_ground_model_id,
+        captured_ground_model_error,
+    )
+    _write(held_slot_text)
+    return saved_item_text + held_slot_text
+
+
 # --- UI ----------------------------------------------------------------------
 def draw_widget():
-    global pending_item_id, pending_label, status_line
+    global pending_item_id, pending_ground_model_id, pending_ground_model_error, pending_label, status_line
+    global last_held_slot_summary
 
     if ImGui.Begin(INI_KEY, MODULE_NAME, flags=PyImGui.WindowFlags.AlwaysAutoResize):
         target_id = Player.GetTargetID()
@@ -321,7 +534,14 @@ def draw_widget():
             if target_item_id:
                 dump_by_agent(target_id)
                 pending_item_id = target_item_id
+                ground_model, pending_ground_model_error = _try_value(lambda: Item.GetModelID(target_item_id))
+                try:
+                    pending_ground_model_id = int(ground_model or 0) if not pending_ground_model_error else 0
+                except Exception as exc:
+                    pending_ground_model_id = 0
+                    pending_ground_model_error = f"{type(exc).__name__}: {exc}"
                 pending_label = f"item {target_item_id}"
+                last_held_slot_summary = None
                 status_line = "Ground dump written. Now pick it up, then press 2."
             elif target_id:
                 status_line = "That target is not an item."
@@ -330,10 +550,12 @@ def draw_widget():
 
         # -- step 2: after pickup ---------------------------------------------
         if pending_item_id:
-            if PyImGui.button(f"2. Dump It Again (in bag) — {pending_label}###dump2"):
-                dump_by_item(pending_item_id)
-                status_line = f"Bag dump written for {pending_label}. Pair complete."
+            if PyImGui.button(f"2. Dump Saved Item + Held Slot — {pending_label}###dump2"):
+                dump_after_pickup(pending_item_id, pending_ground_model_id, pending_ground_model_error)
+                status_line = f"Saved-item and held-slot evidence written for {pending_label}. Pair complete."
                 pending_item_id = 0
+                pending_ground_model_id = 0
+                pending_ground_model_error = ""
                 pending_label = ""
         else:
             PyImGui.text("2. (do step 1 first)")
@@ -347,12 +569,22 @@ def draw_widget():
                     handle.write("")
                 status_line = "Log cleared."
                 pending_item_id = 0
+                pending_ground_model_id = 0
+                pending_ground_model_error = ""
                 pending_label = ""
+                last_held_slot_summary = None
             except Exception as exc:
                 status_line = f"Clear failed: {exc}"
 
         if status_line:
             PyImGui.text_colored(status_line, Color(150, 255, 150, 255).to_tuple_normalized())
+
+        summary_lines = _format_held_slot_summary(last_held_slot_summary)
+        if summary_lines:
+            PyImGui.separator()
+            PyImGui.text_colored(summary_lines[0], Color(255, 200, 100, 255).to_tuple_normalized())
+            for line in summary_lines[1:]:
+                PyImGui.text(line)
 
         PyImGui.text_disabled(f"Log: {LOG_RELATIVE_PATH}")
 
@@ -369,12 +601,12 @@ def tooltip():
     PyImGui.spacing()
     PyImGui.separator()
     PyImGui.text("Dumps every readable field of an item lying on the ground,")
-    PyImGui.text("then the same item again once it is in your bag.")
+    PyImGui.text("then the saved item object and the live held slot after pickup.")
     PyImGui.spacing()
     PyImGui.text_colored("Usage:", title_color.to_tuple_normalized())
     PyImGui.bullet_text("Target an item on the ground, press button 1.")
-    PyImGui.bullet_text("Pick it up, press button 2.")
-    PyImGui.bullet_text("Both dumps land in docs/loot/redesign/ground_item_dump.log")
+    PyImGui.bullet_text("Pick it up, press button 2 to capture both identity surfaces.")
+    PyImGui.bullet_text("Evidence lands in diagnostics/ground_item_dump.log")
     PyImGui.end_tooltip()
 
 
