@@ -3354,6 +3354,44 @@ try:
         {"key": "armor_of_salvation", "label": "Armor of Salvation", "model_id": int(ModelID.Armor_Of_Salvation.value), "skills": ["Armor_of_Salvation_item_effect"], "use_where": "explorable"},
         {"key": "essence_of_celerity", "label": "Essence of Celerity", "model_id": int(ModelID.Essence_Of_Celerity.value), "skills": ["Essence_of_Celerity_item_effect"], "use_where": "explorable"},
         {"key": "grail_of_might", "label": "Grail of Might", "model_id": int(ModelID.Grail_Of_Might.value), "skills": ["Grail_of_Might_item_effect"], "use_where": "explorable"},
+        {
+            "key": "empowering_feasts",
+            "label": "Empowering Feast",
+            "model_id": int(ModelID.Empowering_Feasts.value),
+            "skills": ["Birthday_Cupcake_skill", "Candy_Apple_skill", "Golden_Egg_skill", "Candy_Corn_skill", "Pie_Induced_Ecstasy", "Well_Supplied"],
+            "use_where": "explorable",
+        },
+        {
+            "key": "heroes_trifecta",
+            "label": "Heroes' Trifecta",
+            "model_id": int(ModelID.Heroes_Trifectas.value),
+            "skills": ["Grail_of_Might_item_effect", "Armor_of_Salvation_item_effect", "Essence_of_Celerity_item_effect"],
+            "use_where": "explorable",
+        },
+        {
+            "key": "infinite_birds_eye_compass",
+            "label": "Infinite Bird's Eye Compass",
+            "model_id": int(ModelID.Infinite_Birds_Eye_Compass.value),
+            "skills": ["Bird's_Eye_View", "Birds_Eye_View"],
+            "use_where": "explorable",
+            "once_per_explorable": True,
+        },
+        {
+            "key": "infinite_stalkers_ration",
+            "label": "Infinite Stalker's Ration",
+            "model_id": int(ModelID.Infinite_Stalkers_Ration.value),
+            "skills": ["Seek_and_Destroy"],
+            "use_where": "explorable",
+            "once_per_explorable": True,
+        },
+
+# --------------------------------------------------------
+#   CONSUMABLE_TOOLTIPS:
+# "empowering_feasts": "Applies Birthday Cupcake, Candy Apple, Golden Egg, Candy Corn, Slice of Pumpkin Pie, and War Supplies effects for 30 minutes (lost on death).",
+# "heroes_trifecta": "Applies Grail of Might, Armor of Salvation, and Essence of Celerity effects to your party for 30 minutes (persists through death).",
+# "infinite_birds_eye_compass": "Unlimited-use explorable item that grants Bird's Eye View (increased map exploration radius) for the current instance.",
+# "infinite_stalkers_ration": "Unlimited-use explorable item that grants Seek and Destroy (pings nearby foes on the mini-map) for the current instance.",
+# ---------------------------------------------------------
 
         # Explorable (alphabetical by label)
         {"key": "birthday_cupcake", "label": "Birthday Cupcake", "model_id": int(ModelID.Birthday_Cupcake.value), "skills": ["Birthday_Cupcake_skill"], "use_where": "explorable"},
