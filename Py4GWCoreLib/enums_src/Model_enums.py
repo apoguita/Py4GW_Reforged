@@ -1332,8 +1332,8 @@ class ModelID(IntEnum):
     Heavy_Equipment_Pack = 31224
     Heket_Tongue = 19199
     Heket_Warrior_Mini = 22760
+    Heroes_Trifectas = 38619
     Heleynes_Insight = 36676
-    Heroes_Trifecta = 38619
     Heros_Handbook = 26899
     Heros_Zaishen_Strongbox = 36666
     Herring_Mini_Black_Moa_Chick_Incubator = 26502
