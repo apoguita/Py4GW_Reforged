@@ -35,6 +35,7 @@ class BottingTreeServicesMixin:
             "last_return_ms": 0.0,
             "player_was_dead": False,
             "player_dead_pos": None,
+            "suppressed_defeat_logged": False,
         }
 
         def _log(
@@ -320,7 +321,36 @@ class BottingTreeServicesMixin:
                 )
             ):
                 _reset_state(node)
+
+                # The suppressing owner (normally an in-flight BT.Resign) is
+                # responsible for the return. Log a defeat seen here once, so
+                # a party stuck on the defeat screen is attributable.
+                suppressed_wiped = bool(
+                    Routines.Checks.Party.IsPartyWiped()
+                )
+                suppressed_defeated = bool(
+                    GLOBAL_CACHE.Party.IsPartyDefeated()
+                )
+                if suppressed_wiped or suppressed_defeated:
+                    if not state["suppressed_defeat_logged"]:
+                        state["suppressed_defeat_logged"] = True
+                        _log(
+                            (
+                                "Party wipe/defeat seen while recovery is "
+                                "suppressed; leaving the return to the "
+                                f"suppressing owner. map={Map.GetMapID()} "
+                                f"wiped={suppressed_wiped} "
+                                f"defeated={suppressed_defeated} "
+                                f"step='{_resolve_recovery_step(node)}'"
+                            ),
+                            PySystem.Console.MessageType.Warning,
+                        )
+                else:
+                    state["suppressed_defeat_logged"] = False
+
                 return BehaviorTree.NodeState.RUNNING
+
+            state["suppressed_defeat_logged"] = False
 
             revived_at_shrine = (
                 _detect_revive_teleport()

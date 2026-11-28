@@ -2033,11 +2033,9 @@ def Resign(
             )
         )
 
-    children: list[BehaviorTree | BehaviorTree.Node] = []
-    children.append(LogMessage(message="Resign initiated"))
-    children.append(_set_wipe_recovery_suppressed(True))
+    resign_steps: list[BehaviorTree | BehaviorTree.Node] = []
     if multi_account:
-        children.append(
+        resign_steps.append(
             RoutinesBT.Multibox.ResignAllAccounts(
                 refs_blackboard_key='__resign_message_refs',
                 timeout_ms=timeout_ms,
@@ -2046,7 +2044,7 @@ def Resign(
                 aftercast_ms=aftercast_ms,
             )
         )
-    children.append(
+    resign_steps.append(
         RoutinesBT.Shared.SendAndWait(
             command=SharedCommandType.Resign,
             include_self=True,
@@ -2058,19 +2056,39 @@ def Resign(
         )
     )
     if wait_for_map_load:
-        children.append(
+        resign_steps.append(
             WaitForMapLoad(
                 map_id=0 if target_map_id is None else int(target_map_id),
                 timeout_ms=timeout_ms,
                 map_name='' if target_map_name is None else str(target_map_name),
             )
         )
-    children.append(_set_wipe_recovery_suppressed(False))
-    children.append(LogMessage(message="Resign completed"))
 
+    # The suppression flag must be released on failure too: a failed resign
+    # that left it set would silence PartyWipeRecoveryService for every later
+    # run until the planner restarted, so a real wipe went unhandled.
     return Sequence(
         name="Resign",
-        children=children,
+        children=[
+            LogMessage(message="Resign initiated"),
+            _set_wipe_recovery_suppressed(True),
+            Selector(
+                name="ResignOrReleaseSuppression",
+                children=[
+                    Sequence(name="ResignSteps", children=resign_steps),
+                    Sequence(
+                        name="ResignFailed",
+                        children=[
+                            _set_wipe_recovery_suppressed(False),
+                            LogMessage(message="Resign failed; party wipe recovery re-enabled"),
+                            Failer(name="ResignFailed"),
+                        ],
+                    ),
+                ],
+            ),
+            _set_wipe_recovery_suppressed(False),
+            LogMessage(message="Resign completed"),
+        ],
     )
 
 def _flag_heroai_accounts_by_party_position(
