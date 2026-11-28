@@ -2907,9 +2907,22 @@ def _draw_direct_nav():
                 PyImGui.tree_pop()
 
 
+def _player_profession_known() -> bool:
+    # create_bot_routine branches on the player's profession while it builds
+    # the plan (max armor data, secondary profession dialogs, Assassin/Mesmer
+    # only sections). Before the player agent exists the lookup returns "",
+    # which either raises mid-build or bakes the wrong branches into the plan.
+    primary, _ = Agent.GetProfessionNames(Player.GetAgentID())
+    return primary != ""
+
+
 def main():
     global bot
     try:
+        # The first bot.Update() builds the plan; hold it (and the window,
+        # which needs a built plan) until the profession can be read.
+        if not bot.config.initialized and not _player_profession_known():
+            return
         bot.Update()
         bot.UI.draw_window(additional_ui=_draw_direct_nav)
 
