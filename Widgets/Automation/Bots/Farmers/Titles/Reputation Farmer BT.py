@@ -18,6 +18,7 @@ import PySystem
 
 from Py4GWCoreLib import GLOBAL_CACHE, HeroType, Map, Player, PyImGui
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.Listeners import Listeners
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.enums_src.Title_enums import TitleID, TITLE_TIERS
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as CoreBT
@@ -1670,6 +1671,13 @@ def _configure_upkeep(tree: BottingTree) -> None:
 def ensure_botting_tree() -> BottingTree:
     global botting_tree
     if botting_tree is None:
+        # Native listener: return the party to the outpost on a defeat. Every
+        # BT.Resign (end of run, and the _ensure_at_outpost rescue) suppresses
+        # the stock PartyWipeRecoveryService while the planner is paused on the
+        # defeat screen, so without this nothing calls ReturnToOutpost there and
+        # the bot sits on the defeat screen forever.
+        Listeners.AutoReturnOnDefeat.Enable()
+
         botting_tree = BottingTree.Create(
             MODULE_NAME,
             main_routine=get_execution_steps(),
