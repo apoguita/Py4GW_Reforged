@@ -2235,8 +2235,8 @@ def To_Lions_Arch(bot: Botting):
     bot.States.AddCustomState(exec_fn, "Step 2 - Chaos in Kryta")
     bot.Wait.ForMapToChange(target_map_name="Lion's Gate")
     bot.Move.XY(-1181, 1038)
-    #bot.Dialogs.WithModel(2011, 0x85) #Model id updated 20.12.2025 GW Reforged
-    exec_fn = lambda: QuestLoop(479, 0, 0, 0x85, mode="step", quest_npc=2011)
+    # Lionguard Neiro by position: a stale model ID silently skips this step.
+    exec_fn = lambda: QuestLoop(479, -1181, 1038, 0x85, mode="step")
     bot.States.AddCustomState(exec_fn, "Step 3 - Chaos in Kryta")
     bot.Map.Travel(target_map_id=55)
     #bot.Move.XYAndDialog(328.00, 9594.00, 0x81DF07)
